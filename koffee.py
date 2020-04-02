@@ -168,6 +168,7 @@ all_the_lines = {
 	"OIII_4" : 5008.240
 }
 
+#dictionary of spaxels which are saturated in OIII_4 and need to fit OIII_3 instead
 dodgy_spaxels = {
     "IRAS08" : [(28,9), (29,9), (30,9)]
 }
@@ -658,9 +659,6 @@ def check_blue_chi_square(wavelength, flux, best_fit, g_model):
 
 
 
-
-
-
 #===============================================================================
 #plotting functions
 def plot_fit(wavelength, flux, g_model, pars, best_fit, plot_initial=False):
@@ -813,17 +811,16 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
     em_rest = emission_dict[emission_line]
     em_observed = em_rest*(1+redshift)
 
-    if correct_bad_spaxels == True:
-        em_rest_OIII_3 = emission_dict['OIII_3']
-        em_obs_OIII_3 = em_rest_OIII_3*(1+redshift)
-        mask_lam_OIII_3 = (lamdas > em_obs_OIII_3-20.) & (lamdas < em_obs_OIII_3+20.)
-        lamdas_OIII_3 = lamdas[mask_lam_OIII_3]
-
     #create mask to choose emission line wavelength range
     mask_lam = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
 
-    #apply mask to lamdas
-    lamdas = lamdas[mask_lam]
+    if correct_bad_spaxels == True:
+        #get the OIII_3 emission line and redshift it
+        em_rest_OIII_3 = emission_dict['OIII_3']
+        em_obs_OIII_3 = em_rest_OIII_3*(1+redshift)
+
+        #use OIII_3 to make the mask
+        mask_lam_OIII_3 = (lamdas > em_obs_OIII_3-20.) & (lamdas < em_obs_OIII_3+20.)
 
     #loop through cube
     with tqdm(total=data.shape[1]*data.shape[2]) as pbar:
@@ -832,14 +829,17 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
                 try:
                     #apply mask to data
                     if correct_bad_spaxels == True:
-                        if (j == 9) and (i in (28, 29, 30)):
+                        if (i, j) in dodgy_spaxels[galaxy_name]:
+                            #apply the alternative mask to the wavelength
+                            masked_lamdas = lamdas[mask_lam_OIII_3]
+                            #apply the mask to the data
                             flux = data[:,i,j][mask_lam_OIII_3]
-                            lamdas = lamdas_OIII_3
                             print('Using [OIII] '+str(em_rest_OIII_3)+' for spaxel '+str(i)+','+str(j))
-                        else:
-                            flux = data[:,i,j][mask_lam]
+
                     else:
                         flux = data[:,i,j][mask_lam]
+                        #apply mask to lamdas
+                        masked_lamdas = lamdas[mask_lam]
 
                     #take out the continuum by finding the average value of the first 10 pixels in the data and minusing them off
                     if cont_subtract==True:
@@ -850,26 +850,26 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
                     #only fit if the S/N is greater than 20
                     if s_n >= 20:
                         #create model for 1 Gaussian fit
-                        g_model1, pars1 = gaussian1(lamdas, flux)
+                        g_model1, pars1 = gaussian1(masked_lamdas, flux)
                         #fit model for 1 Gaussian fit
-                        best_fit1 = fitter(g_model1, pars1, lamdas, flux, method=method, verbose=False)
+                        best_fit1 = fitter(g_model1, pars1, masked_lamdas, flux, method=method, verbose=False)
 
                         #create and fit model for 2 Gaussian fit, using 1 Gaussian fit as first guess for the mean
-                        g_model2, pars2 = gaussian2(lamdas, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None)
-                        best_fit2 = fitter(g_model2, pars2, lamdas, flux, method=method, verbose=False)
+                        g_model2, pars2 = gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None)
+                        best_fit2 = fitter(g_model2, pars2, masked_lamdas, flux, method=method, verbose=False)
 
                         if best_fit2.bic < (best_fit1.bic-10):
                             stat_res = 1
                             #save blue chi square
-                            blue_chi_square[i,j] = check_blue_chi_square(lamdas, flux, best_fit2, g_model2)
+                            blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit2, g_model2)
                         else:
                             stat_res = 0
                             #save blue chi square
-                            blue_chi_square[i,j] = check_blue_chi_square(lamdas, flux, best_fit1, g_model1)
+                            blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit1, g_model1)
 
                         if blue_chi_square[i,j] > 0.1:
-                            g_model2_refit, pars2_refit = gaussian2(lamdas, flux, amplitude_guess=None, mean_guess=[lamdas[flux.argmax()], lamdas[flux.argmax()]-4.0], sigma_guess=[1.0,8.0])
-                            best_fit2_refit = fitter(g_model2_refit, pars2_refit, lamdas, flux, method=method, verbose=False)
+                            g_model2_refit, pars2_refit = gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=[masked_lamdas[flux.argmax()], masked_lamdas[flux.argmax()]-4.0], sigma_guess=[1.0,8.0])
+                            best_fit2_refit = fitter(g_model2_refit, pars2_refit, masked_lamdas, flux, method=method, verbose=False)
 
                             #force it to take the new fit
                             stat_res = 2
@@ -892,7 +892,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
 
                         #plot fit results
                         if plotting == True:
-                            fig1 = plot_fit(lamdas, flux, g_model1, pars1, best_fit1, plot_initial=False)
+                            fig1 = plot_fit(masked_lamdas, flux, g_model1, pars1, best_fit1, plot_initial=False)
                             if correct_bad_spaxels == True:
                                 fig1.suptitle('[OIII] '+str(em_rest_OIII_3))
                                 fig1.savefig(output_folder_loc+galaxy_name+'_best_fit_OIII_3_no_outflow_'+str(i)+'_'+str(j))
@@ -902,9 +902,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
                             plt.close(fig1)
 
                             if statistical_results[i,j] == 2:
-                                fig2 = plot_fit(lamdas, flux, g_model2_refit, pars2_refit, best_fit2_refit, plot_initial=False)
+                                fig2 = plot_fit(masked_lamdas, flux, g_model2_refit, pars2_refit, best_fit2_refit, plot_initial=False)
                             else:
-                                fig2 = plot_fit(lamdas, flux, g_model2, pars2, best_fit2, plot_initial=False)
+                                fig2 = plot_fit(masked_lamdas, flux, g_model2, pars2, best_fit2, plot_initial=False)
 
                             if correct_bad_spaxels == True:
                                 fig2.suptitle('[OIII] '+str(em_rest_OIII_3))
