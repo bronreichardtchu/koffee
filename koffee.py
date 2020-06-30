@@ -1222,10 +1222,17 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
     #    pickle.dump(statistical_results, f)
     #f.close()
 
-    np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_'+emission_line+'.txt', np.reshape(outflow_results, (6, -1)))
-    np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line+'.txt', np.reshape(outflow_error, (6, -1)))
-    np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_results_'+emission_line+'.txt', np.reshape(no_outflow_results, (3, -1)))
-    np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line+'.txt', np.reshape(no_outflow_error, (3, -1)))
+    if include_const == True:
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_'+emission_line+'.txt', np.reshape(outflow_results, (7, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line+'.txt', np.reshape(outflow_error, (7, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_results_'+emission_line+'.txt', np.reshape(no_outflow_results, (4, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line+'.txt', np.reshape(no_outflow_error, (4, -1)))
+    elif include_const == False:
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_'+emission_line+'.txt', np.reshape(outflow_results, (6, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line+'.txt', np.reshape(outflow_error, (6, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_results_'+emission_line+'.txt', np.reshape(no_outflow_results, (3, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line+'.txt', np.reshape(no_outflow_error, (3, -1)))
+
     np.savetxt(output_folder_loc+galaxy_name+'_stat_results_'+emission_line+'.txt', np.reshape(statistical_results, (1, -1)))
 
 
@@ -1281,7 +1288,7 @@ def calc_outflow_vel(outflow_results, statistical_results, z):
     #and put it into the array
     vel_out[flow_mask] = v_out
 
-    return vel_out 
+    return vel_out
 
 
 
