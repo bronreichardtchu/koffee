@@ -108,15 +108,16 @@ def map_of_outflows(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, outflow_re
     fig, ax1 = plt.subplots(1,1)
 
     #get the continuum contours
-    cont_contours1 = plot_continuum_contours(lamdas, np.reshape(xx_flat, (67,24)), np.reshape(yy_flat, (67, 24)), np.reshape(data_flat, (data_flat.shape[0],67,24)), z, ax1)
+    i, j = statistical_results.shape
+    cont_contours1 = plot_continuum_contours(lamdas, np.reshape(xx_flat, (i,j)), np.reshape(yy_flat, (i, j)), np.reshape(data_flat, (data_flat.shape[0],i,j)), z, ax1)
     #cont_contours2 = plot_continuum_contours(lamdas, np.reshape(xx_flat, (67,24)), np.reshape(yy_flat, (67, 24)), np.reshape(data_flat, (data_flat.shape[0],67,24)), z, ax2)
 
     #create figure of just outflows
     #circle = plt.Circle((0, 0), 6.4, color='r', lw=2, fill=False)
     ax1.set_title('Outflow Spaxels')
-    outflow_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, vel_out.reshape(1,-1), axes=ax1, vmin=100, vmax=500)
+    outflow_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, vel_out.reshape(1,-1), axes=ax1)#, vmin=100, vmax=500)
     ax1.set_xlim(xmin, xmax)
-    ax1.set_ylim(-7.5,7.5)
+    #ax1.set_ylim(-7.5,7.5)
     ax1.invert_xaxis()
     #ax1.add_artist(circle)
     ax1.set_ylabel('Arcseconds')

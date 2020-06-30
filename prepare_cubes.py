@@ -394,6 +394,8 @@ def data_coords(lamdas, data, header, z, cube_colour, shiftx=None, shifty=None):
     #multiply through by header values
     x = x*header['CD1_2']*60*60
     y = y*header['CD2_1']*60*60
+    #x = x*header['CDELT1']*60*60
+    #y = y*header['CDELT2']*60*60
 
     print("x shape, y shape:", x.shape, y.shape)
 
@@ -411,6 +413,9 @@ def data_coords(lamdas, data, header, z, cube_colour, shiftx=None, shifty=None):
         i, j = np.unravel_index(cont_median.argmax(), cont_median.shape)
         shiftx = i*header['CD1_2']*60*60
         shifty = j*header['CD2_1']*60*60
+        #i, j = np.median(np.where(cont_median==np.nanmax(cont_median)),axis=1)
+        #shiftx = i*header['CDELT1']*60*60
+        #shifty = j*header['CDELT2']*60*60
         print("shiftx, shifty:", shiftx, shifty)
         x = x - shiftx
         y = y - shifty
@@ -466,7 +471,7 @@ def flatten_cube(xx, yy, rad, data, var=None):
     #flatten data to 2D arrays
     data_flat = data.reshape(data.shape[0], -1)
 
-    if var:
+    if var is not None:
         var_flat = var.reshape(var.shape[0], -1)
         return xx_flat, yy_flat, rad_flat, data_flat, var_flat
 
