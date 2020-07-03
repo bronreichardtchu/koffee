@@ -377,90 +377,113 @@ def gaussian1(wavelength, flux, amp_guess=None, mean_guess=None, sigma_guess=Non
 
 
 
-def gaussian2(wavelength, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None):
-	"""
-	Creates a combination of 2 gaussians
+def gaussian2(wavelength, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None, mean_diff=None, sigma_variations=None):
+    """
+    Creates a combination of 2 gaussians
 
-	Args:
-		wavelength: the wavelength vector
-		flux: the flux of the spectrum
-		amplitude_guess: guesses for the amplitudes of the two gaussians (default = None)
-		mean_guess: guesses for the central positions of the two gaussians (default = None)
-		sigma_guess: guesses for the characteristic widths of the two gaussians (default = None)
+    Parameters
+    ----------
+    wavelength :
+        the wavelength vector
+    flux :
+        the flux of the spectrum
+    amplitude_guess :
+        guesses for the amplitudes of the two gaussians (default = None)
+    mean_guess :
+        guesses for the central positions of the two gaussians (default = None)
+    sigma_guess :
+        guesses for the characteristic widths of the two gaussians (default = None)
+    mean_diff :
+        guess for the difference between the means, and the percentage by which
+        that can change eg. [2.5Angstroms, 0.1] (default = None)
+    sigma_variations :
+        the percentage by which we allow sigma to vary from the guess e.g. 0.1. (default=None)
 
-	Returns:
-		g_model: the double Gaussian model
-		pars: the Parameters object
-	"""
-	#create the first gaussian
-	#gauss1 = GaussianModel(prefix='Galaxy_')
-	gauss1 = Model(gaussian_func, prefix='Galaxy_')
+    Returns
+    -------
+    g_model :
+        the double Gaussian model
+    pars :
+        the Parameters object
+    """
+    #create the first gaussian
+    #gauss1 = GaussianModel(prefix='Galaxy_')
+    gauss1 = Model(gaussian_func, prefix='Galaxy_')
 
-	#create parameters object
-	#pars = gauss1.guess(flux, x=wavelength)
-	pars = gauss1.make_params()
+    #create parameters object
+    #pars = gauss1.guess(flux, x=wavelength)
+    pars = gauss1.make_params()
 
-	#create the second gaussian
-	#gauss2 = GaussianModel(prefix='Flow_')
-	gauss2 = Model(gaussian_func, prefix='Flow_')
+    #create the second gaussian
+    #gauss2 = GaussianModel(prefix='Flow_')
+    gauss2 = Model(gaussian_func, prefix='Flow_')
 
-	#update the Parameters object to include variables from the second gaussian
-	pars.update(gauss2.make_params())
+    #update the Parameters object to include variables from the second gaussian
+    pars.update(gauss2.make_params())
 
-	#combine the two gaussians for the model
-	g_model = gauss1 + gauss2
+    #combine the two gaussians for the model
+    g_model = gauss1 + gauss2
 
-	#update the Parameters object so that there are bounds on the gaussians
-	#update parameters object
-	if amplitude_guess is not None:
-		pars['Galaxy_amp'].set(value=amplitude_guess[0], vary=True)
-		pars['Flow_amp'].set(value=amplitude_guess[1], vary=True)
-	elif amplitude_guess is None:
-		pars['Galaxy_amp'].set(value=0.7*max(flux)/0.4)
-		pars['Flow_amp'].set(value=0.3*max(flux)/0.4)
+    #update the Parameters object so that there are bounds on the gaussians
+    #update parameters object
+    if amplitude_guess is not None:
+        pars['Galaxy_amp'].set(value=amplitude_guess[0], vary=True)
+        pars['Flow_amp'].set(value=amplitude_guess[1], vary=True)
+    elif amplitude_guess is None:
+        pars['Galaxy_amp'].set(value=0.7*max(flux)/0.4)
+        pars['Flow_amp'].set(value=0.3*max(flux)/0.4)
 
-	#no negative gaussians
-	pars['Flow_amp'].set(min=0.01)
-	#we also want the galaxy amplitude to be greater than the flow amplitude, so we define a new parameter
-	#amp_diff = Galaxy_amplitude-Flow_amplitude, where amp_diff > 0.05
-	pars.add('amp_diff', value=0.1, min=0.05, vary=True)
-	pars['Galaxy_amp'].set(expr='amp_diff+Flow_amp')
+    #no negative gaussians
+    pars['Flow_amp'].set(min=0.01)
+    #we also want the galaxy amplitude to be greater than the flow amplitude, so we define a new parameter
+    #amp_diff = Galaxy_amplitude-Flow_amplitude, where amp_diff > 0.05
+    pars.add('amp_diff', value=0.1, min=0.05, vary=True)
+    pars['Galaxy_amp'].set(expr='amp_diff+Flow_amp')
 
-	#if the peak is obvious, use it as the first guess for the mean... if it is not obvious, use the observed emission line wavelength (if given)
-	if mean_guess is not None:
-		pars['Galaxy_mean'].set(value=mean_guess[0])
-		pars['Flow_mean'].set(value=mean_guess[1])
-	if mean_guess is None:
-		pars['Galaxy_mean'].set(value=wavelength[np.argmax(flux)])
-		pars['Flow_mean'].set(value=wavelength[np.argmax(flux)]-0.1)
+    #if the peak is obvious, use it as the first guess for the mean... if it is not obvious, use the observed emission line wavelength (if given)
+    if mean_guess is not None:
+        pars['Galaxy_mean'].set(value=mean_guess[0])
+        pars['Flow_mean'].set(value=mean_guess[1])
+    if mean_guess is None:
+        pars['Galaxy_mean'].set(value=wavelength[np.argmax(flux)])
+        pars['Flow_mean'].set(value=wavelength[np.argmax(flux)]-0.1)
 
-	#The center of the galaxy gaussian needs to be within the wavelength range, or near where we expect the emission line to be
-	if mean_guess is not None:
-		pars['Galaxy_mean'].set(max=mean_guess[0]+10, min=mean_guess[0]-10, vary=True)
-	if mean_guess is None:
-		pars['Galaxy_mean'].set(max=wavelength[-5], min=wavelength[5], vary=True)
+    #The center of the galaxy gaussian needs to be within the wavelength range, or near where we expect the emission line to be
+    if mean_guess is not None:
+        pars['Galaxy_mean'].set(max=mean_guess[0]+10, min=mean_guess[0]-10, vary=True)
+    if mean_guess is None:
+        pars['Galaxy_mean'].set(max=wavelength[-5], min=wavelength[5], vary=True)
 
-	#The flow gaussian should also be within 5 Angstroms of the galaxy gaussian... so, we define a new parameter, lam_diff =Galaxy_mean-Flow_mean, where -5 < lam_diff < 5
-	pars.add('lam_diff', value=0.0, max=5.0, min=-5.0, vary=True)
-	#pars.add('lam_diff', value=0.0, max=3.0, min=-3.0)
-	pars['Flow_mean'].set(expr='Galaxy_mean-lam_diff')
+    #The flow gaussian should also be within 5 Angstroms of the galaxy gaussian... so, we define a new parameter, lam_diff =Galaxy_mean-Flow_mean, where -5 < lam_diff < 5
+    if mean_diff is not None:
+        pars.add('lam_diff', value=mean_diff[0], max=(mean_diff[0]+mean_diff[0]*mean_diff[1]), min=(mean_diff[0]-mean_diff[0]*mean_diff[1]), vary=True)
+    if mean_diff is None:
+        pars.add('lam_diff', value=0.0, max=5.0, min=-5.0, vary=True)
+    #pars.add('lam_diff', value=0.0, max=3.0, min=-3.0)
+    pars['Flow_mean'].set(expr='Galaxy_mean-lam_diff')
 
-	if sigma_guess is not None:
-		pars['Galaxy_sigma'].set(value=sigma_guess[0])
-		pars['Flow_sigma'].set(value=sigma_guess[1])
-	if sigma_guess is None:
-		pars['Galaxy_sigma'].set(value=1.0)
-		pars['Flow_sigma'].set(value=3.5)
+    if sigma_guess is not None:
+        pars['Galaxy_sigma'].set(value=sigma_guess[0])
+        pars['Flow_sigma'].set(value=sigma_guess[1])
+    if sigma_guess is None:
+        pars['Galaxy_sigma'].set(value=1.0)
+        pars['Flow_sigma'].set(value=3.5)
 
-	#no super duper wide outflows
-	pars['Flow_sigma'].set(max=10.0, min=0.8, vary=True)
-	#edited this to fit Halpha... remember to change back!!!
-	#pars['Flow_sigma'].set(max=3.5, min=0.8, vary=True)
-	#also, since each wavelength value is roughly 0.5A apart, the sigma must be more than 0.25A
-	pars['Galaxy_sigma'].set(min=0.9, max=2.0, vary=True)#min=2.0 because that's the minimum we can observe with the telescope
+    if sigma_variations is not None:
+        pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_guess[0]*sigma_variations), min=(sigma_guess[0]-sigma_guess[0]*sigma_variations), vary=True)
+        pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_guess[1]*sigma_variations), min=(sigma_guess[1]-sigma_guess[1]*sigma_variations), vary=True)
+        #pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_variations), min=(sigma_guess[0]-sigma_variations), vary=True)
+        #pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_variations), min=(sigma_guess[1]-sigma_variations), vary=True)
+    if sigma_variations is None:
+        #no super duper wide outflows
+        pars['Flow_sigma'].set(max=10.0, min=0.8, vary=True)
+        #edited this to fit Halpha... remember to change back!!!
+        #pars['Flow_sigma'].set(max=3.5, min=0.8, vary=True)
+        #also, since each wavelength value is roughly 0.5A apart, the sigma must be more than 0.25A
+        pars['Galaxy_sigma'].set(min=0.9, max=2.0, vary=True)#min=2.0 because that's the minimum we can observe with the telescope
 
 
-	return g_model, pars
+    return g_model, pars
 
 
 
@@ -928,7 +951,7 @@ def plot_fit(wavelength, flux, g_model, pars, best_fit, plot_initial=False, incl
 
 #===============================================================================
 #Applying to entire cube
-def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=None, filename2=None, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=False, plotting=True, method='leastsq', correct_bad_spaxels=False):
+def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_line2=None, filename=None, filename2=None, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=False, plotting=True, method='leastsq', correct_bad_spaxels=False):
     """
     Fits the entire cube, and checks whether one or two gaussians fit the emission line best.  Must have either the filename to the fits file, or the data_cube_stuff.
 
@@ -943,8 +966,15 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
         "Hdelta", "Hgamma", "Hbeta", "Halpha", "OII_1", "OII_2", "HeI", "SII", "OIII_1", "OIII_2", "OIII_3", "OIII_4"
     output_folder_loc : str
         file path to where to put the results and plots output folder
+    emission_line2 : str
+        the second emission line to be fit using the results from the first.  Default is None. Options:
+        "Hdelta", "Hgamma", "Hbeta", "Halpha", "OII_1", "OII_2", "HeI", "SII", "OIII_1", "OIII_2", "OIII_3", "OIII_4"
     filename : str
         the file path to the data cube - if data_cube_stuff is not given
+    filename2 : str
+        the file path to the second data cube - generally the continuum subtracted cube.
+        If this is not None, the first cube is used to create the S/N mask, and
+        this cube is used for fitting.
     data_cube_stuff :
         [lamdas, data] if the filename is not given
     emission_dict : dict
@@ -1027,7 +1057,21 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
         #recreate mask to choose emission line wavelength range with new lamdas
         mask_lam = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
 
-    if correct_bad_spaxels == True:
+    #if fitting a second emission line, create the wavelength mask
+    if emission_line2:
+        print('Emission Line '+emission_line2+' also being fit')
+        #use redshift to shift emission line to observed wavelength
+        em_rest2 = emission_dict[emission_line2]
+        em_observed = em_rest2*(1+redshift)
+
+        #create mask to choose emission line wavelength range
+        mask_lam2 = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
+
+        #create arrays to save results in
+        outflow_results2 = np.empty_like(data[:6,:,:])
+        outflow_error2 = np.empty_like(data[:6,:,:])
+
+    if correct_bad_spaxels == True and emission_line == 'OIII_4':
         #get the OIII_3 emission line and redshift it
         em_rest_OIII_3 = emission_dict['OIII_3']
         em_obs_OIII_3 = em_rest_OIII_3*(1+redshift)
@@ -1041,7 +1085,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
             for j in range(data.shape[2]):
                 try:
                     #apply mask to data
-                    if correct_bad_spaxels == True:
+                    if correct_bad_spaxels == True and emission_line == 'OIII_4':
                         if (i, j) in dodgy_spaxels[galaxy_name]:
                             #apply the alternative mask to the wavelength
                             masked_lamdas = lamdas[mask_lam_OIII_3]
@@ -1072,14 +1116,14 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
                         elif include_const == False:
                             g_model1, pars1 = gaussian1(masked_lamdas, flux)
                         #fit model for 1 Gaussian fit
-                        best_fit1 = fitter(g_model1, pars1, masked_lamdas, flux, method=method, verbose=True)
+                        best_fit1 = fitter(g_model1, pars1, masked_lamdas, flux, method=method, verbose=False)
 
                         #create and fit model for 2 Gaussian fit, using 1 Gaussian fit as first guess for the mean
                         if include_const == True:
                             g_model2, pars2 = gaussian2_const(masked_lamdas, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None)
                         elif include_const == False:
                             g_model2, pars2 = gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None)
-                        best_fit2 = fitter(g_model2, pars2, masked_lamdas, flux, method=method, verbose=True)
+                        best_fit2 = fitter(g_model2, pars2, masked_lamdas, flux, method=method, verbose=False)
 
                         if best_fit2.bic < (best_fit1.bic-10):
                             stat_res = 1
@@ -1099,6 +1143,29 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
 
                             #force it to take the new fit
                             stat_res = 2
+
+                        #FIT THE SECOND LINE
+                        if emission_line2:
+                            #only want to fit hbeta where there is an outflow
+                            if stat_res > 0:
+                                #mask the lamdas and data
+                                masked_lamdas2 = lamdas[mask_lam2]
+                                flux2 = data[:,i,j][mask_lam2]
+                                #get the guess values from the previous fits
+                                if stat_res == 1:
+                                    mean_diff = best_fit2.params['Galaxy_mean'].value - best_fit2.params['Flow_mean'].value
+                                    sigma_guess = [best_fit2.params['Galaxy_sigma'].value, best_fit2.params['Flow_sigma'].value]
+                                elif stat_res == 2:
+                                    mean_diff = best_fit2_refit.params['Galaxy_mean'].value - best_fit2_refit.params['Flow_mean'].value
+                                #create the fitting objects
+                                g_model2_second, pars2_second = gaussian2(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.10], sigma_variations=0.25)
+
+                                #do the fit
+                                best_fit2_second = fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, method=method, verbose=False)
+
+                            #put the results into the array to be saved
+                            outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value)
+                            outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr)
 
                         #put stat_res into the array
                         statistical_results[i,j] = stat_res
@@ -1131,7 +1198,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
                         #plot fit results
                         if plotting == True:
                             fig1 = plot_fit(masked_lamdas, flux, g_model1, pars1, best_fit1, plot_initial=False, include_const=include_const)
-                            if correct_bad_spaxels == True:
+                            if correct_bad_spaxels == True and (i, j) in dodgy_spaxels[galaxy_name]:
                                 fig1.suptitle('[OIII] '+str(em_rest_OIII_3))
                                 fig1.savefig(output_folder_loc+galaxy_name+'_best_fit_OIII_3_no_outflow_'+str(i)+'_'+str(j))
                             else:
@@ -1144,13 +1211,19 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
                             else:
                                 fig2 = plot_fit(masked_lamdas, flux, g_model2, pars2, best_fit2, plot_initial=False)
 
-                            if correct_bad_spaxels == True:
+                            if correct_bad_spaxels == True and (i, j) in dodgy_spaxels[galaxy_name]:
                                 fig2.suptitle('[OIII] '+str(em_rest_OIII_3))
                                 fig2.savefig(output_folder_loc+galaxy_name+'_best_fit_OIII_3_outflow_'+str(i)+'_'+str(j))
                             else:
                                 fig2.suptitle(emission_line+' ['+str(em_rest)+']')
                                 fig2.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line+'_outflow_'+str(i)+'_'+str(j))
                             plt.close(fig2)
+
+                            if emission_line2:
+                                fig3 = plot_fit(masked_lamdas2, flux2, g_model2_second, pars2_second, best_fit2_second, plot_initial=False, include_const=False)
+                                fig3.suptitle(emission_line2+' ['+str(em_rest2)+']')
+                                fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j))
+                                plt.close(fig3)
 
                     #if the S/N is less than 20:
                     else:
@@ -1180,6 +1253,11 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
                             no_outflow_results[:,i,j] = (np.nan, np.nan, np.nan)
                             no_outflow_error[:,i,j] = (np.nan, np.nan, np.nan)
 
+                        if emission_line2:
+                            #emission and outflow
+                            outflow_results2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+                            outflow_error2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+
                 except:
                     #statistical results obviously no outflow
                     statistical_results[i,j] = 0
@@ -1206,6 +1284,11 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
                         no_outflow_results[:,i,j] = (np.nan, np.nan, np.nan)
                         no_outflow_error[:,i,j] = (np.nan, np.nan, np.nan)
 
+                    if emission_line2:
+                        #emission and outflow
+                        outflow_results2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+                        outflow_error2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+
                 #update progress bar
                 pbar.update(1)
 
@@ -1222,14 +1305,26 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, filename=N
     #    pickle.dump(statistical_results, f)
     #f.close()
 
-    np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_'+emission_line+'.txt', np.reshape(outflow_results, (6, -1)))
-    np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line+'.txt', np.reshape(outflow_error, (6, -1)))
-    np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_results_'+emission_line+'.txt', np.reshape(no_outflow_results, (3, -1)))
-    np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line+'.txt', np.reshape(no_outflow_error, (3, -1)))
+    if include_const == True:
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_'+emission_line+'.txt', np.reshape(outflow_results, (7, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line+'.txt', np.reshape(outflow_error, (7, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_results_'+emission_line+'.txt', np.reshape(no_outflow_results, (4, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line+'.txt', np.reshape(no_outflow_error, (4, -1)))
+    elif include_const == False:
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_'+emission_line+'.txt', np.reshape(outflow_results, (6, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line+'.txt', np.reshape(outflow_error, (6, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_results_'+emission_line+'.txt', np.reshape(no_outflow_results, (3, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line+'.txt', np.reshape(no_outflow_error, (3, -1)))
+
     np.savetxt(output_folder_loc+galaxy_name+'_stat_results_'+emission_line+'.txt', np.reshape(statistical_results, (1, -1)))
 
+    if emission_line2:
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_'+emission_line2+'.txt', np.reshape(outflow_results2, (6, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line2+'.txt', np.reshape(outflow_error2, (6, -1)))
 
-    return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, blue_chi_square
+
+
+    return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, blue_chi_square, outflow_results2, outflow_error2
 
 
 
@@ -1281,7 +1376,7 @@ def calc_outflow_vel(outflow_results, statistical_results, z):
     #and put it into the array
     vel_out[flow_mask] = v_out
 
-    return vel_out 
+    return vel_out
 
 
 
@@ -1379,7 +1474,7 @@ if __name__ == '__main__':
     filename1 = '../../data/IRAS08_red_cubes/IRAS08339_metacube.fits'
     filename2 = '../../code_outputs/IRAS08_ppxf_25June2020/IRAS08339_cont_subtracted_unnormalised_cube.fits'
 
-    outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, blue_chi_square = fit_cube(galaxy_name='IRAS08', redshift=0.018950, emission_line='OIII_4', output_folder_loc='../../code_outputs/koffee_results_IRAS08/', filename=filename1, filename2=filename2, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=True, plotting=True, method='leastsq', correct_bad_spaxels=True)
+    outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, blue_chi_square, outflow_results2, outflow_error2 = fit_cube(galaxy_name='IRAS08', redshift=0.018950, emission_line='OIII_4', output_folder_loc='../../code_outputs/koffee_results_IRAS08/', emission_line2='Hbeta', filename=filename1, filename2=filename2, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=True, plotting=True, method='leastsq', correct_bad_spaxels=True)
 
     #filename = '../data/Apr29_final_cubes/final_mosaic/kbmosaic_full_fixed.fits'
 
