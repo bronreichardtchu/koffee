@@ -905,32 +905,6 @@ def plot_fit(wavelength, flux, g_model, pars, best_fit, plot_initial=False, incl
                 plt.step(fine_sampling, np.full_like(fine_sampling, best_fit.components[i].eval(best_fit_pars, x=fine_sampling)), where='mid', label=label)
 
 
-
-        """
-        if include_const == True:
-            for i in range(len(best_fit.components)):
-                if i < 2:
-                    #get the parameters for the amp, center and sigma
-                    amp_par = best_fit.params[best_fit.components[i].prefix+'amp']
-                    mean_par = best_fit.params[best_fit.components[i].prefix+'mean']
-                    sigma_par = best_fit.params[best_fit.components[i].prefix+'sigma']
-                    #put the parameter values into a string for the graph label
-                    label = best_fit.components[i].prefix[:-1]+" (Amp: {:.2f}, Mean: {:.2f}, \n Sigma: {:.2f})".format(amp_par.value, mean_par.value, sigma_par.value)
-                else:
-                    #make the label for the constant component
-                    label = best_fit.components[i].prefix[:-1]+": {:.2f}".format(best_fit.best_values['Constant_Continuum_c'])
-                plt.step(fine_sampling, best_fit.components[i].eval(best_fit_pars, x=fine_sampling), where='mid', label=label)
-        elif include_const == False:
-            for i in range(len(best_fit.components)):
-                #get the parameters for the amp, center and sigma
-                amp_par = best_fit.params[best_fit.components[i].prefix+'amp']
-                mean_par = best_fit.params[best_fit.components[i].prefix+'mean']
-                sigma_par = best_fit.params[best_fit.components[i].prefix+'sigma']
-                #put the parameter values into a string for the graph label
-                label = best_fit.components[i].prefix[:-1]+" (Amp: {:.2f}, Mean: {:.2f}, \n Sigma: {:.2f})".format(amp_par.value, mean_par.value, sigma_par.value)
-                plt.step(fine_sampling, best_fit.components[i].eval(best_fit_pars, x=fine_sampling), where='mid', label=label)
-        """
-
     #plt.xlim(best_fit.params[best_fit.components[0].prefix+'mean'].value-8.0, best_fit.params[best_fit.components[0].prefix+'mean'].value+8.0)
     plt.ylabel('Flux ($10^{-16}$ erg s$^{-1}$ cm$^{-2}$ $\AA^{-1}$)')
     frame1.axes.get_xaxis().set_ticks([])
@@ -1157,11 +1131,13 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                     sigma_guess = [best_fit2.params['Galaxy_sigma'].value, best_fit2.params['Flow_sigma'].value]
                                 elif stat_res == 2:
                                     mean_diff = best_fit2_refit.params['Galaxy_mean'].value - best_fit2_refit.params['Flow_mean'].value
+                                    sigma_guess = [best_fit2_refit.params['Galaxy_sigma'].value, best_fit2_refit.params['Flow_sigma'].value]
                                 #create the fitting objects
-                                g_model2_second, pars2_second = gaussian2(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.10], sigma_variations=0.25)
+                                g_model2_second, pars2_second = gaussian2(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.05], sigma_variations=0.10)
 
                                 #do the fit
                                 best_fit2_second = fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, method=method, verbose=False)
+
 
                             #put the results into the array to be saved
                             outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value)
