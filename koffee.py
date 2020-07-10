@@ -394,10 +394,10 @@ def gaussian2(wavelength, flux, amplitude_guess=None, mean_guess=None, sigma_gue
     sigma_guess :
         guesses for the characteristic widths of the two gaussians (default = None)
     mean_diff :
-        guess for the difference between the means, and the percentage by which
-        that can change eg. [2.5Angstroms, 0.1] (default = None)
+        guess for the difference between the means, and the amount by which
+        that can change eg. [2.5Angstroms, 0.5Angstroms] (default = None)
     sigma_variations :
-        the percentage by which we allow sigma to vary from the guess e.g. 0.1. (default=None)
+        the amount by which we allow sigma to vary from the guess e.g. 0.5Angstroms (default=None)
 
     Returns
     -------
@@ -568,10 +568,10 @@ def gaussian2_const(wavelength, flux, amplitude_guess=None, mean_guess=None, sig
     sigma_guess :
         guesses for the characteristic widths of the two gaussians (default = None)
     mean_diff :
-        guess for the difference between the means, and the percentage by which
-        that can change eg. [2.5Angstroms, 0.1] (default = None)
+        guess for the difference between the means, and the amount by which
+        that can change eg. [2.5Angstroms, 0.5Angstroms] (default = None)
     sigma_variations :
-        the percentage by which we allow sigma to vary from the guess e.g. 0.1. (default=None)
+        the amount by which we allow sigma to vary from the guess e.g. 0.5Angstroms (default=None)
 
     Returns
     -------
