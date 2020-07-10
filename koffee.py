@@ -667,6 +667,139 @@ def gaussian2_const(wavelength, flux, amplitude_guess=None, mean_guess=None, sig
     return g_model, pars
 
 
+def gaussian_OII_doublet(wavelength, flux, amplitude_guess=None, sigma_guess=None, mean_diff=None, sigma_variations=None):
+    """
+    Creates a combination of 2 gaussians
+
+    Parameters
+    ----------
+    wavelength :
+        the wavelength vector
+    flux :
+        the flux of the spectrum
+    amplitude_guess :
+        guesses for the amplitudes of the two gaussians (default = None)
+    sigma_guess :
+        guesses for the characteristic widths of the two gaussians (default = None)
+    mean_diff :
+        guess for the difference between the means, and the amount by which
+        that can change eg. [2.5Angstroms, 0.5Angstroms] (default = None)
+    sigma_variations :
+        the amount by which we allow sigma to vary from the guess e.g. 0.5Angstroms (default=None)
+
+    Returns
+    -------
+    g_model :
+        the double Gaussian model
+    pars :
+        the Parameters object
+    """
+    #create the first gaussian
+    gauss1 = Model(gaussian_func, prefix='Galaxy_red_')
+
+    #create parameters object
+    pars = gauss1.make_params()
+
+    #create the second gaussian
+    gauss2 = Model(gaussian_func, prefix='Flow_red_')
+
+    #update the Parameters object to include variables from the second gaussian
+    pars.update(gauss2.make_params())
+
+    #create the third gaussian
+    gauss3 = Model(gaussian_func, prefix='Galaxy_blue_')
+
+    #create parameters object
+    pars.update(gauss3.make_params())
+
+    #create the second gaussian
+    gauss4 = Model(gaussian_func, prefix='Flow_blue_')
+
+    #update the Parameters object to include variables from the second gaussian
+    pars.update(gauss4.make_params())
+
+    #create the constant
+    const = ConstantModel(prefix='Constant_Continuum_')
+    pars.update(const.make_params())
+
+    #combine the two gaussians for the model
+    g_model = gauss1 + gauss2 + gauss3 + gauss4 + const
+
+    #give the constant a starting point at zero
+    pars['Constant_Continuum_c'].set(value=0.0, min=-0.5*max(flux), max=0.5*max(flux), vary=True)
+
+    #update the Parameters object so that there are bounds on the gaussians
+    #the amplitudes need to be tied such that the ratio of 3729/3726 is between 0.8 and 1.4
+    if amplitude_guess is not None:
+        pars['Galaxy_red_amp'].set(value=amplitude_guess[0], vary=True)
+        pars['Flow_red_amp'].set(value=amplitude_guess[1], vary=True)
+    elif amplitude_guess is None:
+        pars['Galaxy_red_amp'].set(value=0.7*max(flux)/0.4)
+        pars['Flow_red_amp'].set(value=0.3*max(flux)/0.4)
+
+    #we also want the galaxy amplitude to be greater than the flow amplitude, so we define a new parameter
+    #amp_diff = Galaxy_amplitude-Flow_amplitude, where amp_diff > 0.05
+    #pars.add('amp_diff_red', value=0.1, min=0.05, vary=True)
+    #pars.add('amp_diff_blue', value=0.1, min=0.05, vary=True)
+    #pars['Galaxy_red_amp'].set(expr='amp_diff_red+Flow_red_amp')
+
+    pars.add('gal_amp_ratio', value=1.0, min=0.8, max=1.4)
+    pars['Galaxy_blue_amp'].set(expr='Galaxy_red_amp/gal_amp_ratio')
+
+    pars.add('flow_amp_ratio', value=1.0, min=0.8, max=1.4)
+    pars['Flow_red_amp'].set(expr='Flow_blue_amp*flow_amp_ratio')
+
+    #no negative gaussians
+    pars['Flow_red_amp'].set(min=0.01)#, max='Galaxy_red_amp')
+    pars['Flow_blue_amp'].set(min=0.01)#, max='Galaxy_blue_amp')
+
+
+    #pars['Flow_blue_amp'].set(expr='Galaxy_blue_amp-amp_diff_blue')
+
+    #use the maximum as the first guess for the mean
+    #the second peak is 3Angstroms away from the first
+    #The center of the galaxy gaussian needs to be within the wavelength range
+    pars['Galaxy_red_mean'].set(value=wavelength[np.argmax(flux)], max=wavelength[-5], min=wavelength[5], vary=True)
+
+    #The flow gaussian mean is defined by the previous fits...
+    #so, we define some new parameters:
+    #flow_lam_diff = Galaxy_mean-Flow_mean, where lam_diff is set by the previous fits
+    if mean_diff is not None:
+        pars.add('flow_lam_diff', value=mean_diff[0], max=(mean_diff[0]+mean_diff[1]), min=(mean_diff[0]-mean_diff[1]), vary=True)
+    if mean_diff is None:
+        pars.add('flow_lam_diff', value=0.0, max=5.0, min=-5.0, vary=True)
+
+    #gal_lam_diff = Galaxy_red_mean - Galaxy_blue_mean, where this is set by the expected wavelengths
+    #since [OII] 3726.032, 3728.815 ... difference has to be 2.783
+    pars.add('gal_lam_diff', value=2.783, vary=False)
+
+    pars['Galaxy_blue_mean'].set(expr='Galaxy_red_mean-gal_lam_diff')
+    pars['Flow_red_mean'].set(expr='Galaxy_red_mean-flow_lam_diff')
+    pars['Flow_blue_mean'].set(expr='Galaxy_blue_mean-flow_lam_diff')
+
+    #use the sigma found from previous fits to define the sigma of the outflows
+    if sigma_guess is not None:
+        pars['Galaxy_red_sigma'].set(value=sigma_guess[0])
+        pars['Flow_red_sigma'].set(value=sigma_guess[1])
+    if sigma_guess is None:
+        pars['Galaxy_red_sigma'].set(value=1.0)
+        pars['Flow_red_sigma'].set(value=3.5)
+
+    #tie the blue gaussians to the red ones for sigma
+    pars['Galaxy_blue_sigma'].set(expr='Galaxy_red_sigma')
+    pars['Flow_blue_sigma'].set(expr='Flow_red_sigma')
+
+    if sigma_variations is not None:
+        pars['Galaxy_red_sigma'].set(max=(sigma_guess[0]+sigma_variations), min=(sigma_guess[0]-sigma_variations), vary=True)
+        pars['Flow_red_sigma'].set(max=(sigma_guess[1]+sigma_variations), min=(sigma_guess[1]-sigma_variations), vary=True)
+    if sigma_variations is None:
+        #no super duper wide outflows
+        pars['Flow_red_sigma'].set(max=10.0, min=0.8, vary=True)
+        pars['Galaxy_red_sigma'].set(min=0.9, max=2.0, vary=True)#min=0.8 because that's the minimum we can observe with the telescope
+
+    return g_model, pars
+
+
 
 
 def gaussian_NaD(wavelength, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None):
