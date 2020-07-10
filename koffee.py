@@ -1037,6 +1037,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
     #save the blue chi squared values check
     blue_chi_square = np.empty_like(data[0,:,:])
 
+    #save the chi squared values for single and double gaussian fits
+    chi_square = np.empty_like(data[:2,:,:])
+
     #use redshift to shift emission line to observed wavelength
     em_rest = emission_dict[emission_line]
     em_observed = em_rest*(1+redshift)
@@ -1066,6 +1069,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         #create arrays to save results in
         outflow_results2 = np.empty_like(data[:6,:,:])
         outflow_error2 = np.empty_like(data[:6,:,:])
+        chi_square2 = np.empty_like(data[0,:,:])
 
     if correct_bad_spaxels == True and emission_line == 'OIII_4':
         #get the OIII_3 emission line and redshift it
@@ -1165,6 +1169,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
 
                             #put the results into the array to be saved
+                            chi_square2[i,j] = best_fit2_second.bic
                             outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value)
                             outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr)
 
@@ -1173,6 +1178,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                         #emission and outflow
                         if statistical_results[i,j] == 2:
+                            chi_square[:,i,j] = (best_fit1.bic, best_fit2_refit.bic)
                             if include_const == True:
                                 outflow_results[:,i,j] = (best_fit2_refit.params['Galaxy_sigma'].value, best_fit2_refit.params['Galaxy_mean'].value, best_fit2_refit.params['Galaxy_amp'].value, best_fit2_refit.params['Flow_sigma'].value, best_fit2_refit.params['Flow_mean'].value, best_fit2_refit.params['Flow_amp'].value, best_fit2_refit.params['Constant_Continuum_c'].value)
                                 outflow_error[:,i,j] = (best_fit2_refit.params['Galaxy_sigma'].stderr, best_fit2_refit.params['Galaxy_mean'].stderr, best_fit2_refit.params['Galaxy_amp'].stderr, best_fit2_refit.params['Flow_sigma'].stderr, best_fit2_refit.params['Flow_mean'].stderr, best_fit2_refit.params['Flow_amp'].stderr, best_fit2_refit.params['Constant_Continuum_c'].stderr)
@@ -1181,6 +1187,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 outflow_error[:,i,j] = (best_fit2_refit.params['Galaxy_sigma'].stderr, best_fit2_refit.params['Galaxy_mean'].stderr, best_fit2_refit.params['Galaxy_amp'].stderr, best_fit2_refit.params['Flow_sigma'].stderr, best_fit2_refit.params['Flow_mean'].stderr, best_fit2_refit.params['Flow_amp'].stderr)
 
                         else:
+                            chi_square[:,i,j] = (best_fit1.bic, best_fit2.bic)
                             if include_const == True:
                                 outflow_results[:,i,j] = (best_fit2.params['Galaxy_sigma'].value, best_fit2.params['Galaxy_mean'].value, best_fit2.params['Galaxy_amp'].value, best_fit2.params['Flow_sigma'].value, best_fit2.params['Flow_mean'].value, best_fit2.params['Flow_amp'].value, best_fit2.params['Constant_Continuum_c'].value)
                                 outflow_error[:,i,j] = (best_fit2.params['Galaxy_sigma'].stderr, best_fit2.params['Galaxy_mean'].stderr, best_fit2.params['Galaxy_amp'].stderr, best_fit2.params['Flow_sigma'].stderr, best_fit2.params['Flow_mean'].stderr, best_fit2.params['Flow_amp'].stderr, best_fit2.params['Constant_Continuum_c'].stderr)
@@ -1232,6 +1239,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         #statistical results have no outflow
                         statistical_results[i,j] = 0
 
+                        #chi squared for the fits
+                        chi_square[:,i,j] = (np.nan, np.nan)
+
                         #blue chi square
                         blue_chi_square[i,j] = np.nan
 
@@ -1255,6 +1265,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             no_outflow_error[:,i,j] = (np.nan, np.nan, np.nan)
 
                         if emission_line2:
+                            chi_square2[i,j] = np.nan
                             #emission and outflow
                             outflow_results2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
                             outflow_error2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
@@ -1262,6 +1273,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                 except:
                     #statistical results obviously no outflow
                     statistical_results[i,j] = 0
+
+                    #chi squared for the fits
+                    chi_square[:,i,j] = (np.nan, np.nan)
 
                     #blue chi square
                     blue_chi_square[i,j] = np.nan
@@ -1286,6 +1300,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         no_outflow_error[:,i,j] = (np.nan, np.nan, np.nan)
 
                     if emission_line2:
+                        chi_square2[i,j] = np.nan
                         #emission and outflow
                         outflow_results2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
                         outflow_error2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
@@ -1311,6 +1326,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line+'.txt', np.reshape(outflow_error, (7, -1)))
         np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_results_'+emission_line+'.txt', np.reshape(no_outflow_results, (4, -1)))
         np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line+'.txt', np.reshape(no_outflow_error, (4, -1)))
+
     elif include_const == False:
         np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_'+emission_line+'.txt', np.reshape(outflow_results, (6, -1)))
         np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line+'.txt', np.reshape(outflow_error, (6, -1)))
@@ -1318,14 +1334,21 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line+'.txt', np.reshape(no_outflow_error, (3, -1)))
 
     np.savetxt(output_folder_loc+galaxy_name+'_stat_results_'+emission_line+'.txt', np.reshape(statistical_results, (1, -1)))
+    np.savetxt(output_folder_loc+galaxy_name+'_chi_squared_'+emission_line+'.txt', np.reshape(chi_square, (2,-1)))
 
     if emission_line2:
         np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_'+emission_line2+'.txt', np.reshape(outflow_results2, (6, -1)))
         np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line2+'.txt', np.reshape(outflow_error2, (6, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_chi_squared_'+emission_line2+'.txt', np.reshape(chi_square2, (2,-1)))
+
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square, outflow_results2, outflow_error2, chi_square2
+
+    else:
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square
 
 
 
-    return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, blue_chi_square, outflow_results2, outflow_error2
+
 
 
 
