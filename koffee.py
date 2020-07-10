@@ -456,7 +456,8 @@ def gaussian2(wavelength, flux, amplitude_guess=None, mean_guess=None, sigma_gue
 
     #The flow gaussian should also be within 5 Angstroms of the galaxy gaussian... so, we define a new parameter, lam_diff =Galaxy_mean-Flow_mean, where -5 < lam_diff < 5
     if mean_diff is not None:
-        pars.add('lam_diff', value=mean_diff[0], max=(mean_diff[0]+mean_diff[0]*mean_diff[1]), min=(mean_diff[0]-mean_diff[0]*mean_diff[1]), vary=True)
+        #pars.add('lam_diff', value=mean_diff[0], max=(mean_diff[0]+mean_diff[0]*mean_diff[1]), min=(mean_diff[0]-mean_diff[0]*mean_diff[1]), vary=True)
+        pars.add('lam_diff', value=mean_diff[0], max=(mean_diff[0]+mean_diff[1]), min=(mean_diff[0]-mean_diff[1]), vary=True)
     if mean_diff is None:
         pars.add('lam_diff', value=0.0, max=5.0, min=-5.0, vary=True)
     #pars.add('lam_diff', value=0.0, max=3.0, min=-3.0)
@@ -470,10 +471,10 @@ def gaussian2(wavelength, flux, amplitude_guess=None, mean_guess=None, sigma_gue
         pars['Flow_sigma'].set(value=3.5)
 
     if sigma_variations is not None:
-        pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_guess[0]*sigma_variations), min=(sigma_guess[0]-sigma_guess[0]*sigma_variations), vary=True)
-        pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_guess[1]*sigma_variations), min=(sigma_guess[1]-sigma_guess[1]*sigma_variations), vary=True)
-        #pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_variations), min=(sigma_guess[0]-sigma_variations), vary=True)
-        #pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_variations), min=(sigma_guess[1]-sigma_variations), vary=True)
+        #pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_guess[0]*sigma_variations), min=(sigma_guess[0]-sigma_guess[0]*sigma_variations), vary=True)
+        #pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_guess[1]*sigma_variations), min=(sigma_guess[1]-sigma_guess[1]*sigma_variations), vary=True)
+        pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_variations), min=(sigma_guess[0]-sigma_variations), vary=True)
+        pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_variations), min=(sigma_guess[1]-sigma_variations), vary=True)
     if sigma_variations is None:
         #no super duper wide outflows
         pars['Flow_sigma'].set(max=10.0, min=0.8, vary=True)
@@ -550,20 +551,34 @@ def gaussian1_const(wavelength, flux, amp_guess=None, mean_guess=None, sigma_gue
 
 
 
-def gaussian2_const(wavelength, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None):
+def gaussian2_const(wavelength, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None, mean_diff=None, sigma_variations=None):
     """
     Creates a combination of 2 gaussians
 
-    Args:
-        wavelength: the wavelength vector
-        flux: the flux of the spectrum
-        amplitude_guess: guesses for the amplitudes of the two gaussians (default = None)
-        mean_guess: guesses for the central positions of the two gaussians (default = None)
-        sigma_guess: guesses for the characteristic widths of the two gaussians (default = None)
+    Parameters
+    ----------
+    wavelength :
+        the wavelength vector
+    flux :
+        the flux of the spectrum
+    amplitude_guess :
+        guesses for the amplitudes of the two gaussians (default = None)
+    mean_guess :
+        guesses for the central positions of the two gaussians (default = None)
+    sigma_guess :
+        guesses for the characteristic widths of the two gaussians (default = None)
+    mean_diff :
+        guess for the difference between the means, and the percentage by which
+        that can change eg. [2.5Angstroms, 0.1] (default = None)
+    sigma_variations :
+        the percentage by which we allow sigma to vary from the guess e.g. 0.1. (default=None)
 
-    Returns:
-        g_model: the double Gaussian model
-        pars: the Parameters object
+    Returns
+    -------
+    g_model :
+        the double Gaussian model
+    pars :
+        the Parameters object
     """
     #create the first gaussian
     #gauss1 = GaussianModel(prefix='Galaxy_')
@@ -621,7 +636,11 @@ def gaussian2_const(wavelength, flux, amplitude_guess=None, mean_guess=None, sig
         pars['Galaxy_mean'].set(max=wavelength[-5], min=wavelength[5], vary=True)
 
     #The flow gaussian should also be within 5 Angstroms of the galaxy gaussian... so, we define a new parameter, lam_diff =Galaxy_mean-Flow_mean, where -5 < lam_diff < 5
-    pars.add('lam_diff', value=0.0, max=5.0, min=-5.0, vary=True)
+    if mean_diff is not None:
+        #pars.add('lam_diff', value=mean_diff[0], max=(mean_diff[0]+mean_diff[0]*mean_diff[1]), min=(mean_diff[0]-mean_diff[0]*mean_diff[1]), vary=True)
+        pars.add('lam_diff', value=mean_diff[0], max=(mean_diff[0]+mean_diff[1]), min=(mean_diff[0]-mean_diff[1]), vary=True)
+    if mean_diff is None:
+        pars.add('lam_diff', value=0.0, max=5.0, min=-5.0, vary=True)
     #pars.add('lam_diff', value=0.0, max=3.0, min=-3.0)
     pars['Flow_mean'].set(expr='Galaxy_mean-lam_diff')
 
@@ -632,17 +651,20 @@ def gaussian2_const(wavelength, flux, amplitude_guess=None, mean_guess=None, sig
         pars['Galaxy_sigma'].set(value=1.0)
         pars['Flow_sigma'].set(value=3.5)
 
-    #no super duper wide outflows
-    pars['Flow_sigma'].set(max=10.0, min=0.8, vary=True)
-    #edited this to fit Halpha... remember to change back!!!
-    #pars['Flow_sigma'].set(max=3.5, min=0.8, vary=True)
-    #also, since each wavelength value is roughly 0.5A apart, the sigma must be more than 0.25A
-    pars['Galaxy_sigma'].set(min=0.9, max=2.0, vary=True)#min=2.0 because that's the minimum we can observe with the telescope
-
+    if sigma_variations is not None:
+        #pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_guess[0]*sigma_variations), min=(sigma_guess[0]-sigma_guess[0]*sigma_variations), vary=True)
+        #pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_guess[1]*sigma_variations), min=(sigma_guess[1]-sigma_guess[1]*sigma_variations), vary=True)
+        pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_variations), min=(sigma_guess[0]-sigma_variations), vary=True)
+        pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_variations), min=(sigma_guess[1]-sigma_variations), vary=True)
+    if sigma_variations is None:
+        #no super duper wide outflows
+        pars['Flow_sigma'].set(max=10.0, min=0.8, vary=True)
+        #edited this to fit Halpha... remember to change back!!!
+        #pars['Flow_sigma'].set(max=3.5, min=0.8, vary=True)
+        #also, since each wavelength value is roughly 0.5A apart, the sigma must be more than 0.25A
+        pars['Galaxy_sigma'].set(min=0.9, max=2.0, vary=True)#min=2.0 because that's the minimum we can observe with the telescope
 
     return g_model, pars
-
-
 
 
 
@@ -1133,7 +1155,10 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                     mean_diff = best_fit2_refit.params['Galaxy_mean'].value - best_fit2_refit.params['Flow_mean'].value
                                     sigma_guess = [best_fit2_refit.params['Galaxy_sigma'].value, best_fit2_refit.params['Flow_sigma'].value]
                                 #create the fitting objects
-                                g_model2_second, pars2_second = gaussian2(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.05], sigma_variations=0.10)
+                                if include_const == True:
+                                    g_model2_second, pars2_second = gaussian2_const(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.5], sigma_variations=0.5)
+                                elif include_const == False:
+                                    g_model2_second, pars2_second = gaussian2(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.5], sigma_variations=0.5)
 
                                 #do the fit
                                 best_fit2_second = fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, method=method, verbose=False)
