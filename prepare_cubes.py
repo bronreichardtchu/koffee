@@ -565,15 +565,13 @@ def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noi
     #we do this because we trust the flux calibration of the red cube more than that of the blue
     #this wavelength range works for IRAS08, will have to check later if it fits other galaxies
     lam_mask = (lam_all>4290*(1+z))&(lam_all<4300*(1+z))
-    correction_factor = np.median(red_cube[lam_mask, :], axis=0)/np.median(blue_cube[lam_mask, :], axis=0)
+    correction_factor = np.median(red_cube[lam_mask, :], axis=0)-np.median(blue_cube[lam_mask, :], axis=0)
 
-    #multiply the red cube by the correction factor (but noise stays the same???)
-    blue_cube = blue_cube*correction_factor
+    #add the correction factor to the blue cube (but noise stays the same)
+    blue_cube = blue_cube+correction_factor
 
-    #take the difference between the two spectra in the wavelength range 4365-4415A (before Hgamma)
-    #use the pixel with the smallest difference as the joining point
-    lam_mask = (lam_all>4356)&(lam_all<4415)
-
+    #take the difference between the two spectra in the wavelength range before Hgamma
+    #so we can use the pixel with the smallest difference as the joining point
     #take the absolute value of the difference
     diff_cube = abs(blue_cube[lam_mask, :]-red_cube[lam_mask, :])
 
@@ -598,9 +596,9 @@ def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noi
     combined_noise[combined_noise==0] = np.nanmin(combined_noise[combined_noise>0])
 
     #take the beginning and end pixels off - they tend to be a tad dodgy
-    combined_cube = combined_cube[120:-100,:]
-    lam_all = lam_all[120:-100]
-    combined_noise = combined_noise[120:-100,:]
+    #combined_cube = combined_cube[120:-100,:]
+    #lam_all = lam_all[120:-100]
+    #combined_noise = combined_noise[120:-100,:]
 
     return lam_all, combined_cube, combined_noise
 
@@ -662,7 +660,7 @@ def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour,
     f.close()
 
 
-def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder, data_corrections=True, data_crop=False, var_filepath=None, var_crop=False, var_corrections=True):
+def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder, data_corrections=True, data_crop=False, var_filepath=None, var_crop=False, var_corrections=True, lamda_crop=False):
     """
     Runs all the previously defined functions when there is only one cube to read in and nothing to combine.
     """
@@ -702,6 +700,9 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
             print('The variance is not always positive!!!')
             print('Applying absolute value for now... but this should be checked!!!')
             var = abs(var)
+            if np.any(var==0.0):
+                print('Replacing 0.0 with 0.00000001 in variance')
+                var[np.where(var==0.0)] = 0.00000001
 
     #apply Milky Way extinction correction
     data = milky_way_extinction_correction(lamdas, data)
@@ -717,6 +718,18 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
         xx = xx[14:81, 2:26]
         yy = yy[14:81, 2:26]
         rad = rad[14:81, 2:26]
+
+    #used to crop the wavelength to get rid of the dodgy edges of the cubes
+    if lamda_crop == True:
+        #create the masks
+        lamda_crop_mask = (lamdas>lamdas[0]+150)&(lamdas<lamdas[-1]-150)
+        var_lamda_crop_mask = (var_lamdas>var_lamdas[0]+150)&(var_lamdas<var_lamdas[-1]-150)
+
+        #mask the data, variance and wavelength vectors
+        lamdas = lamdas[lamda_crop_mask]
+        var_lamdas = var_lamdas[var_lamda_crop_mask]
+        data = data[lamda_crop_mask,:,:]
+        var = var[var_lamda_crop_mask,:,:]
 
     #flatten the cubes
     if var_filepath != None:

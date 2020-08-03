@@ -669,7 +669,7 @@ def gaussian2_const(wavelength, flux, amplitude_guess=None, mean_guess=None, sig
 
 def gaussian_OII_doublet(wavelength, flux, amplitude_guess=None, sigma_guess=None, mean_diff=None, sigma_variations=None):
     """
-    Creates a combination of 2 gaussians
+    Creates a combination of 4 gaussians
 
     Parameters
     ----------
@@ -747,7 +747,8 @@ def gaussian_OII_doublet(wavelength, flux, amplitude_guess=None, sigma_guess=Non
     pars['Galaxy_blue_amp'].set(expr='Galaxy_red_amp/gal_amp_ratio')
 
     pars.add('flow_amp_ratio', value=1.0, min=0.8, max=1.4)
-    pars['Flow_red_amp'].set(expr='Flow_blue_amp*flow_amp_ratio')
+    #pars['Flow_red_amp'].set(expr='Flow_blue_amp*flow_amp_ratio')
+    pars['Flow_blue_amp'].set(expr='Flow_red_amp/flow_amp_ratio')
 
     #no negative gaussians
     pars['Flow_red_amp'].set(min=0.01)#, max='Galaxy_red_amp')
@@ -1080,7 +1081,7 @@ def plot_fit(wavelength, flux, g_model, pars, best_fit, plot_initial=False, incl
 
 #===============================================================================
 #Applying to entire cube
-def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_line2=None, filename=None, filename2=None, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=False, plotting=True, method='leastsq', correct_bad_spaxels=False):
+def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_line2=None, OII_doublet=False, filename=None, filename2=None, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=False, plotting=True, method='leastsq', correct_bad_spaxels=False):
     """
     Fits the entire cube, and checks whether one or two gaussians fit the emission line best.  Must have either the filename to the fits file, or the data_cube_stuff.
 
@@ -1098,6 +1099,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
     emission_line2 : str
         the second emission line to be fit using the results from the first.  Default is None. Options:
         "Hdelta", "Hgamma", "Hbeta", "Halpha", "OII_1", "OII_2", "HeI", "SII", "OIII_1", "OIII_2", "OIII_3", "OIII_4"
+    OII_doublet : boolean
+        whether to fit the OII doublet using the results from the first fit.  Default is False. Uses "OII_1", from the dictionary
     filename : str
         the file path to the data cube - if data_cube_stuff is not given
     filename2 : str
@@ -1204,6 +1207,21 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         outflow_error2 = np.empty_like(data[:6,:,:])
         chi_square2 = np.empty_like(data[0,:,:])
 
+    #if fitting the OII doublet, create the wavelength mask
+    if OII_doublet == True:
+        print('OII doublet also being fit')
+        #use redshift to shift emission line to observed wavelength
+        em_rest3 = emission_dict['OII_1']
+        em_observed = em_rest3*(1+redshift)
+
+        #create mask to choose emission line wavelength range
+        mask_lam3 = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
+
+        #create arrays to save results in
+        outflow_results3 = np.empty_like(data[:14,:,:])
+        outflow_error3 = np.empty_like(data[:14,:,:])
+        chi_square3 = np.empty_like(data[0,:,:])
+
     if correct_bad_spaxels == True and emission_line == 'OIII_4':
         #get the OIII_3 emission line and redshift it
         em_rest_OIII_3 = emission_dict['OIII_3']
@@ -1277,7 +1295,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             #force it to take the new fit
                             stat_res = 2
 
+                        #-------------------
                         #FIT THE SECOND LINE
+                        #-------------------
                         if emission_line2:
                             #only want to fit hbeta where there is an outflow
                             if stat_res > 0:
@@ -1300,11 +1320,37 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 #do the fit
                                 best_fit2_second = fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, method=method, verbose=False)
 
-
                             #put the results into the array to be saved
                             chi_square2[i,j] = best_fit2_second.bic
                             outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value)
                             outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr)
+
+                        #-------------------
+                        #FIT THE OII DOUBLET
+                        #-------------------
+                        if OII_doublet == True:
+                            #only want to fit OII doublet where there is an outflow
+                            if stat_res > 0:
+                                #mask the lamdas and data
+                                masked_lamdas3 = lamdas[mask_lam3]
+                                flux3 = data[:,i,j][mask_lam3]
+                                #get the guess values from the previous fits
+                                if stat_res == 1:
+                                    mean_diff = best_fit2.params['Galaxy_mean'].value - best_fit2.params['Flow_mean'].value
+                                    sigma_guess = [best_fit2.params['Galaxy_sigma'].value, best_fit2.params['Flow_sigma'].value]
+                                elif stat_res == 2:
+                                    mean_diff = best_fit2_refit.params['Galaxy_mean'].value - best_fit2_refit.params['Flow_mean'].value
+                                    sigma_guess = [best_fit2_refit.params['Galaxy_sigma'].value, best_fit2_refit.params['Flow_sigma'].value]
+                                #create the fitting objects
+                                g_model2_third, pars2_third = gaussian_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=[masked_lamdas3[flux3.argmax()], masked_lamdas3[flux3.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.5], sigma_variations=0.5)
+
+                                #do the fit
+                                best_fit2_third = fitter(g_model2_third, pars2_third, masked_lamdas3, flux3, method=method, verbose=False)
+
+                            #put the results into the array to be saved
+                            chi_square3[i,j] = best_fit2_third.bic
+                            outflow_results3[:,i,j] = (best_fit2_third.params['Galaxy_blue_sigma'].value, best_fit2_third.params['Galaxy_blue_mean'].value, best_fit2_third.params['Galaxy_blue_amp'].value, best_fit2_third.params['Galaxy_red_sigma'].value, best_fit2_third.params['Galaxy_red_mean'].value, best_fit2_third.params['Galaxy_red_amp'].value, best_fit2_third.params['Flow_blue_sigma'].value, best_fit2_third.params['Flow_blue_mean'].value, best_fit2_third.params['Flow_blue_amp'].value, best_fit2_third.params['Flow_red_sigma'].value, best_fit2_third.params['Flow_red_mean'].value, best_fit2_third.params['Flow_red_amp'].value)
+                            outflow_error3[:,i,j] = (best_fit2_third.params['Galaxy_blue_sigma'].stderr, best_fit2_third.params['Galaxy_blue_mean'].stderr, best_fit2_third.params['Galaxy_blue_amp'].stderr, best_fit2_third.params['Galaxy_red_sigma'].stderr, best_fit2_third.params['Galaxy_red_mean'].stderr, best_fit2_third.params['Galaxy_red_amp'].stderr, best_fit2_third.params['Flow_blue_sigma'].stderr, best_fit2_third.params['Flow_blue_mean'].stderr, best_fit2_third.params['Flow_blue_amp'].stderr, best_fit2_third.params['Flow_red_sigma'].stderr, best_fit2_third.params['Flow_red_mean'].stderr, best_fit2_third.params['Flow_red_amp'].stderr)
 
                         #put stat_res into the array
                         statistical_results[i,j] = stat_res
