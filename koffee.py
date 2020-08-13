@@ -739,23 +739,25 @@ def gaussian_OII_doublet(wavelength, flux, amplitude_guess=None, sigma_guess=Non
 
     #we also want the galaxy amplitude to be greater than the flow amplitude, so we define a new parameter
     #amp_diff = Galaxy_amplitude-Flow_amplitude, where amp_diff > 0.05
-    #pars.add('amp_diff_red', value=0.1, min=0.05, vary=True)
-    #pars.add('amp_diff_blue', value=0.1, min=0.05, vary=True)
-    #pars['Galaxy_red_amp'].set(expr='amp_diff_red+Flow_red_amp')
+    pars.add('amp_diff_red', value=0.1, min=0.05, vary=True)
+    pars.add('amp_diff_blue', value=0.1, min=0.05, vary=True)
+    pars['Galaxy_red_amp'].set(expr='amp_diff_red+Flow_red_amp')
+    pars['Galaxy_blue_amp'].set(expr='amp_diff_blue+Flow_blue_amp')
 
     pars.add('gal_amp_ratio', value=1.0, min=0.8, max=1.4)
-    pars['Galaxy_blue_amp'].set(expr='Galaxy_red_amp/gal_amp_ratio')
+    #pars['Galaxy_blue_amp'].set(expr='Galaxy_red_amp/gal_amp_ratio')
+    pars['gal_amp_ratio'].set(expr='Galaxy_red_amp/Galaxy_blue_amp')
 
     pars.add('flow_amp_ratio', value=1.0, min=0.8, max=1.4)
-    #pars['Flow_red_amp'].set(expr='Flow_blue_amp*flow_amp_ratio')
     pars['Flow_blue_amp'].set(expr='Flow_red_amp/flow_amp_ratio')
 
     #no negative gaussians
     pars['Flow_red_amp'].set(min=0.01)#, max='Galaxy_red_amp')
     pars['Flow_blue_amp'].set(min=0.01)#, max='Galaxy_blue_amp')
+    pars['Galaxy_red_amp'].set(min=0.01)
+    pars['Galaxy_blue_amp'].set(min=0.01)
 
 
-    #pars['Flow_blue_amp'].set(expr='Galaxy_blue_amp-amp_diff_blue')
 
     #use the maximum as the first guess for the mean
     #the second peak is 3Angstroms away from the first
@@ -791,12 +793,18 @@ def gaussian_OII_doublet(wavelength, flux, amplitude_guess=None, sigma_guess=Non
     pars['Flow_blue_sigma'].set(expr='Flow_red_sigma')
 
     if sigma_variations is not None:
-        pars['Galaxy_red_sigma'].set(max=(sigma_guess[0]+sigma_variations), min=(sigma_guess[0]-sigma_variations), vary=True)
-        pars['Flow_red_sigma'].set(max=(sigma_guess[1]+sigma_variations), min=(sigma_guess[1]-sigma_variations), vary=True)
+        if sigma_guess[0]-sigma_variations > 0.8:
+            pars['Galaxy_red_sigma'].set(max=(sigma_guess[0]+sigma_variations), min=(sigma_guess[0]-sigma_variations), vary=True)
+        else:
+            pars['Galaxy_red_sigma'].set(max=(sigma_guess[0]+sigma_variations), min=0.8, vary=True)
+        if sigma_guess[1]-sigma_variations > 0.8:
+            pars['Flow_red_sigma'].set(max=(sigma_guess[1]+sigma_variations), min=(sigma_guess[1]-sigma_variations), vary=True)
+        else:
+            pars['Flow_red_sigma'].set(max=(sigma_guess[1]+sigma_variations), min=0.8, vary=True)
     if sigma_variations is None:
         #no super duper wide outflows
         pars['Flow_red_sigma'].set(max=10.0, min=0.8, vary=True)
-        pars['Galaxy_red_sigma'].set(min=0.9, max=2.0, vary=True)#min=0.8 because that's the minimum we can observe with the telescope
+        pars['Galaxy_red_sigma'].set(max=2.0, min=0.8, vary=True)#min=0.8 because that's the minimum we can observe with the telescope
 
     return g_model, pars
 
@@ -1222,9 +1230,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         #create mask to choose emission line wavelength range
         mask_lam3 = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
 
-        #create arrays to save results in
-        outflow_results3 = np.empty_like(data[:14,:,:])
-        outflow_error3 = np.empty_like(data[:14,:,:])
+        #create arrays to save results in - always use a constant when fitting OII doublet
+        outflow_results3 = np.empty_like(data[:13,:,:])
+        outflow_error3 = np.empty_like(data[:13,:,:])
         chi_square3 = np.empty_like(data[0,:,:])
 
     if correct_bad_spaxels == True and emission_line == 'OIII_4':
@@ -1406,7 +1414,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 #try to save the results
                                 if include_const == True:
                                     outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value, best_fit2_second.params['Constant_Continuum_c'].value)
-                                    outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr, best_fit2_refit.params['Constant_Continuum_c'].stderr)
+                                    outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr, best_fit2_second.params['Constant_Continuum_c'].stderr)
                                 elif include_const == False:
                                     outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value)
                                     outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr)
@@ -1436,15 +1444,17 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                     mean_diff = best_fit2_refit.params['Galaxy_mean'].value - best_fit2_refit.params['Flow_mean'].value
                                     sigma_guess = [best_fit2_refit.params['Galaxy_sigma'].value, best_fit2_refit.params['Flow_sigma'].value]
                                 #create the fitting objects
-                                g_model2_third, pars2_third = gaussian_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=[masked_lamdas3[flux3.argmax()], masked_lamdas3[flux3.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.5], sigma_variations=0.5)
+                                print('Creating OII doublet fitting objects for spaxel ', str(i), str(j))
+                                g_model2_third, pars2_third = gaussian_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.0], sigma_variations=1.0)
+                                print('Finished creating OII doublet fitting objects for spaxel ', str(i), str(j))
 
                                 #do the fit
                                 best_fit2_third = fitter(g_model2_third, pars2_third, masked_lamdas3, flux3, method=method, verbose=False)
 
                             #put the results into the array to be saved
                             chi_square3[i,j] = best_fit2_third.bic
-                            outflow_results3[:,i,j] = (best_fit2_third.params['Galaxy_blue_sigma'].value, best_fit2_third.params['Galaxy_blue_mean'].value, best_fit2_third.params['Galaxy_blue_amp'].value, best_fit2_third.params['Galaxy_red_sigma'].value, best_fit2_third.params['Galaxy_red_mean'].value, best_fit2_third.params['Galaxy_red_amp'].value, best_fit2_third.params['Flow_blue_sigma'].value, best_fit2_third.params['Flow_blue_mean'].value, best_fit2_third.params['Flow_blue_amp'].value, best_fit2_third.params['Flow_red_sigma'].value, best_fit2_third.params['Flow_red_mean'].value, best_fit2_third.params['Flow_red_amp'].value)
-                            outflow_error3[:,i,j] = (best_fit2_third.params['Galaxy_blue_sigma'].stderr, best_fit2_third.params['Galaxy_blue_mean'].stderr, best_fit2_third.params['Galaxy_blue_amp'].stderr, best_fit2_third.params['Galaxy_red_sigma'].stderr, best_fit2_third.params['Galaxy_red_mean'].stderr, best_fit2_third.params['Galaxy_red_amp'].stderr, best_fit2_third.params['Flow_blue_sigma'].stderr, best_fit2_third.params['Flow_blue_mean'].stderr, best_fit2_third.params['Flow_blue_amp'].stderr, best_fit2_third.params['Flow_red_sigma'].stderr, best_fit2_third.params['Flow_red_mean'].stderr, best_fit2_third.params['Flow_red_amp'].stderr)
+                            outflow_results3[:,i,j] = (best_fit2_third.params['Galaxy_blue_sigma'].value, best_fit2_third.params['Galaxy_blue_mean'].value, best_fit2_third.params['Galaxy_blue_amp'].value, best_fit2_third.params['Galaxy_red_sigma'].value, best_fit2_third.params['Galaxy_red_mean'].value, best_fit2_third.params['Galaxy_red_amp'].value, best_fit2_third.params['Flow_blue_sigma'].value, best_fit2_third.params['Flow_blue_mean'].value, best_fit2_third.params['Flow_blue_amp'].value, best_fit2_third.params['Flow_red_sigma'].value, best_fit2_third.params['Flow_red_mean'].value, best_fit2_third.params['Flow_red_amp'].value, best_fit2_third.params['Constant_Continuum_c'].value)
+                            outflow_error3[:,i,j] = (best_fit2_third.params['Galaxy_blue_sigma'].stderr, best_fit2_third.params['Galaxy_blue_mean'].stderr, best_fit2_third.params['Galaxy_blue_amp'].stderr, best_fit2_third.params['Galaxy_red_sigma'].stderr, best_fit2_third.params['Galaxy_red_mean'].stderr, best_fit2_third.params['Galaxy_red_amp'].stderr, best_fit2_third.params['Flow_blue_sigma'].stderr, best_fit2_third.params['Flow_blue_mean'].stderr, best_fit2_third.params['Flow_blue_amp'].stderr, best_fit2_third.params['Flow_red_sigma'].stderr, best_fit2_third.params['Flow_red_mean'].stderr, best_fit2_third.params['Flow_red_amp'].stderr, best_fit2_third.params['Constant_Continuum_c'].stderr)
 
                         #put stat_res into the array
                         statistical_results[i,j] = stat_res
@@ -1506,6 +1516,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_final_fit')
                                 plt.close(fig3)
 
+                            if OII_doublet == True:
+                                fig4 = plot_fit(masked_lamdas3, flux3, g_model2_third, pars2_third, best_fit2_third, plot_initial=False, include_const=True)
+                                fig4.suptitle('OII doublet ['+str(em_rest3)+', '+str(emission_dict['OII_2']*(1+redshift))+']')
+                                fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j))
+                                plt.close(fig4)
+
 
                     #if the S/N is less than 20:
                     else:
@@ -1548,6 +1564,13 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 outflow_results2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
                                 outflow_error2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
 
+                        if OII_doublet == True:
+                            chi_square3[i,j] = np.nan
+                            #emission and outflow
+                            outflow_results3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+                            outflow_error3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+
+
                 except:
                     #statistical results obviously no outflow
                     statistical_results[i,j] = 0
@@ -1586,6 +1609,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         elif include_const == False:
                             outflow_results2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
                             outflow_error2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+
+                    if OII_doublet == True:
+                        chi_square3[i,j] = np.nan
+                        #emission and outflow
+                        outflow_results3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+                        outflow_error3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
 
                 #update progress bar
                 pbar.update(1)
@@ -1627,7 +1656,19 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
             np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line2+'.txt', np.reshape(outflow_error2, (6, -1)))
         np.savetxt(output_folder_loc+galaxy_name+'_chi_squared_'+emission_line2+'.txt', np.reshape(chi_square2, (2,-1)))
 
+    if OII_doublet == True:
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_OII_doublet.txt', np.reshape(outflow_results3, (13, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_OII_doublet.txt', np.reshape(outflow_error3, (13, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_chi_squared_OII_doublet.txt', np.reshape(chi_square3, (1, -1)))
+
+
+
+
+    if OII_doublet==False and emission_line2:
         return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square, outflow_results2, outflow_error2, chi_square2
+
+    if OII_doublet==True and emission_line2:
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square, outflow_results2, outflow_error2, chi_square2, outflow_results3, outflow_error3, chi_square3
 
     else:
         return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square
