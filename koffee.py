@@ -667,7 +667,7 @@ def gaussian2_const(wavelength, flux, amplitude_guess=None, mean_guess=None, sig
     return g_model, pars
 
 
-def gaussian_OII_doublet(wavelength, flux, amplitude_guess=None, sigma_guess=None, mean_diff=None, sigma_variations=None):
+def gaussian2_OII_doublet(wavelength, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None, mean_diff=None, sigma_variations=None):
     """
     Creates a combination of 4 gaussians
 
@@ -744,11 +744,11 @@ def gaussian_OII_doublet(wavelength, flux, amplitude_guess=None, sigma_guess=Non
     pars['Galaxy_red_amp'].set(expr='amp_diff_red+Flow_red_amp')
     pars['Galaxy_blue_amp'].set(expr='amp_diff_blue+Flow_blue_amp')
 
-    pars.add('gal_amp_ratio', value=1.0, min=0.8, max=1.4)
+    pars.add('gal_amp_ratio', value=1.0, min=0.7, max=1.4, vary=True)
     #pars['Galaxy_blue_amp'].set(expr='Galaxy_red_amp/gal_amp_ratio')
     pars['gal_amp_ratio'].set(expr='Galaxy_red_amp/Galaxy_blue_amp')
 
-    pars.add('flow_amp_ratio', value=1.0, min=0.8, max=1.4)
+    pars.add('flow_amp_ratio', value=1.0, min=0.7, max=1.4, vary=True)
     pars['Flow_blue_amp'].set(expr='Flow_red_amp/flow_amp_ratio')
 
     #no negative gaussians
@@ -762,7 +762,10 @@ def gaussian_OII_doublet(wavelength, flux, amplitude_guess=None, sigma_guess=Non
     #use the maximum as the first guess for the mean
     #the second peak is 3Angstroms away from the first
     #The center of the galaxy gaussian needs to be within the wavelength range
-    pars['Galaxy_red_mean'].set(value=wavelength[np.argmax(flux)], max=wavelength[-5], min=wavelength[5], vary=True)
+    if mean_guess is not None:
+        pars['Galaxy_red_mean'].set(value=mean_guess[0], max=wavelength[-5], min=wavelength[5], vary=True)
+    if mean_guess is None:
+        pars['Galaxy_red_mean'].set(value=wavelength[np.argmax(flux)], max=wavelength[-5], min=wavelength[5], vary=True)
 
     #The flow gaussian mean is defined by the previous fits...
     #so, we define some new parameters:
@@ -963,7 +966,7 @@ def fitter(g_model, pars, wavelength, flux, method='leastsq', verbose=True):
 
 #===============================================================================
 #making KOFFEE smarter
-def check_blue_chi_square(wavelength, flux, best_fit, g_model):
+def check_blue_chi_square(wavelength, flux, best_fit, g_model, OII_doublet_fit=False):
     """
     Checks the chi squared value of the blue side of the fit.  If there's a large residual, KOFFEE will shift the
     starting point for the flow gaussian mean to the blue in fit_cube().
@@ -978,6 +981,8 @@ def check_blue_chi_square(wavelength, flux, best_fit, g_model):
         the best_fit object
     g_model :
         the gaussian model object
+    OII_doublet_fit : boolean
+        whether it was a fit to the OII doublet or not (default = False)
 
     Returns
     -------
@@ -994,7 +999,10 @@ def check_blue_chi_square(wavelength, flux, best_fit, g_model):
         one_sigma_blue = (best_fit.best_values['gauss_mean'] - best_fit.best_values['gauss_sigma'])-1.0
 
     if str(type(g_model)) == "<class 'lmfit.model.CompositeModel'>":
-        one_sigma_blue = (best_fit.best_values['Galaxy_mean'] - best_fit.best_values['Galaxy_sigma'])-1.0
+        if OII_doublet_fit == True:
+            one_sigma_blue = (best_fit.best_values['Galaxy_red_mean'] - best_fit.best_values['Galaxy_red_sigma'])-1.0
+        else:
+            one_sigma_blue = (best_fit.best_values['Galaxy_mean'] - best_fit.best_values['Galaxy_sigma'])-1.0
 
     blue_left_bound = one_sigma_blue - 4.0
     lam_mask = (wavelength > blue_left_bound) & (wavelength < one_sigma_blue)
@@ -1443,13 +1451,47 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 elif stat_res == 2:
                                     mean_diff = best_fit2_refit.params['Galaxy_mean'].value - best_fit2_refit.params['Flow_mean'].value
                                     sigma_guess = [best_fit2_refit.params['Galaxy_sigma'].value, best_fit2_refit.params['Flow_sigma'].value]
+
                                 #create the fitting objects
-                                print('Creating OII doublet fitting objects for spaxel ', str(i), str(j))
-                                g_model2_third, pars2_third = gaussian_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.0], sigma_variations=1.0)
-                                print('Finished creating OII doublet fitting objects for spaxel ', str(i), str(j))
+                                g_model2_third, pars2_third = gaussian2_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=None, sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.5], sigma_variations=1.5)
 
                                 #do the fit
                                 best_fit2_third = fitter(g_model2_third, pars2_third, masked_lamdas3, flux3, method=method, verbose=False)
+
+                                #plot the fit
+                                fig4 = plot_fit(masked_lamdas3, flux3, g_model2_third, pars2_third, best_fit2_third, plot_initial=False, include_const=True)
+                                fig4.suptitle('OII doublet ['+str(em_rest3)+', '+str(emission_dict['OII_2']*(1+redshift))+']')
+                                fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j))
+                                plt.close(fig4)
+
+                                #check the fit using the blue-side-residual test
+                                blue_chi_square_check = check_blue_chi_square(masked_lamdas3, flux3, best_fit2_third, g_model2_third, OII_doublet_fit=True)
+                                print('OII doublet blue chi square check for spaxel ', str(i), str(j), ' is ', str(blue_chi_square_check))
+
+                                if blue_chi_square_check > 100.0:
+                                    #refit using...
+                                    print('Refitting OII doublet fit for spaxel ', str(i), str(j))
+                                    print('This spaxel had blue_chi_square_check ', str(blue_chi_square_check))
+                                    #create the fitting objects
+                                    g_model2_refit_third, pars2_refit_third = gaussian2_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=None, sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.0], sigma_variations=0.25)
+
+                                    #do the fit
+                                    best_fit2_refit_third = fitter(g_model2_refit_third, pars2_refit_third, masked_lamdas3, flux3, method=method, verbose=False)
+
+                                    print('OII doublet fit blue-chi-squared-fit chi squared value: ', best_fit2_refit_third.bic)
+                                    print('OII doublet fit original chi squared value: ', best_fit2_third.bic)
+
+                                    #plot the refit
+                                    fig5 = plot_fit(masked_lamdas3, flux3, g_model2_refit_third, pars2_refit_third, best_fit2_refit_third, plot_initial=False, include_const=True)
+                                    fig5.suptitle('OII doublet Chi Square Refit')
+                                    fig5.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j)+'_chi_square_refit')
+                                    plt.close(fig5)
+
+                                    g_model2_third = g_model2_refit_third
+                                    pars2_third = pars2_refit_third
+                                    best_fit2_third = best_fit2_refit_third
+                                    print('Replaced OII doublet values with refit values')
+
 
                             #put the results into the array to be saved
                             chi_square3[i,j] = best_fit2_third.bic
@@ -1516,11 +1558,11 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_final_fit')
                                 plt.close(fig3)
 
-                            if OII_doublet == True:
-                                fig4 = plot_fit(masked_lamdas3, flux3, g_model2_third, pars2_third, best_fit2_third, plot_initial=False, include_const=True)
-                                fig4.suptitle('OII doublet ['+str(em_rest3)+', '+str(emission_dict['OII_2']*(1+redshift))+']')
-                                fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j))
-                                plt.close(fig4)
+                            #if OII_doublet == True:
+                                #fig4 = plot_fit(masked_lamdas3, flux3, g_model2_third, pars2_third, best_fit2_third, plot_initial=False, include_const=True)
+                                #fig4.suptitle('OII doublet ['+str(em_rest3)+', '+str(emission_dict['OII_2']*(1+redshift))+']')
+                                #fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j))
+                                #plt.close(fig4)
 
 
                     #if the S/N is less than 20:
