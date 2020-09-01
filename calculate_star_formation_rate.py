@@ -69,7 +69,7 @@ def calc_hbeta_extinction(lamdas, z):
     return A_hbeta
 
 
-def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False):
+def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
     """
     Calculate the luminosity of the H_beta line
     The spectrum is in 10^-16 erg/s/cm^2/Ang.  Need to change it to erg/s
@@ -86,7 +86,7 @@ def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False):
         h_beta_flux: the flux of the h_beta line
     """
     #create bounds to integrate over
-    #Hbeta is at 4861.33A, allowing 1.5A on either side
+    #Hbeta is at 4861.33A, allowing 5.5A on either side
     left_limit = 4855.83*(1+z)
     right_limit = 4866.83*(1+z)
 
@@ -110,11 +110,10 @@ def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False):
         #create the S/N mask
         s_n_mask = s_n > 20
 
-
-
-    plt.figure()
-    plt.step(h_beta_lam, h_beta_spec)
-    plt.show()
+    if plot == True:
+        plt.figure()
+        plt.step(h_beta_lam, h_beta_spec)
+        plt.show()
 
     #integrate along the spectrum
     #by integrating, the units are now 10^-16 erg/s/cm^2
@@ -132,8 +131,78 @@ def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False):
 
     print(h_beta_flux)
 
-    return h_beta_flux.value, s_n_mask, h_beta_spec
+    if cont_subtract == True:
+        return h_beta_flux.value, s_n_mask, h_beta_spec
+    else:
+        return h_beta_flux.value, h_beta_spec
 
+
+def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
+    """
+    Calculate the luminosity of the H_gamma line
+    The spectrum is in 10^-16 erg/s/cm^2/Ang.  Need to change it to erg/s
+
+    Luminosities should be around 10^40
+
+    Inputs:
+        lamdas: the wavelength vector
+        spectrum: the spectrum or array of spectra.  If in array, needs to be in shape [npix, nspec]
+        z: redshift of the galaxy
+        cont_subtract: if True, assumes continuum has not already been subtracted.  Uses the median value of the wavelength range 4850-4855A.
+
+    Returns:
+        h_beta_flux: the flux of the h_beta line
+    """
+    #create bounds to integrate over
+    #Hgamma is at 4340.47A, allowing 1.5A on either side
+    left_limit = 4334.97*(1+z)
+    right_limit = 4345.97*(1+z)
+
+    #use the wavelengths to find the values in the spectrum to integrate over
+    h_gamma_spec = spectrum[(lamdas>=left_limit)&(lamdas<=right_limit),]
+    h_gamma_lam = lamdas[(lamdas>=left_limit) & (lamdas<=right_limit)]
+
+    #create a mask to cut out all spectra with a flux less than 1.0 at its peak
+    #flux_mask = np.amax(h_beta_spec, axis=0) < 1.0
+
+    #if the continuum has not already been fit and subtracted, use an approximation to subtract it off
+    #also use the continuum to find the S/N and mask things
+    #s_n = []
+    if cont_subtract == True:
+        cont = spectrum[(lamdas>=4850.0*(1+z))&(lamdas<=4855.0*(1+z)),]
+        cont_median = np.nanmedian(cont, axis=0)
+        h_gamma_spec = h_gamma_spec - cont_median
+        #find the standard deviation of the continuum section
+        noise = np.std(cont, axis=0)
+        s_n = (cont_median/noise)
+        #create the S/N mask
+        s_n_mask = s_n > 20
+
+    if plot == True:
+        plt.figure()
+        plt.step(h_gamma_lam, h_gamma_spec)
+        plt.show()
+
+    #integrate along the spectrum
+    #by integrating, the units are now 10^-16 erg/s/cm^2
+    h_gamma_integral = np.trapz(h_gamma_spec, h_gamma_lam, axis=0)
+    h_gamma_integral = h_gamma_integral*10**(-16)*units.erg/(units.s*(units.cm*units.cm))
+
+    #now get rid of the cm^2
+    #get the Hubble constant at z=0; this is in km/Mpc/s
+    H_0 = cosmo.H(0)
+    #use d = cz/H0 to find the distance in cm
+    dist = (c*z/H_0).decompose().to('cm')
+    print('distance:', dist)
+    #multiply by 4*pi*d^2 to get rid of the cm
+    h_gamma_flux = (h_gamma_integral*(4*pi*(dist**2))).to('erg/s')
+
+    print(h_gamma_flux)
+
+    if cont_subtract == True:
+        return h_gamma_flux.value, s_n_mask, h_gamma_spec
+    else:
+        return h_gamma_flux.value, h_gamma_spec
 
 def calc_sfr(lamdas, spectrum, z, cont_subtract=False):
     """

@@ -34,6 +34,80 @@ importlib.reload(pc)
 importlib.reload(bdpk)
 
 
+#-------------------------------------------------------------------------------
+#CALCULATIONS
+#-------------------------------------------------------------------------------
+
+def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
+    """
+    Calculates the outflow velocity
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray' object
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was included
+        in the koffee fit.  Either way, the flow and galaxy parameters are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    outflow_error : :obj:'~numpy.ndarray' object
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was included
+        in the koffee fit.  Either way, the flow and galaxy parameters are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    statistical_results : :obj:'~numpy.ndarray' object
+        Array containing the statistical results from koffee.  This has 0 if no flow
+        was found, 1 if a flow was found, 2 if an outflow was found using a forced
+        second fit due to the blue chi square test.
+
+    Returns
+    -------
+    out_vel : :obj:'~numpy.ndarray' object
+        Array with the outflow velocities, and np.nan where no velocity was found.
+    """
+    #create array to keep velocity differences in, filled with np.nan
+    vel_out = np.full_like(statistical_results, np.nan, dtype=np.double)
+    vel_out_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+
+    #create an outflow mask - outflows found at 1 and 2
+    flow_mask = (statistical_results > 0)
+
+    #de-redshift the results
+    systemic_mean = outflow_results[1,:,:][flow_mask]/(1+z)
+    flow_mean = outflow_results[4,:,:][flow_mask]/(1+z)
+    flow_sigma = outflow_results[3,:,:][flow_mask]/(1+z)
+
+    #calculate the velocity difference
+    #doing c*(lam_gal-lam_out)/lam_gal
+    vel_diff = 299792.458*(systemic_mean - flow_mean)/systemic_mean
+
+    #calculate the error on the velocity difference
+    #do the numerator first (lam_gal-lam_out)
+    num_err = np.sqrt(outflow_error[1,:,:][flow_mask]**2 + outflow_error[4,:,:][flow_mask]**2)
+    #now put that into the vel_diff error
+    vel_diff_err = vel_diff*np.sqrt((num_err/(systemic_mean-flow_mean))**2 + outflow_error[1,:,:][flow_mask]**2/systemic_mean**2)
+
+    #now doing 2*c*flow_sigma/lam_gal + vel_diff
+    v_out = 2*flow_sigma*299792.458/systemic_mean + vel_diff
+
+    #calculate the error on v_out
+    v_out_err = np.sqrt((flow_sigma**2/systemic_mean**2)*((outflow_error[3,:,:][flow_mask]/flow_sigma)**2 + (outflow_error[1,:,:][flow_mask]/systemic_mean)**2) + vel_diff_err**2)
+
+    #and put it into the array
+    vel_out[flow_mask] = v_out
+    vel_out_err[flow_mask] = v_out_err
+
+    return vel_out, vel_out_err
+
+
+#-------------------------------------------------------------------------------
+#PLOTTING FUNCTIONS
+#-------------------------------------------------------------------------------
+
+
 def plot_continuum_contours(lamdas, xx, yy, data, z, ax):
     """
     Plots the continuum contours, using the rest wavelengths between 4600 and 4800 to define the continuum.
