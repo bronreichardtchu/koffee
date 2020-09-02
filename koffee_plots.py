@@ -63,10 +63,16 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
         was found, 1 if a flow was found, 2 if an outflow was found using a forced
         second fit due to the blue chi square test.
 
+    redshift : float
+        The redshift of the galaxy
+
     Returns
     -------
-    out_vel : :obj:'~numpy.ndarray' object
+    vel_out : :obj:'~numpy.ndarray' object
         Array with the outflow velocities, and np.nan where no velocity was found.
+
+    vel_out_err : :obj:'~numpy.ndarray' object
+        Array with the outflow velocity errors, and np.nan where no velocity was found.
     """
     #create array to keep velocity differences in, filled with np.nan
     vel_out = np.full_like(statistical_results, np.nan, dtype=np.double)
@@ -101,6 +107,201 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
     vel_out_err[flow_mask] = v_out_err
 
     return vel_out, vel_out_err
+
+
+def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z, outflow=True):
+    """
+    Uses koffee outputs to calculate the flux of a single emission line with or without an outflow.
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray' object
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was included
+        in the koffee fit, or [3, i, j] or [4, i, j] if an outflow was not included.
+        Either way, the flow and galaxy parameters are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+        or
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+        for non-outflow fits.
+
+    outflow_error : :obj:'~numpy.ndarray' object
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was included
+        in the koffee fit, or [3, i, j] or [4, i, j] if an outflow was not included.
+        Either way, the flow and galaxy parameters are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+        or
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+        for non-outflow fits.
+
+    statistical_results : :obj:'~numpy.ndarray' object
+        Array containing the statistical results from koffee.  This has 0 if no flow
+        was found, 1 if a flow was found, 2 if an outflow was found using a forced
+        second fit due to the blue chi square test.
+
+    redshift : float
+        The redshift of the galaxy
+
+    outflow : boolean
+        Whether to also calculate the outflow flux.  Default is True, set to False
+        for single gaussian fits.
+
+    Returns
+    -------
+    systemic_flux : :obj:'~numpy.ndarray' object
+        Array with the systemic line fluxes, and np.nan where no outflow was found.
+
+    systemic_flux_err : :obj:'~numpy.ndarray' object
+        Array with the systemic line flux errors, and np.nan where no outflow was found.
+
+    systemic_flux : :obj:'~numpy.ndarray' object
+        Array with the outflow line fluxes, and np.nan where no outflow was found, if outflow==True.
+
+    systemic_flux_err : :obj:'~numpy.ndarray' object
+        Array with the outflow line flux errors, and np.nan where no outflow was found, if outflow==True.
+    """
+    ##create array to keep velocity differences in, filled with np.nan
+    systemic_flux = np.full_like(statistical_results, np.nan, dtype=np.double)
+    systemic_flux_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+
+    if outflow == True:
+        outflow_flux = np.full_like(statistical_results, np.nan, dtype=np.double)
+        outflow_flux_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+
+    #create an outflow mask - outflows found at 1 and 2
+    flow_mask = (statistical_results > 0)
+
+    #de-redshift the sigma results
+    systemic_sigma = outflow_results[0,:,:][flow_mask]/(1+z)
+
+    if outflow == True:
+        flow_sigma = outflow_results[3,:,:][flow_mask]/(1+z)
+
+    #calculate the flux, which is sigma*amplitude
+    sys_flux = systemic_sigma * outflow_results[2,:,:][flow_mask]
+
+    #and calculate the error
+    sys_flux_err = sys_flux * np.sqrt((outflow_error[0,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[2,:,:][flow_mask]/outflow_results[2,:,:][flow_mask])**2)
+
+    #save the results into the array
+    systemic_flux[flow_mask] = sys_flux
+    systemic_flux_err[flow_mask] = sys_flux_err
+
+    #if also finding the flux of the outflow
+    if outflow == True:
+        flow_flux = flow_sigma * outflow_results[5,:,:][flow_mask]
+
+        flow_flux_err = sys_flux * np.sqrt((outflow_error[3,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2)
+
+        #save to array
+        outflow_flux[flow_mask] = flow_flux
+        outflow_flux_err[flow_mask] = flow_flux_err
+
+    #and return the results
+    if outflow == True:
+        return systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err
+    else:
+        return systemic_flux, systemic_flux_err
+
+
+def calc_doublet_flux_from_koffee(outflow_results, outflow_error, statistical_results, z, outflow=True):
+    """
+    Uses koffee outputs to calculate the flux of a doublet emission line with or without an outflow.
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray' object
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [13, i, j] or [7, i, j] if an outflow was not included in the koffee fit.
+        Either way, the galaxy parameters are in the same position.
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, flow_blue_sigma, flow_blue_mean, flow_blue_amp, flow_red_sigma, flow_red_mean, flow_red_amp, continuum_const], i, j]
+        or
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, continuum_const], i, j]
+        for non-outflow fits.
+
+    outflow_error : :obj:'~numpy.ndarray' object
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [13, i, j] or [7, i, j] if an outflow was not included in the koffee fit.
+        Either way, the galaxy parameters are in the same position.
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, flow_blue_sigma, flow_blue_mean, flow_blue_amp, flow_red_sigma, flow_red_mean, flow_red_amp, continuum_const], i, j]
+        or
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, continuum_const], i, j]
+        for non-outflow fits.
+
+    statistical_results : :obj:'~numpy.ndarray' object
+        Array containing the statistical results from koffee.  This has 0 if no flow
+        was found, 1 if a flow was found, 2 if an outflow was found using a forced
+        second fit due to the blue chi square test.
+
+    redshift : float
+        The redshift of the galaxy
+
+    outflow : boolean
+        Whether to also calculate the outflow flux.  Default is True, set to False
+        for single gaussian fits.
+
+    Returns
+    -------
+    systemic_flux : :obj:'~numpy.ndarray' object
+        Array with the systemic line fluxes, and np.nan where no outflow was found.
+
+    systemic_flux_err : :obj:'~numpy.ndarray' object
+        Array with the systemic line flux errors, and np.nan where no outflow was found.
+
+    systemic_flux : :obj:'~numpy.ndarray' object
+        Array with the outflow line fluxes, and np.nan where no outflow was found, if outflow==True.
+
+    systemic_flux_err : :obj:'~numpy.ndarray' object
+        Array with the outflow line flux errors, and np.nan where no outflow was found, if outflow==True.
+    """
+    ##create array to keep velocity differences in, filled with np.nan
+    systemic_flux = np.full_like(statistical_results, np.nan, dtype=np.double)
+    systemic_flux_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+
+    if outflow == True:
+        outflow_flux = np.full_like(statistical_results, np.nan, dtype=np.double)
+        outflow_flux_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+
+    #create an outflow mask - outflows found at 1 and 2
+    flow_mask = (statistical_results > 0)
+
+    #de-redshift the sigma results... the doublet is set to have the same sigma
+    #for both systemic components, so only need to do this once
+    systemic_sigma = outflow_results[0,:,:][flow_mask]/(1+z)
+
+    if outflow == True:
+        flow_sigma = outflow_results[6,:,:][flow_mask]/(1+z)
+
+    #calculate the flux using sigma*(amplitude1+amplitude2)
+    sys_flux = systemic_sigma * (outflow_results[2,:,:][flow_mask] + outflow_results[5,:,:][flow_mask])
+
+    #and calculate the error
+    sys_flux_err = sys_flux * np.sqrt((outflow_error[0,:,:][flow_mask]/systemic_sigma)**2 + ((outflow_error[2,:,:][flow_mask]/outflow_results[2,:,:][flow_mask])**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2))
+
+    #save the results into the array
+    systemic_flux[flow_mask] = sys_flux
+    systemic_flux_err[flow_mask] = sys_flux_err
+
+    #if also finding the flux of the outflow
+    if outflow == True:
+        flow_flux = flow_sigma * (outflow_results[8,:,:][flow_mask] + outflow_results[11,:,:][flow_mask])
+
+        flow_flux_err = sys_flux * np.sqrt((outflow_error[6,:,:][flow_mask]/systemic_sigma)**2 + ((outflow_error[8,:,:][flow_mask]/outflow_results[8,:,:][flow_mask])**2 + (outflow_error[11,:,:][flow_mask]/outflow_results[11,:,:][flow_mask])**2))
+
+        #save to array
+        outflow_flux[flow_mask] = flow_flux
+        outflow_flux_err[flow_mask] = flow_flux_err
+
+    #and return the results
+    if outflow == True:
+        return systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err
+    else:
+        return systemic_flux, systemic_flux_err
 
 
 #-------------------------------------------------------------------------------
