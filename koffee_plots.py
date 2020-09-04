@@ -77,6 +77,8 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
     #create array to keep velocity differences in, filled with np.nan
     vel_out = np.full_like(statistical_results, np.nan, dtype=np.double)
     vel_out_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+    vel_diff = np.full_like(statistical_results, np.nan, dtype=np.double)
+    vel_diff_err = np.full_like(statistical_results, np.nan, dtype=np.double)
 
     #create an outflow mask - outflows found at 1 and 2
     flow_mask = (statistical_results > 0)
@@ -88,30 +90,34 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
 
     #calculate the velocity difference
     #doing c*(lam_gal-lam_out)/lam_gal
-    vel_diff = 299792.458*(systemic_mean - flow_mean)/systemic_mean
+    vel_diff_calc = 299792.458*(systemic_mean - flow_mean)/systemic_mean
 
     #calculate the error on the velocity difference
     #do the numerator first (lam_gal-lam_out)
     num_err = np.sqrt(outflow_error[1,:,:][flow_mask]**2 + outflow_error[4,:,:][flow_mask]**2)
     #now put that into the vel_diff error
-    vel_diff_err = vel_diff*np.sqrt((num_err/(systemic_mean-flow_mean))**2 + outflow_error[1,:,:][flow_mask]**2/systemic_mean**2)
+    vel_diff_calc_err = vel_diff_calc*np.sqrt((num_err/(systemic_mean-flow_mean))**2 + outflow_error[1,:,:][flow_mask]**2/systemic_mean**2)
 
     #now doing 2*c*flow_sigma/lam_gal + vel_diff
-    v_out = 2*flow_sigma*299792.458/systemic_mean + vel_diff
+    v_out = 2*flow_sigma*299792.458/systemic_mean + vel_diff_calc
 
     #calculate the error on v_out
-    v_out_err = np.sqrt((flow_sigma**2/systemic_mean**2)*((outflow_error[3,:,:][flow_mask]/flow_sigma)**2 + (outflow_error[1,:,:][flow_mask]/systemic_mean)**2) + vel_diff_err**2)
+    v_out_err = np.sqrt((flow_sigma**2/systemic_mean**2)*((outflow_error[3,:,:][flow_mask]/flow_sigma)**2 + (outflow_error[1,:,:][flow_mask]/systemic_mean)**2) + vel_diff_calc_err**2)
 
     #and put it into the array
+    vel_diff[flow_mask] = vel_diff_calc
+    vel_diff_err[flow_mask] = vel_diff_calc_err
     vel_out[flow_mask] = v_out
     vel_out_err[flow_mask] = v_out_err
 
-    return vel_out, vel_out_err
+    return vel_diff, vel_diff_err, vel_out, vel_out_err
 
 
 def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z, outflow=True):
     """
     Uses koffee outputs to calculate the flux of a single emission line with or without an outflow.
+    In koffee, a gaussian is defined as amp*e^[-(x-mean)**2/2sigma**2] so the integral (which gives
+    us the flux) is sqrt(2*pi)*amp*sigma.
 
     Parameters
     ----------
@@ -183,7 +189,7 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
         flow_sigma = outflow_results[3,:,:][flow_mask]/(1+z)
 
     #calculate the flux, which is sigma*amplitude
-    sys_flux = systemic_sigma * outflow_results[2,:,:][flow_mask]
+    sys_flux = np.sqrt(2*np.pi) * systemic_sigma * outflow_results[2,:,:][flow_mask]
 
     #and calculate the error
     sys_flux_err = sys_flux * np.sqrt((outflow_error[0,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[2,:,:][flow_mask]/outflow_results[2,:,:][flow_mask])**2)
@@ -194,7 +200,7 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
 
     #if also finding the flux of the outflow
     if outflow == True:
-        flow_flux = flow_sigma * outflow_results[5,:,:][flow_mask]
+        flow_flux = np.sqrt(2*np.pi) * flow_sigma * outflow_results[5,:,:][flow_mask]
 
         flow_flux_err = sys_flux * np.sqrt((outflow_error[3,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2)
 
@@ -212,6 +218,9 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
 def calc_doublet_flux_from_koffee(outflow_results, outflow_error, statistical_results, z, outflow=True):
     """
     Uses koffee outputs to calculate the flux of a doublet emission line with or without an outflow.
+    In koffee, a gaussian is defined as amp*e^[-(x-mean)**2/2sigma**2] so the integral (which gives
+    us the flux) is sqrt(2*pi)*amp*sigma. Since this is a doublet, we therefore have:
+    sqrt(2*pi)*amp1*sigma+sqrt(2*pi)*amp2*sigma.
 
     Parameters
     ----------
@@ -277,8 +286,8 @@ def calc_doublet_flux_from_koffee(outflow_results, outflow_error, statistical_re
     if outflow == True:
         flow_sigma = outflow_results[6,:,:][flow_mask]/(1+z)
 
-    #calculate the flux using sigma*(amplitude1+amplitude2)
-    sys_flux = systemic_sigma * (outflow_results[2,:,:][flow_mask] + outflow_results[5,:,:][flow_mask])
+    #calculate the flux using sqrt(2*pi)*sigma*(amplitude1+amplitude2)
+    sys_flux = np.sqrt(2*np.pi) * systemic_sigma * (outflow_results[2,:,:][flow_mask] + outflow_results[5,:,:][flow_mask])
 
     #and calculate the error
     sys_flux_err = sys_flux * np.sqrt((outflow_error[0,:,:][flow_mask]/systemic_sigma)**2 + ((outflow_error[2,:,:][flow_mask]/outflow_results[2,:,:][flow_mask])**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2))
@@ -289,7 +298,7 @@ def calc_doublet_flux_from_koffee(outflow_results, outflow_error, statistical_re
 
     #if also finding the flux of the outflow
     if outflow == True:
-        flow_flux = flow_sigma * (outflow_results[8,:,:][flow_mask] + outflow_results[11,:,:][flow_mask])
+        flow_flux = np.sqrt(2*np.pi) * flow_sigma * (outflow_results[8,:,:][flow_mask] + outflow_results[11,:,:][flow_mask])
 
         flow_flux_err = sys_flux * np.sqrt((outflow_error[6,:,:][flow_mask]/systemic_sigma)**2 + ((outflow_error[8,:,:][flow_mask]/outflow_results[8,:,:][flow_mask])**2 + (outflow_error[11,:,:][flow_mask]/outflow_results[11,:,:][flow_mask])**2))
 
