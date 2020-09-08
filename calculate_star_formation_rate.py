@@ -11,7 +11,7 @@ EMAIL:
 	<breichardtchu@swin.edu.au>
 
 PURPOSE:
-	To apply ppxf to the data cube.
+	To calculate the SFR and SFR surface density of a data cube.
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
 MODIFICATION HISTORY:
@@ -19,29 +19,31 @@ MODIFICATION HISTORY:
 
 """
 import numpy as np
-import pickle
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from astropy.cosmology import WMAP9 as cosmo
 from astropy.constants import c
 from astropy import units
 
-from math import pi
-from scipy.optimize import curve_fit
-from scipy.interpolate import interp1d
 
-
+#-------------------------------------------------------------------------------
+# EXTINCTION CALCULATIONS
+#-------------------------------------------------------------------------------
 def calc_hbeta_extinction(lamdas, z):
     """
     Calculates the H_beta extinction - corrects for the extinction caused by light travelling through the dust and gas of the original galaxy, using the Cardelli et al. 1989 curves and Av = E(B-V)*Rv.  The value for Av ~ 2.11 x C(Hbeta) where C(Hbeta) = 0.24 from Lopez-Sanchez et al. 2006 A&A 449.
 
-    Inputs:
-        lamdas: the wavelength vector
-        z: redshift
+    Parameters
+    ----------
+    lamdas :
+        the wavelength vector
+    z :
+        redshift
 
-    Returns:
-        A_hbeta: the extinction correction factor at the Hbeta line
+    Returns
+    -------
+    A_hbeta : 
+        the extinction correction factor at the Hbeta line
     """
     #convert lamdas from Angstroms into micrometers
     lamdas = lamdas/10000
@@ -67,6 +69,210 @@ def calc_hbeta_extinction(lamdas, z):
     A_hbeta = A_lam[index]
 
     return A_hbeta
+
+
+#-------------------------------------------------------------------------------
+# FLUX CALCULATIONS
+#-------------------------------------------------------------------------------
+
+def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z, outflow=True):
+    """
+    Uses koffee outputs to calculate the flux of a single emission line with or without an outflow.
+    In koffee, a gaussian is defined as amp*e^[-(x-mean)**2/2sigma**2] so the integral (which gives
+    us the flux) is sqrt(2*pi)*amp*sigma.
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray' object
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was included
+        in the koffee fit, or [3, i, j] or [4, i, j] if an outflow was not included.
+        Either way, the flow and galaxy parameters are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+        or
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+        for non-outflow fits.
+
+    outflow_error : :obj:'~numpy.ndarray' object
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was included
+        in the koffee fit, or [3, i, j] or [4, i, j] if an outflow was not included.
+        Either way, the flow and galaxy parameters are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+        or
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+        for non-outflow fits.
+
+    statistical_results : :obj:'~numpy.ndarray' object
+        Array containing the statistical results from koffee.  This has 0 if no flow
+        was found, 1 if a flow was found, 2 if an outflow was found using a forced
+        second fit due to the blue chi square test.
+
+    redshift : float
+        The redshift of the galaxy
+
+    outflow : boolean
+        Whether to also calculate the outflow flux.  Default is True, set to False
+        for single gaussian fits.
+
+    Returns
+    -------
+    systemic_flux : :obj:'~numpy.ndarray' object
+        Array with the systemic line fluxes, and np.nan where no outflow was found.
+
+    systemic_flux_err : :obj:'~numpy.ndarray' object
+        Array with the systemic line flux errors, and np.nan where no outflow was found.
+
+    systemic_flux : :obj:'~numpy.ndarray' object
+        Array with the outflow line fluxes, and np.nan where no outflow was found, if outflow==True.
+
+    systemic_flux_err : :obj:'~numpy.ndarray' object
+        Array with the outflow line flux errors, and np.nan where no outflow was found, if outflow==True.
+    """
+    ##create array to keep velocity differences in, filled with np.nan
+    systemic_flux = np.full_like(statistical_results, np.nan, dtype=np.double)
+    systemic_flux_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+
+    if outflow == True:
+        outflow_flux = np.full_like(statistical_results, np.nan, dtype=np.double)
+        outflow_flux_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+
+    #create an outflow mask - outflows found at 1 and 2
+    flow_mask = (statistical_results > 0)
+
+    #de-redshift the sigma results
+    systemic_sigma = outflow_results[0,:,:][flow_mask]/(1+z)
+
+    if outflow == True:
+        flow_sigma = outflow_results[3,:,:][flow_mask]/(1+z)
+
+    #calculate the flux, which is sigma*amplitude
+    sys_flux = np.sqrt(2*np.pi) * systemic_sigma * outflow_results[2,:,:][flow_mask]
+
+    #and calculate the error
+    sys_flux_err = sys_flux * np.sqrt((outflow_error[0,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[2,:,:][flow_mask]/outflow_results[2,:,:][flow_mask])**2)
+
+    #save the results into the array
+    systemic_flux[flow_mask] = sys_flux
+    systemic_flux_err[flow_mask] = sys_flux_err
+
+    #if also finding the flux of the outflow
+    if outflow == True:
+        flow_flux = np.sqrt(2*np.pi) * flow_sigma * outflow_results[5,:,:][flow_mask]
+
+        flow_flux_err = sys_flux * np.sqrt((outflow_error[3,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2)
+
+        #save to array
+        outflow_flux[flow_mask] = flow_flux
+        outflow_flux_err[flow_mask] = flow_flux_err
+
+    #and return the results
+    if outflow == True:
+        return systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err
+    else:
+        return systemic_flux, systemic_flux_err
+
+
+def calc_doublet_flux_from_koffee(outflow_results, outflow_error, statistical_results, z, outflow=True):
+    """
+    Uses koffee outputs to calculate the flux of a doublet emission line with or without an outflow.
+    In koffee, a gaussian is defined as amp*e^[-(x-mean)**2/2sigma**2] so the integral (which gives
+    us the flux) is sqrt(2*pi)*amp*sigma. Since this is a doublet, we therefore have:
+    sqrt(2*pi)*amp1*sigma+sqrt(2*pi)*amp2*sigma.
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray' object
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [13, i, j] or [7, i, j] if an outflow was not included in the koffee fit.
+        Either way, the galaxy parameters are in the same position.
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, flow_blue_sigma, flow_blue_mean, flow_blue_amp, flow_red_sigma, flow_red_mean, flow_red_amp, continuum_const], i, j]
+        or
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, continuum_const], i, j]
+        for non-outflow fits.
+
+    outflow_error : :obj:'~numpy.ndarray' object
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [13, i, j] or [7, i, j] if an outflow was not included in the koffee fit.
+        Either way, the galaxy parameters are in the same position.
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, flow_blue_sigma, flow_blue_mean, flow_blue_amp, flow_red_sigma, flow_red_mean, flow_red_amp, continuum_const], i, j]
+        or
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, continuum_const], i, j]
+        for non-outflow fits.
+
+    statistical_results : :obj:'~numpy.ndarray' object
+        Array containing the statistical results from koffee.  This has 0 if no flow
+        was found, 1 if a flow was found, 2 if an outflow was found using a forced
+        second fit due to the blue chi square test.
+
+    redshift : float
+        The redshift of the galaxy
+
+    outflow : boolean
+        Whether to also calculate the outflow flux.  Default is True, set to False
+        for single gaussian fits.
+
+    Returns
+    -------
+    systemic_flux : :obj:'~numpy.ndarray' object
+        Array with the systemic line fluxes, and np.nan where no outflow was found.
+
+    systemic_flux_err : :obj:'~numpy.ndarray' object
+        Array with the systemic line flux errors, and np.nan where no outflow was found.
+
+    systemic_flux : :obj:'~numpy.ndarray' object
+        Array with the outflow line fluxes, and np.nan where no outflow was found, if outflow==True.
+
+    systemic_flux_err : :obj:'~numpy.ndarray' object
+        Array with the outflow line flux errors, and np.nan where no outflow was found, if outflow==True.
+    """
+    ##create array to keep velocity differences in, filled with np.nan
+    systemic_flux = np.full_like(statistical_results, np.nan, dtype=np.double)
+    systemic_flux_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+
+    if outflow == True:
+        outflow_flux = np.full_like(statistical_results, np.nan, dtype=np.double)
+        outflow_flux_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+
+    #create an outflow mask - outflows found at 1 and 2
+    flow_mask = (statistical_results > 0)
+
+    #de-redshift the sigma results... the doublet is set to have the same sigma
+    #for both systemic components, so only need to do this once
+    systemic_sigma = outflow_results[0,:,:][flow_mask]/(1+z)
+
+    if outflow == True:
+        flow_sigma = outflow_results[6,:,:][flow_mask]/(1+z)
+
+    #calculate the flux using sqrt(2*pi)*sigma*(amplitude1+amplitude2)
+    sys_flux = np.sqrt(2*np.pi) * systemic_sigma * (outflow_results[2,:,:][flow_mask] + outflow_results[5,:,:][flow_mask])
+
+    #and calculate the error
+    sys_flux_err = sys_flux * np.sqrt((outflow_error[0,:,:][flow_mask]/systemic_sigma)**2 + ((outflow_error[2,:,:][flow_mask]/outflow_results[2,:,:][flow_mask])**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2))
+
+    #save the results into the array
+    systemic_flux[flow_mask] = sys_flux
+    systemic_flux_err[flow_mask] = sys_flux_err
+
+    #if also finding the flux of the outflow
+    if outflow == True:
+        flow_flux = np.sqrt(2*np.pi) * flow_sigma * (outflow_results[8,:,:][flow_mask] + outflow_results[11,:,:][flow_mask])
+
+        flow_flux_err = sys_flux * np.sqrt((outflow_error[6,:,:][flow_mask]/systemic_sigma)**2 + ((outflow_error[8,:,:][flow_mask]/outflow_results[8,:,:][flow_mask])**2 + (outflow_error[11,:,:][flow_mask]/outflow_results[11,:,:][flow_mask])**2))
+
+        #save to array
+        outflow_flux[flow_mask] = flow_flux
+        outflow_flux_err[flow_mask] = flow_flux_err
+
+    #and return the results
+    if outflow == True:
+        return systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err
+    else:
+        return systemic_flux, systemic_flux_err
 
 
 def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
@@ -127,7 +333,7 @@ def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
     dist = (c*z/H_0).decompose().to('cm')
     print('distance:', dist)
     #multiply by 4*pi*d^2 to get rid of the cm
-    h_beta_flux = (h_beta_integral*(4*pi*(dist**2))).to('erg/s')
+    h_beta_flux = (h_beta_integral*(4*np.pi*(dist**2))).to('erg/s')
 
     print(h_beta_flux)
 
@@ -195,7 +401,7 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
     dist = (c*z/H_0).decompose().to('cm')
     print('distance:', dist)
     #multiply by 4*pi*d^2 to get rid of the cm
-    h_gamma_flux = (h_gamma_integral*(4*pi*(dist**2))).to('erg/s')
+    h_gamma_flux = (h_gamma_integral*(4*np.pi*(dist**2))).to('erg/s')
 
     print(h_gamma_flux)
 
@@ -204,7 +410,12 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
     else:
         return h_gamma_flux.value, h_gamma_spec
 
-def calc_sfr(lamdas, spectrum, z, cont_subtract=False):
+
+#-------------------------------------------------------------------------------
+# SFR CALCULATIONS
+#-------------------------------------------------------------------------------
+
+def calc_sfr(lamdas, spectrum, z, cont_subtract=False, include_extinction=True):
     """
     Calculates the star formation rate using Halpha
     SFR = C_Halpha (L_Halpha / L_Hbeta)_0 x 10^{-0.4A_Hbeta} x L_Hbeta[erg/s]
@@ -225,752 +436,25 @@ def calc_sfr(lamdas, spectrum, z, cont_subtract=False):
     #from Calzetti 2001 PASP 113 we have L_Halpha/L_Hbeta = 2.87
     lum_ratio_alpha_to_beta = 2.87
 
-    hbeta_extinction = calc_hbeta_extinction(lamdas, z)
-
-    hbeta_luminosity, s_n_mask, h_beta_spec = calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=cont_subtract)
+    if cont_subtract == True:
+        hbeta_luminosity, s_n_mask, h_beta_spec = calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=cont_subtract)
+    if cont_subtract == False:
+        hbeta_luminosity, h_beta_spec = calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=cont_subtract)
 
     #calculate the star formation rate
-    sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*hbeta_extinction) * hbeta_luminosity
-    #sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*1.0) * (hbeta_luminosity)
+    if include_extinction == True:
+        hbeta_extinction = calc_hbeta_extinction(lamdas, z)
+        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*hbeta_extinction) * hbeta_luminosity
+    elif include_extinction == False:
+        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*1.0) * (hbeta_luminosity)
+
     #sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*0.29) * hbeta_luminosity
 
     total_sfr = np.sum(sfr)
 
     sfr_surface_density = sfr/((0.7*1.35)*(0.388**2))
 
-    return sfr, total_sfr, sfr_surface_density, s_n_mask, h_beta_spec
-
-
-def running_mean(x, N):
-    cumsum = np.cumsum(np.insert(x, 0, 0))
-    return (cumsum[N:] - cumsum[:-N]) / float(N)
-
-
-
-def chen_et_al_2010(sfr_surface_density_min, sfr_surface_density_max, scale_factor=1):
-    """
-    The trendline from Chen et al. (2010) where v_out is proportional to (SFR surface density)^0.1
-    """
-    #create a vector for sfr surface density
-    sfr_surface_density = np.linspace(sfr_surface_density_min, sfr_surface_density_max+4, num=1000)
-
-    #use the relationship to predict the v_out
-    v_out = scale_factor*sfr_surface_density**0.1
-
-    return sfr_surface_density, v_out
-
-
-def murray_et_al_2011(sfr_surface_density_min, sfr_surface_density_max, scale_factor=1):
-    """
-    The trendline from Murray et al. (2011) where v_out is proportional to (SFR surface density)^2
-    """
-    #create a vector for sfr surface density
-    sfr_surface_density = np.linspace(sfr_surface_density_min, sfr_surface_density_max+4, num=1000)
-
-    #use the relationship to predict the v_out
-    v_out = scale_factor*sfr_surface_density**2
-
-    return sfr_surface_density, v_out
-
-
-def fitting_function(x, a, b):
-    """
-    My fitting function to be fit to the v_out to sfr surface density data
-
-    Inputs:
-        x: (vector) the star formation surface density
-        a, b: (int) constants to be fit
-
-    Returns:
-        y: (vector) the v_out
-    """
-    return a*(x**b)
-
-
-
-
-def plot_sfr_vout(sfr, outflow_results, outflow_error, stat_results, z, inflow_eq=False):
-    """
-    Plots the SFR against the outflow velocity.
-
-    Inputs:
-        sfr: (array) the star formation rate
-        outflow_results: (array) array of outflow results from KOFFEE.  Should be (6, sfr.shape)
-        stat_results: (array) array of statistical results from KOFFEE.  Should be same shape as sfr.
-    """
-    #create outflow mask
-    flow_mask = (stat_results>0)
-
-    #de-redshift the data first!!!
-    systemic_mean = outflow_results[1,:][flow_mask]/(1+z)
-    flow_mean = outflow_results[4,:][flow_mask]/(1+z)
-    flow_sigma = outflow_results[3,:][flow_mask]/(1+z)
-
-    #find the velocity difference
-    #doing c*(lam_gal-lam_out)/lam_gal
-    vel_diff = 299792.458*(systemic_mean-flow_mean)/systemic_mean
-
-    v_out = 2*flow_sigma*299792.458/systemic_mean + vel_diff
-    #mask out the points above 500km/s since they are all bad fits
-    mask_500 = v_out<500
-    v_out = v_out[mask_500]
-
-    #add the errors of the flow and galaxy mean values
-    #vel_err = (299792.458*((outflow_error[4,:][flow_mask]+outflow_error[1,:][flow_mask])/(outflow_results[4,:][flow_mask]-outflow_results[1,:][flow_mask]) + outflow_error[1,:][flow_mask]/outflow_results[1,:][flow_mask]))*vel_diff
-
-    #vel_diff_out = vel_diff[vel_diff > -20]
-    #vel_err_out = vel_err[vel_diff < 0]
-
-    #vel_diff_in = vel_diff[vel_diff <= -20]
-    #vel_err_in = vel_err[vel_diff >= 0]
-
-    #vel_diff_mid = vel_diff[(vel_diff > -20)&(vel_diff<=20)]
-
-    #v_out = 2*flow_sigma[vel_diff > -20]*299792.458/systemic_mean[vel_diff > -20] + vel_diff_out
-    #v_in = 2*flow_sigma[vel_diff <= -20]*299792.458/systemic_mean[vel_diff <= -20] + vel_diff_in
-    #v_mid = 2*flow_sigma[(vel_diff > -20)&(vel_diff<=20)]*299792.458/systemic_mean[(vel_diff > -20)&(vel_diff<=20)] + vel_diff_mid
-
-    if inflow_eq == True:
-        v_in = -2*flow_sigma[vel_diff <= -20]*299792.458/systemic_mean[vel_diff <= -20] + vel_diff_in
-
-    #get the sfr for the outflow spaxels
-    sfr_out = sfr[flow_mask]
-    sfr_out = sfr_out[mask_500]
-    #sfr_out = sfr[flow_mask][vel_diff > -20]
-    #sfr_in = sfr[flow_mask][vel_diff <= -20]
-    #sfr_mid = sfr[flow_mask][(vel_diff > -20)&(vel_diff<=20)]
-
-    #get the sfr for the no outflow spaxels
-    sfr_no_out = sfr[~flow_mask]
-    vel_no_out = np.zeros_like(sfr_no_out)
-
-    #take the log of sfr_out
-    log_sfr_out = np.log10(sfr_out)
-
-    #create the median points for the outflowing sfr
-    #first_bin, last_bin = log_sfr_out.min(), log_sfr_out.max()
-    first_bin, last_bin = -1., log_sfr_out.max()
-    bin_width = (last_bin-first_bin)/8
-    #loop through all the bins
-    bin_edges = [first_bin, first_bin+bin_width]
-    sfr_bin_medians = []
-    v_out_bin_medians = []
-    sfr_bin_stdev = []
-    v_out_bin_stdev = []
-    while bin_edges[1] <= last_bin+bin_width-bin_width/6:
-        #create the bin
-        sfr_bin = log_sfr_out[(log_sfr_out>=bin_edges[0])&(log_sfr_out<bin_edges[1])]
-        v_out_bin = v_out[(log_sfr_out>=bin_edges[0])&(log_sfr_out<bin_edges[1])]
-
-        #find the median in the bin
-        sfr_median = np.nanmedian(sfr_bin)
-        v_out_median = np.nanmedian(v_out_bin)
-
-        #find the standard deviation in the bin
-        sfr_stdev = np.nanstd(sfr_bin)
-        v_out_stdev = np.nanstd(v_out_bin)
-
-        #use the stdev to cut out any points greater than 2 sigma away from the median
-        if np.any(v_out_bin >= v_out_median+2*v_out_stdev) or np.any(v_out_bin <= v_out_median-2*v_out_stdev):
-            v_out_median = np.nanmedian(v_out_bin[(v_out_bin>v_out_median-2*v_out_stdev)&(v_out_bin<v_out_median+2*v_out_stdev)])
-            v_out_stdev = np.nanstd(v_out_bin[(v_out_bin>v_out_median-2*v_out_stdev)&(v_out_bin<v_out_median+2*v_out_stdev)])
-
-        sfr_bin_medians.append(sfr_median)
-        v_out_bin_medians.append(v_out_median)
-        sfr_bin_stdev.append(sfr_stdev)
-        v_out_bin_stdev.append(v_out_stdev)
-
-        #change bin_edges
-        bin_edges = [bin_edges[0]+0.15, bin_edges[1]+0.15]
-
-    sfr_bin_medians = np.array(sfr_bin_medians)
-    v_out_bin_medians = np.array(v_out_bin_medians)
-    sfr_bin_stdev = np.array(sfr_bin_stdev)
-    v_out_bin_stdev = np.array(v_out_bin_stdev)
-    print('sfr medians', sfr_bin_medians)
-    print('v_out medians', v_out_bin_medians)
-
-    #fit our own trend
-    popt, pcov = curve_fit(fitting_function, 10**(sfr_bin_medians), v_out_bin_medians)
-    print(popt)
-
-    #create a vector for sfr_out
-    sfr_surface_density = np.linspace(sfr_out.min(), sfr_out.max()+4.0, num=1000)
-
-    #create vectors to plot the literature trends
-    sfr_surface_density_chen, v_out_chen = chen_et_al_2010(sfr_out.min(), sfr_out.max(), scale_factor=popt[0])
-    #sfr_surface_density_murray, v_out_murray = murray_et_al_2011(sfr_no_out.min(), sfr_out.max(), scale_factor=popt[0])
-    sfr_surface_density_murray, v_out_murray = murray_et_al_2011(sfr_out.min(), sfr_out.max(), scale_factor=50)
-
-    #plot it
-    plt.figure()
-    plt.rcParams['axes.facecolor']='white'
-    #plt.errorbar(sfr_out, v_out, yerr=vel_err_out, marker='o', lw=0, label='Outflow', alpha=0.2)
-    #plt.errorbar(sfr_in, abs(v_in), yerr=vel_err_in, marker='o', lw=0, label='Inflow', alpha=0.2)
-    plt.plot(10**log_sfr_out, v_out, marker='o', lw=0, label='Flow spaxels', alpha=0.4)
-    #plt.plot(sfr_in, v_in, marker='o', lw=0, label='Redshifted flow', alpha=0.4)
-    #plt.plot(sfr_mid, v_mid, marker='o', lw=0, label='Centred flows', alpha=0.4)
-    #plt.plot(sfr_no_out, vel_no_out, marker='o', lw=0, label='No flow spaxels', alpha=0.4)
-
-    plt.plot(10**sfr_bin_medians, v_out_bin_medians, marker='', color='tab:blue', lw=3.0)
-    #plt.errorbar(10**sfr_bin_medians, v_out_bin_medians, xerr=sfr_bin_stdev, yerr=v_out_bin_stdev, marker='', c='k', lw=2.0)
-    #plt.fill_between(x=10**sfr_bin_medians, y1=v_out_bin_medians-v_out_bin_stdev, y2=v_out_bin_medians+v_out_bin_stdev, color='grey', alpha=0.2)
-
-    plt.plot(sfr_surface_density, fitting_function(sfr_surface_density, *popt), 'r-', label='Fit: $v_{out}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt))
-
-    plt.plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
-    plt.plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
-    plt.xscale('log')
-    plt.ylim(100, 500)
-    plt.legend(frameon=False, fontsize='x-small', loc='lower left')
-    plt.ylabel('Maximum Flow Velocity [km s$^{-1}$]')
-    #plt.xlabel('Log Star Formation Rate Surface Density (M$_\odot$ yr$^{-1}$ kpc$^{-2}$)')
-    plt.xlabel('Log $\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    plt.show()
-
-    return flow_mask, vel_diff, v_out, v_out_bin_stdev
-
-def plot_sfr_surface_density_radius(sig_sfr, rad_flat, stat_results):
-    """
-    Plots the SFR surface density against galaxy radius
-
-    Inputs:
-        sig_sfr: the SFR surface density
-        rad: the flattend array of radius
-        stat_results: the statistical results from KOFFEE
-
-    """
-    #create the flow mask
-    flow_mask = (stat_results > 0)
-
-    #create the no-flow mask
-    no_flow_mask = (stat_results == 0)
-
-    #apply to the rad array
-    rad_flow = rad_flat[flow_mask]
-    rad_no_flow = rad_flat[no_flow_mask]
-
-    #apply to the SFR surface density array
-    sig_sfr_flow = sig_sfr[flow_mask]
-    sig_sfr_no_flow = sig_sfr[no_flow_mask]
-
-    #plot
-    plt.figure()
-    plt.scatter(rad_flow, sig_sfr_flow, label='Outflow spaxels')
-    plt.scatter(rad_no_flow, sig_sfr_no_flow, label='No outflow spaxels')
-    plt.yscale('log')
-    plt.xlabel('Radius [Arcseconds]')
-    plt.ylabel('Log $\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$]')
-    plt.legend()
-    plt.show()
-
-def plot_vel_out_radius(rad, outflow_results, stat_results, z):
-    """
-    Plots the SFR surface density against galaxy radius
-
-    Inputs:
-        sig_sfr: the SFR surface density
-        rad: the array of radius
-        stat_results: the statistical results from KOFFEE
-
-    """
-    #create the flow mask
-    flow_mask = (stat_results > 0)
-
-    #de-redshift the data first!!!
-    systemic_mean = outflow_results[1,:]/(1+z)
-    flow_mean = outflow_results[4,:]/(1+z)
-    flow_sigma = outflow_results[3,:]/(1+z)
-
-    #find the velocity difference
-    #doing c*(lam_gal-lam_out)/lam_gal
-    vel_diff = 299792.458*(systemic_mean-flow_mean)/systemic_mean
-
-    v_out = 2*flow_sigma*299792.458/systemic_mean + vel_diff
-
-    vel_out = v_out[flow_mask]
-    #mask out the spaxels above 500km/s (they're bad fits)
-    mask_500 = vel_out<500
-    vel_out = vel_out[mask_500]
-
-    #apply to the rad array
-    rad_flow = rad[flow_mask]
-    rad_flow = rad_flow[mask_500]
-
-    #create the median points for the outflowing vel
-    first_bin, last_bin = rad_flow.min(), 6.4
-    bin_width = (last_bin-first_bin)/8
-    #loop through all the bins
-    bin_edges = [first_bin, first_bin+bin_width]
-    rad_bin_medians = []
-    v_out_bin_medians = []
-    rad_bin_stdev = []
-    v_out_bin_stdev = []
-    while bin_edges[1] <= last_bin+bin_width-bin_width/6:
-        #create the bin
-        rad_bin = rad_flow[(rad_flow>=bin_edges[0])&(rad_flow<bin_edges[1])]
-        v_out_bin = vel_out[(rad_flow>=bin_edges[0])&(rad_flow<bin_edges[1])]
-
-        #find the median in the bin
-        rad_median = np.nanmedian(rad_bin)
-        v_out_median = np.nanmedian(v_out_bin)
-
-        #find the standard deviation in the bin
-        rad_stdev = np.nanstd(rad_bin)
-        v_out_stdev = np.nanstd(v_out_bin)
-
-        #use the stdev to cut out any points greater than 2 sigma away from the median
-        if np.any(v_out_bin >= v_out_median+2*v_out_stdev) or np.any(v_out_bin <= v_out_median-2*v_out_stdev):
-            v_out_median = np.nanmedian(v_out_bin[(v_out_bin>v_out_median-2*v_out_stdev)&(v_out_bin<v_out_median+2*v_out_stdev)])
-            v_out_stdev = np.nanstd(v_out_bin[(v_out_bin>v_out_median-2*v_out_stdev)&(v_out_bin<v_out_median+2*v_out_stdev)])
-
-        rad_bin_medians.append(rad_median)
-        v_out_bin_medians.append(v_out_median)
-        rad_bin_stdev.append(rad_stdev)
-        v_out_bin_stdev.append(v_out_stdev)
-
-        #change bin_edges
-        bin_edges = [bin_edges[0]+0.5, bin_edges[1]+0.5]
-
-    rad_bin_medians = np.array(rad_bin_medians)
-    v_out_bin_medians = np.array(v_out_bin_medians)
-    rad_bin_stdev = np.array(rad_bin_stdev)
-    v_out_bin_stdev = np.array(v_out_bin_stdev)
-    print('radius medians', rad_bin_medians)
-    print('v_out medians', v_out_bin_medians)
-
-    #plot
-    plt.figure()
-    plt.scatter(rad_flow, vel_out, alpha=0.4)
-    plt.plot(rad_bin_medians, v_out_bin_medians, marker='', color='tab:blue', lw=3.0)
-    plt.axvline(2.5, ls='--', c='k', lw=3)
-    plt.axvline(6.4, ls='--', c='k', lw=3)
-    plt.ylim(100,500)
-    plt.xlim(-0.4, 7.8)
-    plt.xlabel('Radius [Arcseconds]')
-    plt.ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
-    plt.show()
-
-    return v_out
-
-def plot_outflow_frequency_radius(rad_flat, stat_results):
-    """
-    Plots the frequency of outflow spaxels, and non-outflow spaxels against radius, using the flattened arrays.
-    """
-    #create flow mask
-    flow_mask = (stat_results > 0)
-
-    #create no_flow mask
-    no_flow_mask = (stat_results == 0)
-
-    #create low S/N mask
-    low_sn_mask = np.isnan(stat_results)
-
-    #get the radius array for each type of spaxel
-    rad_flow = rad_flat[flow_mask]
-    rad_no_flow = rad_flat[no_flow_mask]
-    rad_low_sn = rad_flat[low_sn_mask]
-
-    #get total number of spaxels
-    total_spaxels = stat_results.shape[0]
-    print(total_spaxels)
-    total_outflows = rad_flow.shape[0]
-    total_no_flows = rad_no_flow.shape[0]
-
-    #iterate through the radii and get the number of spaxels in that range
-    num_flow = []
-    num_no_flow = []
-    num_low_sn = []
-    num_spax_rad = []
-    num_spax_flow_rad = []
-
-    cum_spax = []
-    cumulative_spaxels = 0
-
-    step_range = 0.5
-
-    for i in np.arange(0,21, step_range):
-        flow_bin = rad_flow[(rad_flow>=i)&(rad_flow<(i+step_range))].shape[0]
-        no_flow_bin = rad_no_flow[(rad_no_flow>=i)&(rad_no_flow<(i+step_range))].shape[0]
-        low_sn_bin = rad_low_sn[(rad_low_sn>=i)&(rad_low_sn<(i+step_range))].shape[0]
-
-        rad_bin = flow_bin+no_flow_bin+low_sn_bin
-        rad_flow_bin = flow_bin + no_flow_bin
-
-        cumulative_spaxels = cumulative_spaxels + rad_flow_bin
-        cum_spax.append(cumulative_spaxels)
-
-        num_flow.append(flow_bin)
-        num_no_flow.append(no_flow_bin)
-        num_low_sn.append(low_sn_bin)
-        num_spax_rad.append(rad_bin)
-        num_spax_flow_rad.append(rad_flow_bin)
-
-    num_flow = np.array(num_flow)
-    num_no_flow = np.array(num_no_flow)
-    num_low_sn = np.array(num_low_sn)
-    num_spax_rad = np.array(num_spax_rad)
-    num_spax_flow_rad = np.array(num_spax_flow_rad)
-    cum_spax = np.array(cum_spax)
-    cum_spax = cum_spax/cum_spax[-1]
-
-    #create the plot
-    """
-    plt.figure()
-    plt.fill_between(np.arange(0,21, step_range), 0.0, cum_spax, color='grey', alpha=0.4)
-    plt.plot(np.arange(0,21, step_range), num_low_sn/num_spax_rad, label='Low S/N', alpha=0.5)
-    plt.plot(np.arange(0,21, step_range), num_flow/num_spax_rad, label='Outflows', alpha=0.5)
-    plt.plot(np.arange(0,21, step_range), num_no_flow/num_spax_rad, label='No Outflows', alpha=0.5)
-    plt.xlabel('Radius [Arcseconds]')
-    plt.ylabel('Fraction of spaxels')
-    plt.xlim(0,20)
-    plt.legend()
-    plt.show()
-    """
-
-    plt.figure()
-    plt.fill_between(np.arange(0,21, step_range), 0.0, cum_spax, color='grey', alpha=0.4)
-    plt.plot(np.arange(0,21, step_range), num_flow/num_spax_flow_rad, label="Outflow Spaxels", lw=3)
-    plt.text(0.2, 0.91, 'Outflow Spaxels', fontsize=14, color='tab:blue')
-    plt.plot(np.arange(0,21, step_range), num_no_flow/num_spax_flow_rad, label="No Flow Spaxels", lw=3)
-    plt.text(0.2, 0.05, 'No Flow Spaxels', fontsize=14, color='tab:orange')
-    plt.axvline(6.4, ls='--', c='k', lw=3)
-    plt.axvline(2.5, ls='--', c='k', lw=3)
-    plt.xlabel('Radius [Arcseconds]')
-    plt.ylabel('Spaxel PDF')
-    plt.xlim(-0.4, 7.8)
-    #plt.legend(loc='upper right')
-    plt.show()
-
-
-def plot_outflow_frequency_sfr_surface_density(sig_sfr, stat_results):
-    """
-    Plots the frequency of outflow spaxels, and non-outflow spaxels against radius, using the flattened arrays.
-    """
-    #create flow mask
-    flow_mask = (stat_results > 0)
-
-    #create no_flow mask
-    no_flow_mask = (stat_results == 0)
-
-    #create low S/N mask
-    low_sn_mask = np.isnan(stat_results)
-
-    #get the radius array for each type of spaxel
-    sig_sfr_flow = sig_sfr[flow_mask]
-    sig_sfr_no_flow = sig_sfr[no_flow_mask]
-    sig_sfr_low_sn = sig_sfr[low_sn_mask]
-
-    #get total number of spaxels
-    total_spaxels = stat_results.shape[0]
-    print(total_spaxels)
-    total_outflows = sig_sfr_flow.shape[0]
-    total_no_flows = sig_sfr_no_flow.shape[0]
-
-    #iterate through the sfr surface densities and get the number of spaxels in that range
-    num_flow = []
-    num_no_flow = []
-    num_low_sn = []
-    num_spax_sig_sfr = []
-    num_spax_flow_sig_sfr = []
-
-    cum_spax = []
-    cumulative_spaxels = 0
-
-    step_range = 0.1
-
-    for i in np.arange(sig_sfr.min(),sig_sfr.max(),step_range):
-        flow_bin = sig_sfr_flow[(sig_sfr_flow>=i)&(sig_sfr_flow<(i+step_range))].shape[0]
-        no_flow_bin = sig_sfr_no_flow[(sig_sfr_no_flow>=i)&(sig_sfr_no_flow<(i+step_range))].shape[0]
-        low_sn_bin = sig_sfr_low_sn[(sig_sfr_low_sn>=i)&(sig_sfr_low_sn<(i+step_range))].shape[0]
-
-        sig_sfr_bin = flow_bin+no_flow_bin+low_sn_bin
-        sig_sfr_flow_bin = flow_bin + no_flow_bin
-
-        cumulative_spaxels = cumulative_spaxels + sig_sfr_flow_bin
-        cum_spax.append(cumulative_spaxels)
-
-        num_flow.append(flow_bin)
-        num_no_flow.append(no_flow_bin)
-        num_low_sn.append(low_sn_bin)
-        num_spax_sig_sfr.append(sig_sfr_bin)
-        num_spax_flow_sig_sfr.append(sig_sfr_flow_bin)
-
-    num_flow = np.array(num_flow)
-    num_no_flow = np.array(num_no_flow)
-    num_low_sn = np.array(num_low_sn)
-    num_spax_sig_sfr = np.array(num_spax_sig_sfr)
-    num_spax_flow_sig_sfr = np.array(num_spax_flow_sig_sfr)
-    cum_spax = np.array(cum_spax)
-    cum_spax = cum_spax/cum_spax[-1]
-
-    #create the fractions
-    flow_fraction = num_flow/num_spax_flow_sig_sfr
-    no_flow_fraction = num_no_flow/num_spax_flow_sig_sfr
-
-    #replace nan values with the mean of the two values in front and behind.
-    for index, val in np.ndenumerate(flow_fraction):
-        if np.isnan(val):
-            flow_fraction[index] = np.nanmean([flow_fraction[index[0]-1],flow_fraction[index[0]+1]])
-
-    for index, val in np.ndenumerate(no_flow_fraction):
-        if np.isnan(val):
-            no_flow_fraction[index] = np.nanmean([no_flow_fraction[index[0]-1],no_flow_fraction[index[0]+1]])
-
-    #fit the frequencies using a spline fit
-    sig_sfr_range = np.log10(np.arange(sig_sfr.min(),sig_sfr.max(),step_range))
-    fit_flow = interp1d(sig_sfr_range, flow_fraction)
-    fit_no_flow = interp1d(sig_sfr_range, no_flow_fraction)
-    #new_sig_sfr_range = np.log10(np.arange(sig_sfr.min(),sig_sfr.max(),step_range/2))
-
-    #create the plot
-    fig, ax = plt.subplots()
-    ax.fill_between(np.arange(sig_sfr.min(),sig_sfr.max(),step_range),0.0, cum_spax, color='grey', alpha=0.4)
-    ax.plot(np.arange(sig_sfr.min(),sig_sfr.max(),step_range), flow_fraction, label="Outflow Spaxels", ls='-', lw=3, color='tab:blue')
-    #ax.plot(sig_sfr_range, num_flow/num_spax_flow_sig_sfr, label="Outflow Spaxels", ls='-', lw=3)
-    #ax.plot(sig_sfr_range, fit_flow(sig_sfr_range), label='Fit to Outflow Spaxels')
-    ax.text(1.2, 0.91, 'Outflow Spaxels', fontsize=14, color='tab:blue')
-    ax.plot(np.arange(sig_sfr.min(),sig_sfr.max(),step_range), no_flow_fraction, label="No Flow Spaxels", ls='-', lw=3, color='tab:orange')
-    #ax.plot(sig_sfr_range, fit_no_flow(sig_sfr_range), label='Fit to No flow Spaxels')
-    ax.text(1.1, 0.05, 'No Flow Spaxels', fontsize=14, color='tab:orange')
-    ax.axvline(1.0, ls='--', c='k', lw=2, label='Genzel+2011, Newman+2012')
-    ax.text(0.83, 0.2, 'Genzel+2011, Newman+2012', rotation='vertical')
-    ax.axvline(0.1, ls=':', c='k', lw=2, label='Heckman 2000')
-    ax.text(0.083, 0.65, 'Heckman 2000', rotation='vertical')
-    ax.set_xscale('log')
-    #ax.set_xticks([0,0.5,1,5,10])
-    #ax.get_xaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
-    ax.set_xlabel('Log $\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax.set_ylabel('Spaxel PDF')
-    ax.set_xlim(0.02,11)
-    #plt.legend(frameon=False, fontsize='x-small', loc=(0.12,0.87))
-    plt.show()
-
-
-
-
-def plot_sfr_surface_density_vout_loops(sfr, outflow_results, outflow_error, stat_results, z, h_beta_spec):
-    """
-    Try the same thing as above but with for loops
-    """
-    #create arrays to put the flow velocity results in
-    vel_res = np.empty_like(sfr)
-    vel_diffs = np.empty_like(sfr)
-    vel_res_type = np.empty_like(sfr)
-
-    for i in np.arange(sfr.shape[0]):
-        #if the maximum flux in the hbeta area is greater than 1.0, we do our maths on it
-        if h_beta_spec[:,i].max() > 1.0:
-            #find whether stat_results decided if there was an outflow or not
-            if stat_results[i] == 1:
-                #de-redshift the data
-                systemic_mean = outflow_results[1,i]/(1+z)
-                flow_mean = outflow_results[4,i]/(1+z)
-                flow_sigma = outflow_results[3,i]/(1+z)
-
-                #calculate the velocity difference
-                vel_diff = 299792.458*(systemic_mean-flow_mean)/systemic_mean
-
-                #use the velocity difference to decide if it is an in or an outflow
-                # if it is positive, it's an outflow
-                if vel_diff > 0:
-                    vel_res_type[i] = 1.0
-                    #calculate the v_out
-                    vel_res[i] = 2*flow_sigma*299792.458/systemic_mean + vel_diff
-                    vel_diffs[i] = vel_diff
-
-                elif vel_diff <= 0:
-                    vel_res_type[i] = -1.0
-                    #calculate the v_out
-                    vel_res[i] = 2*flow_sigma*299792.458/systemic_mean + vel_diff
-                    vel_diffs[i] = vel_diff
-
-
-            #if stat_results is zero, KOFFEE didn't find an outflow
-            elif stat_results[i] == 0:
-                vel_res[i] = 0.0
-                vel_res_type[i] = 0.0
-                vel_diffs[i] = 0.0
-
-        #otherwise, we cannot calculate the sfr reliably
-        else:
-            vel_res[i] = 0.0
-            vel_res_type[i] = 0.0
-            vel_diffs[i] = 0.0
-
-    #now do the plotting
-    plt.figure()
-    plt.plot(sfr[vel_res_type==1], vel_res[vel_res_type==1], marker='o', lw=0, label='Outflow', alpha=0.2)
-    plt.plot(sfr[vel_res_type==-1], vel_res[vel_res_type==-1], marker='o', lw=0, label='Inflow', alpha=0.2)
-    plt.xscale('log')
-    plt.legend(frameon=False, fontsize='small', loc='lower left')
-    plt.ylabel('Flow velocity (km s$^{-1}$)')
-    plt.xlabel('Log Star Formation Rate Surface Density (M$_\odot$ yr$^{-1}$ kpc$^{-2}$)')
-    plt.show()
-
-    return vel_res, vel_res_type, vel_diffs
-
-
-def plot_sigma_vel_diff(outflow_results, outflow_error, stat_results, z):
-    """
-    Plots the velocity difference between systemic and flow components against the flow sigma
-    """
-    #create outflow mask
-    flow_mask = (stat_results==1)
-
-    #de-redshift the data first!!!
-    systemic_mean = outflow_results[1,:][flow_mask]/(1+z)
-    flow_mean = outflow_results[4,:][flow_mask]/(1+z)
-    flow_sigma = outflow_results[3,:][flow_mask]/(1+z)
-
-    #find the velocity difference
-    #doing c*(lam_gal-lam_out)/lam_gal
-    vel_diff = 299792.458*(systemic_mean-flow_mean)/systemic_mean
-
-    #seperate them into out and in flows
-    vel_diff_out = vel_diff[vel_diff > 20]
-    vel_diff_mid = vel_diff[(vel_diff<=20)&(vel_diff>-20)]
-    vel_diff_in = vel_diff[vel_diff <= -20]
-
-    sigma_out = flow_sigma[vel_diff > 20]*299792.458/systemic_mean[vel_diff > 20]
-    sigma_mid = flow_sigma[(vel_diff<=20)&(vel_diff>-20)]*299792.458/systemic_mean[(vel_diff<=20)&(vel_diff>-20)]
-    sigma_in = flow_sigma[vel_diff <= -20]*299792.458/systemic_mean[vel_diff <= -20]
-
-    #plot it
-    plt.figure()
-    #plt.errorbar(sfr_out, v_out, yerr=vel_err_out, marker='o', lw=0, label='Outflow', alpha=0.2)
-    #plt.errorbar(sfr_in, abs(v_in), yerr=vel_err_in, marker='o', lw=0, label='Inflow', alpha=0.2)
-    plt.plot(vel_diff_out, sigma_out, marker='o', lw=0, label='Blue shifted flow', alpha=0.4)
-    plt.plot(vel_diff_in, sigma_in, marker='o', lw=0, label='Red shifted flow', alpha=0.4)
-    plt.plot(vel_diff_mid, sigma_mid, marker='o', lw=0, label='Centred flow', alpha=0.4)
-    #plt.xscale('log')
-    plt.legend(frameon=False, fontsize='small', loc='lower left')
-    plt.ylabel('Flow Dispersion ($\sigma_{out}$) [km s$^{-1}$]')
-    plt.xlabel('Velocity Difference (v$_{sys}$-v$_{flow}$) [km s$^{-1}$]')
-    plt.show()
-
-
-def plot_sigma_sfr(sfr, outflow_results, outflow_error, stat_results, z):
-    """
-    Plots the velocity difference between systemic and flow components against the flow sigma
-    """
-    #create outflow mask
-    flow_mask = (stat_results==1)
-
-    #de-redshift the data first!!!
-    systemic_mean = outflow_results[1,:][flow_mask]/(1+z)
-    flow_mean = outflow_results[4,:][flow_mask]/(1+z)
-    flow_sigma = outflow_results[3,:][flow_mask]/(1+z)
-
-    #find the velocity difference
-    #doing c*(lam_gal-lam_out)/lam_gal
-    vel_diff = 299792.458*(systemic_mean-flow_mean)/systemic_mean
-
-    #seperate them into out and in flows
-    vel_diff_out = vel_diff[vel_diff > 20]
-    vel_diff_mid = vel_diff[(vel_diff<=20)&(vel_diff>-20)]
-    vel_diff_in = vel_diff[vel_diff <= -20]
-
-    sigma_out = flow_sigma[vel_diff > 20]*299792.458/systemic_mean[vel_diff > 20]
-    sigma_mid = flow_sigma[(vel_diff<=20)&(vel_diff>-20)]*299792.458/systemic_mean[(vel_diff<=20)&(vel_diff>-20)]
-    sigma_in = flow_sigma[vel_diff <= -20]*299792.458/systemic_mean[vel_diff <= -20]
-
-    sfr_out = sfr[flow_mask][vel_diff > 20]
-    sfr_mid = sfr[flow_mask][(vel_diff<=20)&(vel_diff>-20)]
-    sfr_in = sfr[flow_mask][vel_diff <= -20]
-
-    #plot it
-    plt.figure()
-    #plt.errorbar(sfr_out, v_out, yerr=vel_err_out, marker='o', lw=0, label='Outflow', alpha=0.2)
-    #plt.errorbar(sfr_in, abs(v_in), yerr=vel_err_in, marker='o', lw=0, label='Inflow', alpha=0.2)
-    plt.plot(sfr_out, sigma_out, marker='o', lw=0, label='Blue shifted flow', alpha=0.4)
-    plt.plot(sfr_in, sigma_in, marker='o', lw=0, label='Red shifted flow', alpha=0.4)
-    plt.plot(sfr_mid, sigma_mid, marker='o', lw=0, label='Centred flow', alpha=0.4)
-    plt.xscale('log')
-    plt.legend(frameon=False, fontsize='small', loc='lower left')
-    plt.ylabel('Flow Dispersion ($\sigma_{out}$) [km s$^{-1}$]')
-    plt.xlabel('Log Star Formation Rate Surface Density (M$_\odot$ yr$^{-1}$ kpc$^{-2}$)')
-    plt.show()
-
-
-def plot_vel_diff_sfr(sfr, outflow_results, outflow_error, stat_results, z):
-    """
-    Plots the velocity difference between systemic and flow components against the flow sigma
-    """
-    #create outflow mask
-    flow_mask = (stat_results==1)
-
-    #de-redshift the data first!!!
-    systemic_mean = outflow_results[1,:][flow_mask]/(1+z)
-    flow_mean = outflow_results[4,:][flow_mask]/(1+z)
-
-    #find the velocity difference
-    #doing c*(lam_gal-lam_out)/lam_gal
-    vel_diff = 299792.458*(systemic_mean-flow_mean)/systemic_mean
-
-    #seperate them into out and in flows
-    vel_diff_out = vel_diff[vel_diff > 20]
-    vel_diff_mid = vel_diff[(vel_diff<=20)&(vel_diff>-20)]
-    vel_diff_in = vel_diff[vel_diff <= -20]
-
-    sfr_out = sfr[flow_mask][vel_diff > 20]
-    sfr_mid = sfr[flow_mask][(vel_diff<=20)&(vel_diff>-20)]
-    sfr_in = sfr[flow_mask][vel_diff <= -20]
-
-    #plot it
-    plt.figure()
-    #plt.errorbar(sfr_out, v_out, yerr=vel_err_out, marker='o', lw=0, label='Outflow', alpha=0.2)
-    #plt.errorbar(sfr_in, abs(v_in), yerr=vel_err_in, marker='o', lw=0, label='Inflow', alpha=0.2)
-    plt.plot(sfr_out, vel_diff_out, marker='o', lw=0, label='Blue shifted flow', alpha=0.4)
-    plt.plot(sfr_in, vel_diff_in, marker='o', lw=0, label='Red shifted flow', alpha=0.4)
-    plt.plot(sfr_mid, vel_diff_mid, marker='o', lw=0, label='Centred flow', alpha=0.4)
-    plt.xscale('log')
-    plt.legend(frameon=False, fontsize='small', loc='lower left')
-    plt.ylabel('Velocity Difference ($v_{sys}-v_{broad}$) [km s$^{-1}$]')
-    plt.xlabel('Log Star Formation Rate Surface Density (M$_\odot$ yr$^{-1}$ kpc$^{-2}$)')
-    plt.show()
-
-
-def plot_vdiff_amp_ratio(outflow_results, outflow_error, stat_results, z):
-    """
-    Plots the velocity difference between systemic and flow components against the flow sigma
-    """
-    #create outflow mask
-    flow_mask = (stat_results==1)
-
-    #de-redshift the data first!!!
-    systemic_amp = outflow_results[2,:][flow_mask]/(1+z)
-    flow_amp = outflow_results[5,:][flow_mask]/(1+z)
-    systemic_mean = outflow_results[1,:][flow_mask]/(1+z)
-    flow_mean = outflow_results[4,:][flow_mask]/(1+z)
-
-    #find the velocity difference
-    #doing c*(lam_gal-lam_out)/lam_gal
-    vel_diff = 299792.458*(systemic_mean-flow_mean)/systemic_mean
-
-    #find the amplitude ratio
-    amp_ratio = flow_amp/systemic_amp
-
-    #seperate them into out and in flows
-    amp_ratio_out = amp_ratio[vel_diff > 20]
-    amp_ratio_mid = amp_ratio[(vel_diff<=20)&(vel_diff>-20)]
-    amp_ratio_in = amp_ratio[vel_diff <= -20]
-
-    vel_diff_out = vel_diff[vel_diff > 20]
-    vel_diff_mid = vel_diff[(vel_diff<=20)&(vel_diff>-20)]
-    vel_diff_in = vel_diff[vel_diff <= -20]
-
-
-
-    #plot it
-    plt.figure()
-    #plt.errorbar(sfr_out, v_out, yerr=vel_err_out, marker='o', lw=0, label='Outflow', alpha=0.2)
-    #plt.errorbar(sfr_in, abs(v_in), yerr=vel_err_in, marker='o', lw=0, label='Inflow', alpha=0.2)
-    plt.plot(vel_diff_out, amp_ratio_out, marker='o', lw=0, label='Blue shifted flow', alpha=0.4)
-    plt.plot(vel_diff_in, amp_ratio_in, marker='o', lw=0, label='Red shifted flow', alpha=0.4)
-    plt.plot(vel_diff_mid, amp_ratio_mid, marker='o', lw=0, label='Centred flow', alpha=0.4)
-    #plt.xscale('log')
-    plt.legend(frameon=False, fontsize='small', loc='lower left')
-    plt.ylabel('Amplitude Ratio (broad/systemic)')
-    plt.xlabel('Velocity Difference (km/s)')
-    plt.show()
+    if cont_subtract == True:
+        return sfr, total_sfr, sfr_surface_density, s_n_mask, h_beta_spec
+    elif cont_subtract == False:
+        return sfr, total_sfr, sfr_surface_density, h_beta_spec
