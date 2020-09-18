@@ -25,11 +25,14 @@ import matplotlib.pyplot as plt
 
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
-from scipy.stats import pearsonr
+import scipy.stats as stats
 
 from . import calculate_outflow_velocity as calc_outvel
+from . import calculate_star_formation_rate as calc_sfr
 
 
+import importlib
+importlib.reload(calc_outvel)
 
 
 #===============================================================================
@@ -97,6 +100,109 @@ def running_mean(x, N):
     cumsum = np.cumsum(np.insert(x, 0, 0))
     return (cumsum[N:] - cumsum[:-N]) / float(N)
 
+def lower_quantile(x):
+    """
+    Calculate the lower quantile
+    """
+    return np.nanquantile(x, 0.33)
+
+def upper_quantile(x):
+    """
+    Calculate the upper quantile
+    """
+    return np.nanquantile(x, 0.66)
+
+
+def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_bin=None):
+    """
+    Calculate the mean, upper and lower quantile for an array of data
+    """
+    if min_bin == None:
+        min_bin = np.nanmin(x)
+    if max_bin == None:
+        max_bin = np.nanmax(x)
+
+    #create the logspace - these are the bin edges
+    logspace = np.logspace(np.log10(min_bin), np.log10(max_bin), num=num_bins+1)
+
+    def lower_quantile(x):
+        return np.nanquantile(x, 0.33)
+
+    def upper_quantile(x):
+        return np.nanquantile(x, 0.66)
+
+    #calculate the upper and lower quartiles
+    upper_quantile, bin_edges, binnumber = stats.binned_statistic(x, y, statistic=upper_quantile, bins=logspace)
+
+    lower_quantile, bin_edges, binnumber = stats.binned_statistic(x, y, statistic=lower_quantile, bins=logspace)
+
+    #calculate the average
+    bin_avg = np.zeros(len(logspace)-1)
+
+    for i in range(0, len(logspace)-1):
+        left_bound = logspace[i]
+        right_bound = logspace[i+1]
+        items_in_bin = y[(x>left_bound)&(x<=right_bound)]
+        if weights == None:
+            bin_avg[i] = np.nanmedian(items_in_bin)
+        else:
+            weights_in_bin = weights[0][(x>left_bound)&(x<=right_bound)]
+            weights_in_bin = 1.0 - weights_in_bin/items_in_bin
+            bin_avg[i] = np.average(items_in_bin, weights=weights_in_bin)
+
+    #calculate the bin center for plotting
+    bin_center = np.zeros(len(logspace)-1)
+    for i in range(0, len(logspace)-1):
+        bin_center[i] = np.nanmean([logspace[i],logspace[i+1]])
+
+    return bin_center, bin_avg, lower_quantile, upper_quantile
+
+
+def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_bin=None):
+    """
+    Calculate the mean, upper and lower quantile for an array of data
+    """
+    if min_bin == None:
+        min_bin = np.nanmin(x)
+    if max_bin == None:
+        max_bin = np.nanmax(x)
+
+    #create the logspace - these are the bin edges
+    logspace = np.linspace(min_bin, max_bin, num=num_bins+1)
+
+    def lower_quantile(x):
+        return np.nanquantile(x, 0.33)
+
+    def upper_quantile(x):
+        return np.nanquantile(x, 0.66)
+
+    #calculate the upper and lower quartiles
+    upper_quantile, bin_edges, binnumber = stats.binned_statistic(x, y, statistic=upper_quantile, bins=logspace)
+
+    lower_quantile, bin_edges, binnumber = stats.binned_statistic(x, y, statistic=lower_quantile, bins=logspace)
+
+    #calculate the average
+    bin_avg = np.zeros(len(logspace)-1)
+
+    for i in range(0, len(logspace)-1):
+        left_bound = logspace[i]
+        right_bound = logspace[i+1]
+        items_in_bin = y[(x>left_bound)&(x<=right_bound)]
+        if weights == None:
+            bin_avg[i] = np.nanmedian(items_in_bin)
+        else:
+            weights_in_bin = weights[0][(x>left_bound)&(x<=right_bound)]
+            weights_in_bin = 1.0 - weights_in_bin/items_in_bin
+            bin_avg[i] = np.average(items_in_bin, weights=weights_in_bin)
+
+    #calculate the bin center for plotting
+    bin_center = np.zeros(len(logspace)-1)
+    for i in range(0, len(logspace)-1):
+        bin_center[i] = np.nanmean([logspace[i],logspace[i+1]])
+
+    return bin_center, bin_avg, lower_quantile, upper_quantile
+
+
 def pearson_correlation(x, y):
     """
     Calculate the Pearson correlation coefficient and p-value
@@ -117,7 +223,7 @@ def pearson_correlation(x, y):
     p_value : float
         Two-tailed p-value
     """
-    r, p_value = pearsonr(x, y)
+    r, p_value = stats.pearsonr(x, y)
 
     return r, p_value
 
@@ -126,15 +232,247 @@ def pearson_correlation(x, y):
 # PLOTTING FUNCTIONS - for paper
 #===============================================================================
 
-def plot_sfr_vout(sfr, outflow_results, outflow_error, statistical_results, z):
+def plot_sfr_vout_compare_sfr_calcs(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, radius, weighted_average=True):
     """
-    Plots the SFR against the outflow velocity.
+    Plots the SFR surface density against the outflow velocity, comparing Sigma_SFR calculated
+    from the full line to Sigma_SFR calculated using only the narrow component.
 
     Parameters
     ----------
-    sfr : (array)
-        the star formation rate (shape (67, 24))
+    outflow_results : (array)
+        array of outflow results from KOFFEE.  Should be (6, sfr.shape)
 
+    outflow_err : (array)
+        array of the outflow result errors from KOFFEE
+
+    stat_results : (array)
+        array of statistical results from KOFFEE.  Should be same shape as sfr.
+
+    z : float
+        redshift
+
+    Returns
+    -------
+    A six panel graph of velocity offset, velocity dispersion and outflow velocity against
+    the SFR surface density
+
+    """
+    #calculate the outflow velocity
+    vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
+
+    #calculate the sfr surface density - using just the systemic line, and including the flux line
+    #don't include extinction since this was included in the continuum subtraction using ppxf
+    sfr_sys, total_sfr_sys, sfr_surface_density_sys, h_beta_integral_err_sys = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr_flow, total_sfr_flow, sfr_surface_density_flow, h_beta_integral_err_flow = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=True)
+
+    print('$\Sigma_{SFR}$ difference between including and not including flow for whole cube:', np.nanmedian(sfr_sys)-np.nanmedian(sfr_flow))
+    print('$\Sigma_{SFR}$ difference between including and not including flow for most SFing spaxels:', np.nanmedian(sfr_sys.reshape(-1)[sfr_sys.reshape(-1)>np.nanquantile(sfr_sys, 0.5)])-np.nanmedian(sfr_flow.reshape(-1)[sfr_flow.reshape(-1)>np.nanquantile(sfr_flow, 0.5)]))
+    print('$\Sigma_{SFR}$ difference between including and not including flow for least SFing spaxels:', np.nanmedian(sfr_sys.reshape(-1)[sfr_sys.reshape(-1)<=np.nanquantile(sfr_sys, 0.5)])-np.nanmedian(sfr_flow.reshape(-1)[sfr_flow.reshape(-1)<=np.nanquantile(sfr_flow, 0.5)]))
+
+    #get the sfr for the outflow spaxels
+    flow_mask = (statistical_results>0)
+
+    #convert the sigma to km/s instead of Angstroms
+    flow_sigma = OIII_outflow_results[3,:,:][flow_mask]/(1+z)
+    systemic_mean = OIII_outflow_results[1,:,:][flow_mask]/(1+z)
+    vel_disp = flow_sigma*299792.458/systemic_mean
+
+    vel_disp_err = (flow_sigma/systemic_mean)*np.sqrt((OIII_outflow_error[3,:,:][flow_mask]/flow_sigma)**2 + (OIII_outflow_error[1,:,:][flow_mask]/systemic_mean)**2)
+
+    #flatten all the arrays and get rid of extra spaxels
+    sfr_sys = sfr_sys[flow_mask]
+    sfr_flow = sfr_flow[flow_mask]
+    sfr_sys_err = h_beta_integral_err_sys[flow_mask]
+    sfr_flow_err = h_beta_integral_err_flow[flow_mask]
+    vel_diff = vel_diff[flow_mask]
+    vel_diff_err = vel_diff_err[flow_mask]
+    vel_out = vel_out[flow_mask]
+    vel_out_err = vel_out_err[flow_mask]
+    radius = radius[flow_mask]
+
+    #make sure none of the errors are nan values
+    vel_diff_err[np.where(np.isnan(vel_diff_err)==True)] = np.nanmedian(vel_diff_err)
+    vel_out_err[np.where(np.isnan(vel_out_err)==True)] = np.nanmedian(vel_out_err)
+    vel_disp_err[np.where(np.isnan(vel_disp_err)==True)] = np.nanmedian(vel_disp_err)
+
+    #do the calculations for all the bins
+    num_bins = 5
+    min_bin = None #-0.05
+    max_bin = None #0.6
+
+    if weighted_average == False:
+        bin_center, v_out_bin_medians_sys, v_out_bin_lower_q_sys, v_out_bin_upper_q_sys = binned_median_quantile_log(sfr_sys, vel_out, num_bins=num_bins, weights=None, min_bin=None, max_bin=None)
+        bin_center, vel_diff_bin_medians_sys, vel_diff_bin_lower_q_sys, vel_diff_bin_upper_q_sys = binned_median_quantile_log(sfr_sys, vel_diff, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center, disp_bin_medians_sys, disp_bin_lower_q_sys, disp_bin_upper_q_sys = binned_median_quantile_log(sfr_sys, vel_disp, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+
+        bin_center, v_out_bin_medians_flow, v_out_bin_lower_q_flow, v_out_bin_upper_q_flow = binned_median_quantile_log(sfr_flow, vel_out, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center, vel_diff_bin_medians_flow, vel_diff_bin_lower_q_flow, vel_diff_bin_upper_q_flow = binned_median_quantile_log(sfr_flow, vel_diff, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center, disp_bin_medians_flow, disp_bin_lower_q_flow, disp_bin_upper_q_flow = binned_median_quantile_log(sfr_flow, vel_disp, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+
+    elif weighted_average == True:
+        bin_center, v_out_bin_medians_sys, v_out_bin_lower_q_sys, v_out_bin_upper_q_sys = binned_median_quantile_log(sfr_sys, vel_out, num_bins=num_bins, weights=[vel_out_err], min_bin=None, max_bin=None)
+        bin_center, vel_diff_bin_medians_sys, vel_diff_bin_lower_q_sys, vel_diff_bin_upper_q_sys = binned_median_quantile_log(sfr_sys, vel_diff, num_bins=num_bins, weights=[vel_diff_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center, disp_bin_medians_sys, disp_bin_lower_q_sys, disp_bin_upper_q_sys = binned_median_quantile_log(sfr_sys, vel_disp, num_bins=num_bins, weights=[vel_disp_err], min_bin=min_bin, max_bin=max_bin)
+
+        bin_center, v_out_bin_medians_flow, v_out_bin_lower_q_flow, v_out_bin_upper_q_flow = binned_median_quantile_log(sfr_flow, vel_out, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center, vel_diff_bin_medians_flow, vel_diff_bin_lower_q_flow, vel_diff_bin_upper_q_flow = binned_median_quantile_log(sfr_flow, vel_diff, num_bins=num_bins, weights=[vel_diff_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center, disp_bin_medians_flow, disp_bin_lower_q_flow, disp_bin_upper_q_flow = binned_median_quantile_log(sfr_flow, vel_disp, num_bins=num_bins, weights=[vel_disp_err], min_bin=min_bin, max_bin=max_bin)
+
+
+    #fit our own trends
+    #popt_vout, pcov_vout = curve_fit(fitting_function, sfr_sys_bin_medians, v_out_bin_medians)
+    #popt_vel_diff, pcov_vel_diff = curve_fit(fitting_function, sfr_sys_bin_medians, vel_diff_bin_medians)
+    #popt_disp, pcov_disp = curve_fit(fitting_function, sfr_sys_bin_medians, disp_bin_medians)
+    #print(popt_vout)
+
+    print(bin_center)
+    print(v_out_bin_medians_sys)
+
+    #calculate the r value for the median values
+    r_vel_out_med_sys, p_value_v_out = pearson_correlation(bin_center, v_out_bin_medians_sys)
+    r_vel_diff_med_sys, p_value_v_diff = pearson_correlation(bin_center, vel_diff_bin_medians_sys)
+    r_disp_med_sys, p_value_disp = pearson_correlation(bin_center, disp_bin_medians_sys)
+
+    r_vel_out_med_flow, p_value_v_out = pearson_correlation(bin_center, v_out_bin_medians_flow)
+    r_vel_diff_med_flow, p_value_v_diff = pearson_correlation(bin_center, vel_diff_bin_medians_flow)
+    r_disp_med_flow, p_value_disp = pearson_correlation(bin_center, disp_bin_medians_flow)
+
+    #calculate the r value for all the values
+    r_vel_out_sys, p_value_v_out = pearson_correlation(sfr_sys, vel_out)
+    r_vel_diff_sys, p_value_v_diff = pearson_correlation(sfr_sys, vel_diff)
+    r_disp_sys, p_value_disp = pearson_correlation(sfr_sys, vel_disp)
+
+    r_vel_out_flow, p_value_v_out = pearson_correlation(sfr_flow, vel_out)
+    r_vel_diff_flow, p_value_v_diff = pearson_correlation(sfr_flow, vel_diff)
+    r_disp_flow, p_value_disp = pearson_correlation(sfr_flow, vel_disp)
+
+
+    #create vectors to plot the literature trends
+    #sfr_surface_density_chen, v_out_chen = chen_et_al_2010(sfr_sys.min(), sfr_sys.max(), scale_factor=popt_vout[0])
+    #sfr_surface_density_murray, v_out_murray = murray_et_al_2011(sfr_sys.min(), sfr_sys.max(), scale_factor=popt_vout[0]*2)
+    #sfr_surface_density_chen, vel_diff_chen = chen_et_al_2010(sfr_sys.min(), sfr_sys.max(), scale_factor=popt_vel_diff[0])
+    #sfr_surface_density_murray, vel_diff_murray = murray_et_al_2011(sfr_sys.min(), sfr_sys.max(), scale_factor=popt_vel_diff[0]*2)
+    #sfr_surface_density_davies, v_disp_davies = davies_et_al_2019(sfr.min(), sfr.max())
+    sfr_surface_density_chen, v_out_chen = chen_et_al_2010(sfr_sys.min(), sfr_sys.max(), scale_factor=375.12)
+    sfr_surface_density_murray, v_out_murray = murray_et_al_2011(sfr_sys.min(), sfr_sys.max(), scale_factor=1400)
+    sfr_surface_density_chen, vel_diff_chen = chen_et_al_2010(sfr_sys.min(), sfr_sys.max(), scale_factor=54)
+    sfr_surface_density_murray, vel_diff_murray = murray_et_al_2011(sfr_sys.min(), sfr_sys.max(), scale_factor=200)
+
+    #plot it
+    fig, ax = plt.subplots(nrows=2, ncols=3, sharex=True, figsize=(12,7))
+    plt.rcParams['axes.facecolor']='white'
+
+    #----------------
+    #Including Outflow Line Plots
+    #-----------------
+    ax[0,0].scatter(sfr_flow[vel_disp>=51], vel_out[vel_disp>=51], marker='o', lw=0, label='Flow spaxels; R={:.2f}'.format(r_vel_out_flow), alpha=0.6, c=radius[vel_disp>=51])
+    ax[0,0].scatter(sfr_flow[vel_disp<51], vel_out[vel_disp<51], marker='v', lw=0, alpha=0.6, c=radius[vel_disp<51])
+    #ax[0,0].plot(sfr_flow)
+    #ax[0].fill_between(10**sfr_bin_medians, v_out_bin_medians+v_out_bin_stdev, v_out_bin_medians-v_out_bin_stdev, color='tab:blue', alpha=0.3)
+    ax[0,0].fill_between(bin_center, v_out_bin_lower_q_flow, v_out_bin_upper_q_flow, color='tab:blue', alpha=0.3)
+    ax[0,0].plot(bin_center, v_out_bin_medians_flow, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_out_med_flow))
+    ax[0,0].errorbar(2, 200, xerr=np.nanmedian(h_beta_integral_err_sys), yerr=np.nanmedian(vel_out_err), c='k')
+    #ax[0].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_vout), 'r-', label='Fit: $v_{out}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_vout))
+    ax[0,0].plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
+    ax[0,0].plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
+    ax[0,0].set_ylim(100, 500)
+    ax[0,0].set_xscale('log')
+    lgnd = ax[0,0].legend(frameon=False, fontsize='x-small', loc='lower left')
+    lgnd.legendHandles[0]._legmarker.set_markersize(4)
+    ax[0,0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
+    #ax[0,0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+
+    ax[0,1].scatter(sfr_flow[vel_disp>=51], vel_diff[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_vel_diff_flow), c=radius[vel_disp>=51])
+    ax[0,1].scatter(sfr_flow[vel_disp<51], vel_diff[vel_disp<51], marker='v', lw=0, alpha=0.6, c=radius[vel_disp<51])
+    ax[0,1].fill_between(bin_center, vel_diff_bin_lower_q_flow, vel_diff_bin_upper_q_flow, color='tab:blue', alpha=0.3)
+    ax[0,1].plot(bin_center, vel_diff_bin_medians_flow, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_diff_med_flow))
+    ax[0,1].errorbar(2, -50, xerr=np.nanmedian(h_beta_integral_err_flow), yerr=np.nanmedian(vel_diff_err), c='k')
+    #ax[1].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_vel_diff), 'r-', label='Fit: $\mu_{sys}-\mu_{flow}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_vel_diff))
+    ax[0,1].plot(sfr_surface_density_chen, vel_diff_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
+    ax[0,1].plot(sfr_surface_density_murray, vel_diff_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
+    ax[0,1].set_ylim(-150,250)
+    ax[0,1].set_xscale('log')
+    lgnd = ax[0,1].legend(frameon=False, fontsize='x-small', loc='lower left')
+    lgnd.legendHandles[0]._legmarker.set_markersize(4)
+    ax[0,1].set_title('$\Sigma_{SFR}$ calculated using full line')
+    ax[0,1].set_ylabel('Velocity Offset [km s$^{-1}$]')
+    #ax[0,1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+
+    im = ax[0,2].scatter(sfr_flow[vel_disp>=51], vel_disp[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_disp_flow), c=radius[vel_disp>=51])
+    ax[0,2].scatter(sfr_flow[vel_disp<51], vel_disp[vel_disp<51], marker='v', lw=0, alpha=0.6, c=radius[vel_disp<51])
+    ax[0,2].fill_between(bin_center, disp_bin_lower_q_flow, disp_bin_upper_q_flow, color='tab:blue', alpha=0.3)
+    ax[0,2].plot(bin_center, disp_bin_medians_flow, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_disp_med_flow))
+    ax[0,2].errorbar(2, 0, xerr=np.nanmedian(h_beta_integral_err_flow), yerr=np.nanmedian(vel_disp_err), c='k')
+    #ax[2].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_disp), 'r-', label='Fit: $\sigma_{flow}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_disp))
+    #ax[2].plot(sfr_surface_density_davies, v_disp_davies, '--k', label='Davies+19, $\sigma_{out}=241\Sigma_{SFR}^{0.3}$')
+    plt.colorbar(im, ax=ax[0,2])
+    ax[0,2].set_xscale('log')
+    ax[0,2].set_ylim(-100,300)
+    lgnd = ax[0,2].legend(frameon=False, fontsize='x-small', loc='lower left')
+    lgnd.legendHandles[0]._legmarker.set_markersize(4)
+    ax[0,2].set_ylabel('Velocity Dispersion [km s$^{-1}$]')
+    #ax[0,2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+
+    #----------------
+    #Systemic Line Plots
+    #-----------------
+    ax[1,0].scatter(sfr_sys[vel_disp>=51], vel_out[vel_disp>=51], marker='o', lw=0, label='Flow spaxels; R={:.2f}'.format(r_vel_out_sys), alpha=0.6, c=radius[vel_disp>=51])
+    ax[1,0].scatter(sfr_sys[vel_disp<51], vel_out[vel_disp<51], marker='v', lw=0, alpha=0.6, c=radius[vel_disp<51])
+    #ax[0].fill_between(10**sfr_bin_medians, v_out_bin_medians+v_out_bin_stdev, v_out_bin_medians-v_out_bin_stdev, color='tab:blue', alpha=0.3)
+    ax[1,0].fill_between(bin_center, v_out_bin_lower_q_sys, v_out_bin_upper_q_sys, color='tab:blue', alpha=0.3)
+    ax[1,0].plot(bin_center, v_out_bin_medians_sys, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_out_med_sys))
+    ax[1,0].errorbar(2, 200, xerr=np.nanmedian(h_beta_integral_err_sys), yerr=np.nanmedian(vel_out_err), c='k')
+    #ax[0].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_vout), 'r-', label='Fit: $v_{out}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_vout))
+    ax[1,0].plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
+    ax[1,0].plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
+    ax[1,0].set_ylim(100, 500)
+    ax[1,0].set_xscale('log')
+    lgnd = ax[1,0].legend(frameon=False, fontsize='x-small', loc='lower left')
+    lgnd.legendHandles[0]._legmarker.set_markersize(4)
+    ax[1,0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
+    ax[1,0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+
+    ax[1,1].scatter(sfr_sys[vel_disp>=51], vel_diff[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_vel_diff_sys), c=radius[vel_disp>=51])
+    ax[1,1].scatter(sfr_sys[vel_disp<51], vel_diff[vel_disp<51], marker='v', lw=0, alpha=0.6, c=radius[vel_disp<51])
+    ax[1,1].fill_between(bin_center, vel_diff_bin_lower_q_sys, vel_diff_bin_upper_q_sys, color='tab:blue', alpha=0.3)
+    ax[1,1].plot(bin_center, vel_diff_bin_medians_sys, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_diff_med_sys))
+    ax[1,1].errorbar(2, -50, xerr=np.nanmedian(h_beta_integral_err_sys), yerr=np.nanmedian(vel_diff_err), c='k')
+    #ax[1].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_vel_diff), 'r-', label='Fit: $\mu_{sys}-\mu_{flow}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_vel_diff))
+    ax[1,1].plot(sfr_surface_density_chen, vel_diff_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
+    ax[1,1].plot(sfr_surface_density_murray, vel_diff_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
+    ax[1,1].set_ylim(-150,250)
+    ax[1,1].set_xscale('log')
+    lgnd = ax[1,1].legend(frameon=False, fontsize='x-small', loc='lower left')
+    lgnd.legendHandles[0]._legmarker.set_markersize(4)
+    ax[1,1].set_title('$\Sigma_{SFR}$ calculated using systemic gaussian')
+    ax[1,1].set_ylabel('Velocity Offset [km s$^{-1}$]')
+    ax[1,1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+
+    im = ax[1,2].scatter(sfr_sys[vel_disp>=51], vel_disp[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_disp_sys), c=radius[vel_disp>=51])
+    ax[1,2].scatter(sfr_sys[vel_disp<51], vel_disp[vel_disp<51], marker='v', lw=0, alpha=0.6, c=radius[vel_disp<51])
+    ax[1,2].fill_between(bin_center, disp_bin_lower_q_sys, disp_bin_upper_q_sys, color='tab:blue', alpha=0.3)
+    ax[1,2].plot(bin_center, disp_bin_medians_sys, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_disp_med_sys))
+    ax[1,2].errorbar(2, 0, xerr=np.nanmedian(h_beta_integral_err_sys), yerr=np.nanmedian(vel_disp_err), c='k')
+    #ax[2].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_disp), 'r-', label='Fit: $\sigma_{flow}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_disp))
+    #ax[2].plot(sfr_surface_density_davies, v_disp_davies, '--k', label='Davies+19, $\sigma_{out}=241\Sigma_{SFR}^{0.3}$')
+    plt.colorbar(im)
+    ax[1,2].set_xscale('log')
+    ax[1,2].set_ylim(-100,300)
+    lgnd = ax[1,2].legend(frameon=False, fontsize='x-small', loc='lower left')
+    lgnd.legendHandles[0]._legmarker.set_markersize(4)
+    ax[1,2].set_ylabel('Velocity Dispersion [km s$^{-1}$]')
+    ax[1,2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_flux_vout(OIII_outflow_results, OIII_outflow_error, flux_line_outflow_results, flux_line_outflow_error, statistical_results, radius, z):
+    """
+    Plots the line flux ratio against the outflow velocity.
+
+    Parameters
+    ----------
     outflow_results : (array)
         array of outflow results from KOFFEE.  Should be (6, sfr.shape)
 
@@ -150,165 +488,98 @@ def plot_sfr_vout(sfr, outflow_results, outflow_error, statistical_results, z):
     Returns
     -------
     A three panel graph of velocity offset, velocity dispersion and outflow velocity against
-    the SFR surface density
+    the flux ratio
 
     """
     #calculate the outflow velocity
-    vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(outflow_results, outflow_error, statistical_results, z)
+    vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
 
-    #get the sfr for the outflow spaxels
+    #calculate the flux for systematic and flow gaussians
+    systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_sfr.calc_flux_from_koffee(flux_line_outflow_results, flux_line_outflow_error, statistical_results, z, outflow=True)
+
+    #make the flow mask
     flow_mask = (statistical_results>0)
 
     #convert the sigma to km/s instead of Angstroms
-    flow_sigma = outflow_results[3,:,:][flow_mask]/(1+z)
-    systemic_mean = outflow_results[1,:,:][flow_mask]/(1+z)
+    flow_sigma = OIII_outflow_results[3,:,:][flow_mask]/(1+z)
+    systemic_mean = OIII_outflow_results[1,:,:][flow_mask]/(1+z)
     vel_disp = flow_sigma*299792.458/systemic_mean
 
+    vel_disp_err = (flow_sigma/systemic_mean)*np.sqrt((OIII_outflow_error[3,:,:][flow_mask]/flow_sigma)**2 + (OIII_outflow_error[1,:,:][flow_mask]/systemic_mean)**2)
+
     #flatten all the arrays and get rid of extra spaxels
-    sfr = sfr[flow_mask]
     vel_diff = vel_diff[flow_mask]
     vel_diff_err = vel_diff_err[flow_mask]
     vel_out = vel_out[flow_mask]
     vel_out_err = vel_out_err[flow_mask]
+    systemic_flux = systemic_flux[flow_mask]
+    outflow_flux = outflow_flux[flow_mask]
+    radius = radius[flow_mask]
 
-    #take the log of sfr_out
-    log_sfr = np.log10(sfr)
+    #take the log and do the flux ratio
+    flux_ratio = np.log10(outflow_flux/systemic_flux)
 
-    #create the median points for the sfr
-    first_bin, last_bin = -1., np.nanmax(log_sfr)
-    bin_width = (last_bin-first_bin)/8
 
-    #loop through all the bins
-    bin_edges = [first_bin, first_bin+bin_width]
+    #calculate bins
+    num_bins=5
+    min_bin = None
+    max_bin = None
+    bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = binned_median_quantile_lin(flux_ratio, vel_out, num_bins=num_bins, weights=None, min_bin=None, max_bin=None)
+    bin_center, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q = binned_median_quantile_lin(flux_ratio, vel_diff, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+    bin_center, disp_bin_medians, disp_bin_lower_q, disp_bin_upper_q = binned_median_quantile_lin(flux_ratio, vel_disp, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
-    sfr_bin_medians = []
-    v_out_bin_medians = []
-    vel_diff_bin_medians = []
-    disp_bin_medians = []
-
-    sfr_bin_stdev = []
-    v_out_bin_stdev = []
-    vel_diff_bin_stdev = []
-    disp_bin_stdev = []
-
-    while bin_edges[1] <= last_bin+bin_width-bin_width/6:
-        #create the bin
-        sfr_bin = log_sfr[(log_sfr>=bin_edges[0]) & (log_sfr<bin_edges[1])]
-        v_out_bin = vel_out[(log_sfr>=bin_edges[0]) & (log_sfr<bin_edges[1])]
-        vel_diff_bin = vel_diff[(log_sfr>=bin_edges[0]) & (log_sfr<bin_edges[1])]
-        disp_bin = vel_disp[(log_sfr>=bin_edges[0]) & (log_sfr<bin_edges[1])]
-
-        #find the median in the bin
-        sfr_median = np.nanmedian(sfr_bin)
-        v_out_median = np.nanmedian(v_out_bin)
-        vel_diff_median = np.nanmedian(vel_diff_bin)
-        disp_median = np.nanmedian(disp_bin)
-
-        #find the standard deviation in the bin
-        sfr_stdev = np.nanstd(sfr_bin)
-        v_out_stdev = np.nanstd(v_out_bin)
-        vel_diff_stdev = np.nanstd(vel_diff_bin)
-        disp_stdev = np.nanstd(disp_bin)
-
-        #use the stdev to cut out any points greater than 2 sigma away from the median
-        if np.any(v_out_bin >= v_out_median+2*v_out_stdev) or np.any(v_out_bin <= v_out_median-2*v_out_stdev):
-            v_out_median = np.nanmedian(v_out_bin[(v_out_bin>v_out_median-2*v_out_stdev) & (v_out_bin<v_out_median+2*v_out_stdev)])
-            v_out_stdev = np.nanstd(v_out_bin[(v_out_bin>v_out_median-2*v_out_stdev) & (v_out_bin<v_out_median+2*v_out_stdev)])
-
-        if np.any(vel_diff_bin >= vel_diff_median+2*vel_diff_stdev) or np.any(vel_diff_bin <= vel_diff_median-2*vel_diff_stdev):
-            vel_diff_median = np.nanmedian(vel_diff_bin[(vel_diff_bin>vel_diff_median-2*vel_diff_stdev) & (vel_diff_bin<vel_diff_median+2*vel_diff_stdev)])
-            v_out_stdev = np.nanstd(vel_diff_bin[(vel_diff_bin>vel_diff_median-2*vel_diff_stdev) & (vel_diff_bin<vel_diff_median+2*vel_diff_stdev)])
-
-        if np.any(disp_bin >= disp_median+2*disp_stdev) or np.any(disp_bin <= disp_median-2*disp_stdev):
-            disp_median = np.nanmedian(disp_bin[(disp_bin>disp_median-2*disp_stdev) & (disp_bin<disp_median+2*disp_stdev)])
-            disp_stdev = np.nanstd(disp_bin[(disp_bin>disp_median-2*disp_stdev) & (disp_bin<disp_median+2*disp_stdev)])
-
-        sfr_bin_medians.append(sfr_median)
-        v_out_bin_medians.append(v_out_median)
-        vel_diff_bin_medians.append(vel_diff_median)
-        disp_bin_medians.append(disp_median)
-
-        sfr_bin_stdev.append(sfr_stdev)
-        v_out_bin_stdev.append(v_out_stdev)
-        vel_diff_bin_stdev.append(vel_diff_stdev)
-        disp_bin_stdev.append(disp_stdev)
-
-        #change bin_edges
-        bin_edges = [bin_edges[0]+0.15, bin_edges[1]+0.15]
-
-    sfr_bin_medians = np.array(sfr_bin_medians)
-    v_out_bin_medians = np.array(v_out_bin_medians)
-    vel_diff_bin_medians = np.array(vel_diff_bin_medians)
-    disp_bin_medians = np.array(disp_bin_medians)
-
-    sfr_bin_stdev = np.array(sfr_bin_stdev)
-    v_out_bin_stdev = np.array(v_out_bin_stdev)
-    vel_diff_bin_stdev = np.array(vel_diff_bin_stdev)
-    disp_bin_stdev = np.array(disp_bin_stdev)
 
 
     #fit our own trends
-    popt_vout, pcov_vout = curve_fit(fitting_function, 10**(sfr_bin_medians), v_out_bin_medians)
-    popt_vel_diff, pcov_vel_diff = curve_fit(fitting_function, 10**(sfr_bin_medians), vel_diff_bin_medians)
-    popt_disp, pcov_disp = curve_fit(fitting_function, 10**(sfr_bin_medians), disp_bin_medians)
+    #popt_vout, pcov_vout = curve_fit(fitting_function, flux_ratio_bin_medians, v_out_bin_medians)
+    #popt_vel_diff, pcov_vel_diff = curve_fit(fitting_function, flux_ratio_bin_medians, vel_diff_bin_medians)
+    #popt_disp, pcov_disp = curve_fit(fitting_function, flux_ratio_bin_medians, disp_bin_medians)
 
     #calculate the r value for the median values
-    r_vel_out, p_value_v_out = pearson_correlation(10**sfr_bin_medians, v_out_bin_medians)
-    r_vel_diff, p_value_v_diff = pearson_correlation(10**sfr_bin_medians, vel_diff_bin_medians)
-    r_disp, p_value_disp = pearson_correlation(10**sfr_bin_medians, disp_bin_medians)
+    r_vel_out, p_value_v_out = pearson_correlation(bin_center, v_out_bin_medians)
+    r_vel_diff, p_value_v_diff = pearson_correlation(bin_center, vel_diff_bin_medians)
+    r_disp, p_value_disp = pearson_correlation(bin_center, disp_bin_medians)
 
-    #create a vector for sfr_out
-    sfr_linspace = np.linspace(sfr.min(), sfr.max()+4.0, num=1000)
 
-    #create vectors to plot the literature trends
-    sfr_surface_density_chen, v_out_chen = chen_et_al_2010(sfr.min(), sfr.max(), scale_factor=popt_vout[0])
-    sfr_surface_density_murray, v_out_murray = murray_et_al_2011(sfr.min(), sfr.max(), scale_factor=50)
-    sfr_surface_density_davies, v_disp_davies = davies_et_al_2019(sfr.min(), sfr.max())
 
     #plot it
     fig, ax = plt.subplots(nrows=1, ncols=3, sharex=True, figsize=(12,5))
     plt.rcParams['axes.facecolor']='white'
 
-    ax[0].plot(10**log_sfr, vel_out, marker='o', lw=0, label='Flow spaxels', alpha=0.4)
-    ax[0].fill_between(10**sfr_bin_medians, v_out_bin_medians+v_out_bin_stdev, v_out_bin_medians-v_out_bin_stdev, color='tab:blue', alpha=0.3)
-    ax[0].plot(10**sfr_bin_medians, v_out_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_out))
-    ax[0].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_vout), 'r-', label='Fit: $v_{out}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_vout))
-    ax[0].plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
-    ax[0].plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
-    ax[0].set_ylim(100, 500)
-    ax[0].set_xscale('log')
+    ax[0].scatter(flux_ratio, vel_out, marker='o', lw=0, label='Flow spaxels', alpha=0.6, c=radius)
+    ax[0].fill_between(bin_center, v_out_bin_lower_q, v_out_bin_upper_q, color='tab:blue', alpha=0.3)
+    ax[0].plot(bin_center, v_out_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_out))
+    #ax[0].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_vout), 'r-', label='Fit: $v_{out}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_vout))
     ax[0].legend(frameon=False, fontsize='x-small', loc='lower left')
     ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
-    ax[0].set_xlabel('Log $\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    ax[0].set_xlabel('Log Flow/Systemic Flux')
 
-    ax[1].plot(10**log_sfr, vel_diff, marker='o', lw=0, alpha=0.4)
-    ax[1].fill_between(10**sfr_bin_medians, vel_diff_bin_medians+vel_diff_bin_stdev, vel_diff_bin_medians-vel_diff_bin_stdev, color='tab:blue', alpha=0.3)
-    ax[1].plot(10**sfr_bin_medians, vel_diff_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_diff))
-    ax[1].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_vel_diff), 'r-', label='Fit: $\mu_{sys}-\mu_{flow}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_vel_diff))
-    ax[1].set_xscale('log')
+    ax[1].scatter(flux_ratio, vel_diff, marker='o', lw=0, alpha=0.6, c=radius)
+    ax[1].fill_between(bin_center, vel_diff_bin_lower_q, vel_diff_bin_upper_q, color='tab:blue', alpha=0.3)
+    ax[1].plot(bin_center, vel_diff_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_diff))
+    #ax[1].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_vel_diff), 'r-', label='Fit: $\mu_{sys}-\mu_{flow}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_vel_diff))
+    #ax[1].set_xscale('log')
     ax[1].legend(frameon=False, fontsize='x-small', loc='lower left')
     ax[1].set_ylabel('Velocity Offset [km s$^{-1}$]')
-    ax[1].set_xlabel('Log $\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    ax[1].set_xlabel('Log Flow/Systemic Flux')
 
-    ax[2].plot(10**log_sfr, vel_disp, marker='o', lw=0, alpha=0.4)
-    ax[2].fill_between(10**sfr_bin_medians, disp_bin_medians+disp_bin_stdev, disp_bin_medians-disp_bin_stdev, color='tab:blue', alpha=0.3)
-    ax[2].plot(10**sfr_bin_medians, disp_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_disp))
-    ax[2].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_disp), 'r-', label='Fit: $\sigma_{flow}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_disp))
-    ax[2].plot(sfr_surface_density_davies, v_disp_davies, '--k', label='Davies+19, $\sigma_{out}=241\Sigma_{SFR}^{0.3}$')
-    ax[2].set_xscale('log')
-    ax[2].set_ylim(30,230)
+
+    im = ax[2].scatter(flux_ratio, vel_disp, marker='o', lw=0, alpha=0.6, c=radius)
+    ax[2].fill_between(bin_center, disp_bin_lower_q, disp_bin_upper_q, color='tab:blue', alpha=0.3)
+    ax[2].plot(bin_center, disp_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_disp))
+    #ax[2].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_disp), 'r-', label='Fit: $\sigma_{flow}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_disp))
+    #ax[2].set_xscale('log')
+    #ax[2].set_ylim(30,230)
+    plt.colorbar(im)
     ax[2].legend(frameon=False, fontsize='x-small', loc='lower left')
     ax[2].set_ylabel('Velocity Dispersion [km s$^{-1}$]')
-    ax[2].set_xlabel('Log $\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    ax[2].set_xlabel('Log Flow/Systemic Flux')
 
     plt.tight_layout()
     plt.show()
 
-
-
-
 #===============================================================================
-# PLOTTING FUNCTIONS - other 
+# PLOTTING FUNCTIONS - other
 #===============================================================================
 def plot_sfr_surface_density_radius(sig_sfr, rad_flat, stat_results):
     """
