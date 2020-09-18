@@ -67,9 +67,9 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
     """
     #create array to keep velocity differences in, filled with np.nan
     vel_out = np.full_like(statistical_results, np.nan, dtype=np.double)
-    vel_out_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+    vel_out_err = np.full_like(statistical_results, 0.0, dtype=np.double)
     vel_diff = np.full_like(statistical_results, np.nan, dtype=np.double)
-    vel_diff_err = np.full_like(statistical_results, np.nan, dtype=np.double)
+    vel_diff_err = np.full_like(statistical_results, 0.0, dtype=np.double)
 
     #create an outflow mask - outflows found at 1 and 2
     flow_mask = (statistical_results > 0)
