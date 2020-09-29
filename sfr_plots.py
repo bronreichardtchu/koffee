@@ -43,6 +43,7 @@ importlib.reload(calc_outvel)
 def chen_et_al_2010(sfr_surface_density_min, sfr_surface_density_max, scale_factor=1):
     """
     The trendline from Chen et al. (2010) where v_out is proportional to (SFR surface density)^0.1
+    (Energy driven winds - SNe feedback)
     """
     #create a vector for sfr surface density
     sfr_surface_density = np.linspace(sfr_surface_density_min, sfr_surface_density_max+4, num=1000)
@@ -56,6 +57,7 @@ def chen_et_al_2010(sfr_surface_density_min, sfr_surface_density_max, scale_fact
 def murray_et_al_2011(sfr_surface_density_min, sfr_surface_density_max, scale_factor=1):
     """
     The trendline from Murray et al. (2011) where v_out is proportional to (SFR surface density)^2
+    (Momentum driven winds - radiative feedback from young stars)
     """
     #create a vector for sfr surface density
     sfr_surface_density = np.linspace(sfr_surface_density_min, sfr_surface_density_max+4, num=1000)
