@@ -81,7 +81,7 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
 
     #calculate the velocity difference
     #doing c*(lam_gal-lam_out)/lam_gal
-    vel_diff_calc = 299792.458*(systemic_mean - flow_mean)/systemic_mean
+    vel_diff_calc = 299792.458*abs(systemic_mean - flow_mean)/systemic_mean
 
     #calculate the error on the velocity difference
     #do the numerator first (lam_gal-lam_out)
