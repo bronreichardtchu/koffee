@@ -70,6 +70,8 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
     vel_out_err = np.full_like(statistical_results, 0.0, dtype=np.double)
     vel_diff = np.full_like(statistical_results, np.nan, dtype=np.double)
     vel_diff_err = np.full_like(statistical_results, 0.0, dtype=np.double)
+    vel_disp = np.full_like(statistical_results, np.nan, dtype=np.double)
+    vel_disp_err = np.full_like(statistical_results, 0.0, dtype=np.double)
 
     #create an outflow mask - outflows found at 1 and 2
     flow_mask = (statistical_results > 0)
@@ -87,18 +89,26 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
     #do the numerator first (lam_gal-lam_out)
     num_err = np.sqrt(outflow_error[1,:,:][flow_mask]**2 + outflow_error[4,:,:][flow_mask]**2)
     #now put that into the vel_diff error
-    vel_diff_calc_err = vel_diff_calc*np.sqrt((num_err/(systemic_mean-flow_mean))**2 + outflow_error[1,:,:][flow_mask]**2/systemic_mean**2)
+    vel_diff_calc_err = vel_diff_calc * np.sqrt((num_err/(systemic_mean-flow_mean))**2 + outflow_error[1,:,:][flow_mask]**2/systemic_mean**2)
+
+    #calculate the dispersion
+    vel_disp_calc = flow_sigma*299792.458/systemic_mean
+
+    #calculate the error on velocity dispersion
+    vel_disp_calc_err = vel_disp_calc * np.sqrt((outflow_error[3,:,:][flow_mask]/flow_sigma)**2 + (outflow_error[1,:,:][flow_mask]/systemic_mean)**2)
 
     #now doing 2*c*flow_sigma/lam_gal + vel_diff
-    v_out = 2*flow_sigma*299792.458/systemic_mean + vel_diff_calc
+    v_out = 2*vel_disp_calc + vel_diff_calc
 
     #calculate the error on v_out
-    v_out_err = np.sqrt((flow_sigma**2/systemic_mean**2)*((outflow_error[3,:,:][flow_mask]/flow_sigma)**2 + (outflow_error[1,:,:][flow_mask]/systemic_mean)**2) + vel_diff_calc_err**2)
+    v_out_err = np.sqrt(vel_disp_calc_err**2 + vel_diff_calc_err**2)
 
     #and put it into the array
     vel_diff[flow_mask] = vel_diff_calc
     vel_diff_err[flow_mask] = vel_diff_calc_err
+    vel_disp[flow_mask] = vel_disp_calc
+    vel_disp_err[flow_mask] = vel_disp_calc_err
     vel_out[flow_mask] = v_out
     vel_out_err[flow_mask] = v_out_err
 
-    return vel_diff, vel_diff_err, vel_out, vel_out_err
+    return vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err

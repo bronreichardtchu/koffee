@@ -1411,7 +1411,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             #save blue chi square
                             blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit1, g_model1)
 
-                        if blue_chi_square[i,j] > 0.1:
+                        """if blue_chi_square[i,j] > 0.1:
                             if include_const == True:
                                 g_model2_refit, pars2_refit = gaussian2_const(masked_lamdas, flux, amplitude_guess=None, mean_guess=[masked_lamdas[flux.argmax()], masked_lamdas[flux.argmax()]-4.0], sigma_guess=[1.0,8.0])
                             elif include_const == False:
@@ -1419,7 +1419,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             best_fit2_refit = fitter(g_model2_refit, pars2_refit, masked_lamdas, flux, method=method, verbose=False)
 
                             #force it to take the new fit
-                            stat_res = 2
+                            stat_res = 2"""
 
                         #-------------------
                         #FIT THE SECOND LINE

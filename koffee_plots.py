@@ -28,6 +28,7 @@ from matplotlib import gridspec
 #from .display_pixels import cap_display_pixels as cdp
 from . import brons_display_pixels_kcwi as bdpk
 from . import prepare_cubes as pc
+from . import koffee
 
 import importlib
 importlib.reload(pc)
@@ -37,6 +38,80 @@ importlib.reload(bdpk)
 #-------------------------------------------------------------------------------
 #PLOTTING FUNCTIONS
 #-------------------------------------------------------------------------------
+
+def plot_compare_fits(lamdas, data, spaxels, z):
+    """
+    Plots the normalised single and double gaussian fits for the OIII 5007 line
+    using a list of spaxels.
+    """
+    #make a mask for the emission line
+    OIII_mask = (lamdas>5008.24*(1+z)-20.0) & (lamdas<5008.24*(1+z)+20.0)
+
+    #mask the wavelength
+    lam_OIII = lamdas[OIII_mask]
+
+    #create the fine sampling array
+    fine_sampling = np.linspace(min(lam_OIII), max(lam_OIII), 1000)
+
+    #get the number of spaxels
+    spaxel_num = len(spaxels)
+
+    #create a figure
+    fig, ax = plt.subplots(nrows=2, ncols=spaxel_num, sharex=True, sharey=True, figsize=(spaxel_num*3, 4))
+    plt.subplots_adjust(wspace=0, hspace=0, left=0.08, right=0.99, top=0.95)
+
+    #iterate through the spaxels
+    for i in range(spaxel_num):
+        #mask the data to get the flux
+        flux = data[OIII_mask, spaxels[i][0], spaxels[i][1]]
+
+        #fit data with single gaussian
+        gmodel1, pars1 = koffee.gaussian1_const(lam_OIII, flux)
+        bestfit1 = koffee.fitter(gmodel1, pars1, lam_OIII, flux, verbose=False)
+
+        #fit the data with double gaussian
+        gmodel2, pars2 = koffee.gaussian2_const(lam_OIII, flux)
+        bestfit2 = koffee.fitter(gmodel2, pars2, lam_OIII, flux, verbose=False)
+
+        #find the significance level using the BIC difference
+        BIC_diff = bestfit2.bic - bestfit1.bic
+        print(BIC_diff)
+        if -10 > BIC_diff >= -30:
+            significance_level = 'weakly likely'
+        elif -30 > BIC_diff >= -50:
+            significance_level = 'moderately likely'
+        elif -50 > BIC_diff:
+            significance_level = 'strongly likely'
+
+        #get the value to normalise by
+        max_value = np.nanmax(flux)
+
+        #create a plotting mask
+        plotting_mask = (lam_OIII>lam_OIII[25]) & (lam_OIII<lam_OIII[-25])
+        plotting_mask2 = (fine_sampling>lam_OIII[25]) & (fine_sampling<lam_OIII[-25])
+
+        #plot the fits on the figure
+        ax[0,i].step(lam_OIII[plotting_mask], flux[plotting_mask]/max_value, where='mid', c='k')
+        ax[0,i].plot(fine_sampling[plotting_mask2], bestfit1.eval(x=fine_sampling[plotting_mask2])/max_value, c='r', ls='--', lw=1)
+
+        ax[1,i].step(lam_OIII[plotting_mask], flux[plotting_mask]/max_value, where='mid', c='k', label='Data')
+        ax[1,i].plot(fine_sampling[plotting_mask2], bestfit2.components[0].eval(bestfit2.params, x=fine_sampling[plotting_mask2])/max_value, c='tab:blue', label='Narrow component')
+        ax[1,i].plot(fine_sampling[plotting_mask2], bestfit2.components[1].eval(bestfit2.params, x=fine_sampling[plotting_mask2])/max_value, c='tab:green', label='Broad component')
+        ax[1,i].plot(fine_sampling[plotting_mask2], bestfit2.eval(x=fine_sampling[plotting_mask2])/max_value, c='r', ls='--', lw=1, label='Bestfit')
+
+        ax[1,i].set_xlabel('Wavelength($\AA$)')
+        ax[0,i].set_title(significance_level, fontsize='medium')
+
+        if i == 0:
+            ax[1,i].legend(fontsize='x-small', frameon=False, loc='upper left')
+            ax[0,i].set_ylabel('Normalised Flux')
+            ax[1,i].set_ylabel('Normalised Flux')
+            ax[0,i].set_ylim(-0.05, 0.75)
+            ax[1,i].set_ylim(-0.05, 0.75)
+
+    plt.show()
+
+
 
 
 def plot_continuum_contours(lamdas, xx, yy, data, z, ax):

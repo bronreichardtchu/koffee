@@ -31,10 +31,6 @@ from . import calculate_outflow_velocity as calc_outvel
 from . import calculate_star_formation_rate as calc_sfr
 
 
-import importlib
-importlib.reload(calc_outvel)
-
-
 #===============================================================================
 # RELATIONS FROM OTHER PAPERS
 #===============================================================================
@@ -233,7 +229,7 @@ def pearson_correlation(x, y):
 #===============================================================================
 # PLOTTING FUNCTIONS - for paper
 #===============================================================================
-def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, radius, weighted_average=True, colour_by_radius=False):
+def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, colour_by=None, colour_by_array=None, weighted_average=True):
     """
     Plots the SFR surface density against the outflow velocity, with Sigma_SFR calculated
     using only the narrow component.
@@ -273,7 +269,12 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     sig_sfr_err = h_beta_integral_err[flow_mask]
     vel_out = vel_out[flow_mask]
     vel_out_err = vel_out_err[flow_mask]
-    radius = radius[flow_mask]
+    if colour_by is not None:
+        colour_by_array = colour_by_array[flow_mask]
+
+    #
+    colour_by_array = colour_by_array[flow_mask]
+    BIC_mask = (colour_by_array<-10)
 
     #make sure none of the errors are nan values
     vel_out_err[np.where(np.isnan(vel_out_err)==True)] = np.nanmedian(vel_out_err)
@@ -284,7 +285,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = binned_median_quantile_log(sig_sfr[BIC_mask], vel_out[BIC_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
     elif weighted_average == True:
         bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
@@ -298,10 +299,11 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     #calculate the r value for all the values
     r_vel_out, p_value_v_out = pearson_correlation(sig_sfr, vel_out)
+    r_vel_out_BIC, p_value_v_out_BIC = pearson_correlation(sig_sfr[BIC_mask], vel_out[BIC_mask])
 
     #create vectors to plot the literature trends
-    sfr_surface_density_chen, v_out_chen = chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out)/(np.nanmedian(sig_sfr)**0.1))
-    sfr_surface_density_murray, v_out_murray = murray_et_al_2011(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out)/(np.nanmedian(sig_sfr)**2))
+    sfr_surface_density_chen, v_out_chen = chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out[BIC_mask])/(np.nanmedian(sig_sfr[BIC_mask])**0.1))
+    sfr_surface_density_murray, v_out_murray = murray_et_al_2011(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out[BIC_mask])/(np.nanmedian(sig_sfr[BIC_mask])**2))
 
     #plot it
     plt.figure(figsize=(5,4))
@@ -310,14 +312,18 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     #----------------
     #Including Outflow Line Plots
     #-----------------
-    if colour_by_radius == True:
-        plt.scatter(sig_sfr, vel_out, marker='o', lw=0, label='Flow spaxels; R={:.2f}'.format(r_vel_out), alpha=0.6, c=radius)
+    if colour_by is not None:
+        plt.scatter(sig_sfr, vel_out, marker='o', lw=0, label='Flow spaxels; R={:.2f}'.format(r_vel_out), alpha=0.6, c=colour_by_array)
         cbar = plt.colorbar()
-        cbar.ax.set_ylabel('Radius (Arcsec)')
+        cbar.ax.set_ylabel(colour_by)
         plt.errorbar(5, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
 
-    elif colour_by_radius == False:
-        plt.errorbar(sig_sfr, vel_out, xerr=sig_sfr_err, yerr=vel_out_err, marker='o', lw=0, label='Flow spaxels; R={:.2f}'.format(r_vel_out), alpha=0.4, color='tab:blue', ecolor='tab:blue', elinewidth=1)
+    elif colour_by is None:
+        #plt.errorbar(sig_sfr, vel_out, xerr=sig_sfr_err, yerr=vel_out_err, marker='o', lw=0, label='Flow spaxels; R={:.2f}'.format(r_vel_out), alpha=0.4, color='tab:blue', ecolor='tab:blue', elinewidth=1)
+        plt.scatter(sig_sfr[BIC_mask], vel_out[BIC_mask], marker='o', lw=0, label='Definite Flow spaxels; R={:.2f}'.format(r_vel_out_BIC), alpha=0.6, c='tab:blue')
+        plt.scatter(sig_sfr[~BIC_mask], vel_out[~BIC_mask], marker='o', lw=0, label='Likely Flow spaxels; R={:.2f}'.format(r_vel_out), alpha=0.6, c='tab:pink')
+
+        plt.errorbar(5, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
 
 
     plt.fill_between(bin_center, v_out_bin_lower_q, v_out_bin_upper_q, color='tab:blue', alpha=0.3)
@@ -336,7 +342,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     plt.show()
 
 
-def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, radius, weighted_average=True, colour_by_radius=False):
+def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, colour_by=None, colour_by_array=None, weighted_average=True):
     """
     Plots the SFR surface density against the outflow velocity, comparing Sigma_SFR calculated
     from the full line to Sigma_SFR calculated using only the narrow component.
@@ -372,6 +378,7 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     flow_mask = (statistical_results>0)
 
     #create id array
+    """
     id_array = np.arange(radius.shape[0]*radius.shape[1])
     id_array = id_array.reshape(radius.shape)
     x_id = np.tile(np.arange(radius.shape[0]), radius.shape[1]).reshape(radius.shape[1], radius.shape[0]).T
@@ -379,6 +386,7 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     print(id_array)
     print(x_id)
     print(y_id)
+    """
 
     #convert the sigma to km/s instead of Angstroms
     flow_sigma = OIII_outflow_results[3,:,:][flow_mask]/(1+z)
@@ -392,9 +400,14 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     sfr_err = h_beta_integral_err[flow_mask]
     vel_diff = vel_diff[flow_mask]
     vel_diff_err = vel_diff_err[flow_mask]
-    radius = radius[flow_mask]
+    if colour_by is not None:
+        colour_by_array = colour_by_array[flow_mask]
 
-    id_array = id_array[flow_mask]
+    #
+    colour_by_array = colour_by_array[flow_mask]
+    BIC_mask = (colour_by_array<-10)
+
+    """id_array = id_array[flow_mask]
     x_id = x_id[flow_mask]
     y_id = y_id[flow_mask]
 
@@ -402,6 +415,7 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     print('ID values:', id_array[(sfr<0.05)&(vel_disp>160)])
     print('x ID:', x_id[(sfr<0.05)&(vel_disp>160)])
     print('y ID:', y_id[(sfr<0.05)&(vel_disp>160)])
+    """
 
     #make sure none of the errors are nan values
     vel_diff_err[np.where(np.isnan(vel_diff_err)==True)] = np.nanmedian(vel_diff_err)
@@ -413,8 +427,8 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q = binned_median_quantile_log(sfr, vel_diff, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center, disp_bin_medians, disp_bin_lower_q, disp_bin_upper_q = binned_median_quantile_log(sfr, vel_disp, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q = binned_median_quantile_log(sfr[BIC_mask], vel_diff[BIC_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center, disp_bin_medians, disp_bin_lower_q, disp_bin_upper_q = binned_median_quantile_log(sfr[BIC_mask], vel_disp[BIC_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
     elif weighted_average == True:
         bin_center, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q = binned_median_quantile_log(sfr, vel_diff, num_bins=num_bins, weights=[vel_diff_err], min_bin=min_bin, max_bin=max_bin)
@@ -429,10 +443,13 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     r_vel_diff, p_value_v_diff = pearson_correlation(sfr, vel_diff)
     r_disp, p_value_disp = pearson_correlation(sfr, vel_disp)
 
+    r_vel_diff_BIC, p_value_v_diff_BIC = pearson_correlation(sfr[BIC_mask], vel_diff[BIC_mask])
+    r_disp_BIC, p_value_disp_BIC = pearson_correlation(sfr[BIC_mask], vel_disp[BIC_mask])
+
 
     #create vectors to plot the literature trends
-    sfr_surface_density_chen, vel_diff_chen = chen_et_al_2010(sfr.min(), sfr.max(), scale_factor=np.nanmedian(vel_diff)/(np.nanmedian(sfr)**0.1))
-    sfr_surface_density_murray, vel_diff_murray = murray_et_al_2011(sfr.min(), sfr.max(), scale_factor=np.nanmedian(vel_diff)/(np.nanmedian(sfr)**2))
+    sfr_surface_density_chen, vel_diff_chen = chen_et_al_2010(sfr.min(), sfr.max(), scale_factor=np.nanmedian(vel_diff[BIC_mask])/(np.nanmedian(sfr[BIC_mask])**0.1))
+    sfr_surface_density_murray, vel_diff_murray = murray_et_al_2011(sfr.min(), sfr.max(), scale_factor=np.nanmedian(vel_diff[BIC_mask])/(np.nanmedian(sfr[BIC_mask])**2))
 
     #plot it
     fig, ax = plt.subplots(nrows=1, ncols=2, sharex=True, figsize=(8,5))
@@ -441,27 +458,33 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     #----------------
     #Plots
     #-----------------
-    if colour_by_radius == True:
-        ax[0].scatter(sfr[vel_disp>=51], vel_diff[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), c=radius[vel_disp>=51])
-        ax[0].scatter(sfr[vel_disp<51], vel_diff[vel_disp<51], marker='v', lw=0, alpha=0.6, c=radius[vel_disp<51])
+    if colour_by is not None:
+        ax[0].scatter(sfr[vel_disp>=51], vel_diff[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), c=colour_by_array[vel_disp>=51])
+        ax[0].scatter(sfr[vel_disp<51], vel_diff[vel_disp<51], marker='v', lw=0, alpha=0.6, c=colour_by_array[vel_disp<51])
 
-        im = ax[1].scatter(sfr[vel_disp>=51], vel_disp[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_disp), c=radius[vel_disp>=51])
-        ax[1].scatter(sfr[vel_disp<51], vel_disp[vel_disp<51], marker='v', lw=0, alpha=0.6, c=radius[vel_disp<51])
+        im = ax[1].scatter(sfr[vel_disp>=51], vel_disp[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_disp), c=colour_by_array[vel_disp>=51])
+        ax[1].scatter(sfr[vel_disp<51], vel_disp[vel_disp<51], marker='v', lw=0, alpha=0.6, c=colour_by_array[vel_disp<51])
         cbar = plt.colorbar(im, ax=ax[1])
-        cbar.ax.set_ylabel('Radius (Arcsec)')
+        cbar.ax.set_ylabel(colour_by)
 
-    elif colour_by_radius == False:
-        #ax[0].plot(sfr[vel_disp>=51], vel_diff[vel_disp>=51], marker='o', lw=0, alpha=0.4, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:blue')
-        #ax[0].plot(sfr[vel_disp<51], vel_diff[vel_disp<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
+    elif colour_by is None:
+        ax[0].plot(sfr[BIC_mask][vel_disp[BIC_mask]>=51], vel_diff[BIC_mask][vel_disp[BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Definite Flow spaxels; R={:.2f}'.format(r_vel_diff_BIC), color='tab:blue')
+        ax[0].plot(sfr[BIC_mask][vel_disp[BIC_mask]<51], vel_diff[BIC_mask][vel_disp[BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
 
-        #ax[1].plot(sfr[vel_disp>=51], vel_disp[vel_disp>=51], marker='o', lw=0, alpha=0.4, label='Flow spaxels; R={:.2f}'.format(r_disp), color='tab:blue')
-        #ax[1].plot(sfr[vel_disp<51], vel_disp[vel_disp<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
+        ax[1].plot(sfr[BIC_mask][vel_disp[BIC_mask]>=51], vel_disp[BIC_mask][vel_disp[BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Definite Flow spaxels; R={:.2f}'.format(r_disp_BIC), color='tab:blue')
+        ax[1].plot(sfr[BIC_mask][vel_disp[BIC_mask]<51], vel_disp[BIC_mask][vel_disp[BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
 
-        ax[0].errorbar(sfr[vel_disp>=51], vel_diff[vel_disp>=51], xerr=sfr_err[vel_disp>=51], yerr=vel_diff_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:blue')
-        ax[0].errorbar(sfr[vel_disp<51], vel_diff[vel_disp<51], xerr=sfr_err[vel_disp<51], yerr=vel_diff_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
+        ax[0].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]>=51], vel_diff[~BIC_mask][vel_disp[~BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Likely Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:pink')
+        ax[0].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]<51], vel_diff[~BIC_mask][vel_disp[~BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:pink')
 
-        ax[1].errorbar(sfr[vel_disp>=51], vel_disp[vel_disp>=51], xerr=sfr_err[vel_disp>=51], yerr=vel_disp_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_disp), color='tab:blue')
-        ax[1].errorbar(sfr[vel_disp<51], vel_disp[vel_disp<51], xerr=sfr_err[vel_disp<51], yerr=vel_disp_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
+        ax[1].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]>=51], vel_disp[~BIC_mask][vel_disp[~BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Likely Flow spaxels; R={:.2f}'.format(r_disp), color='tab:pink')
+        ax[1].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]<51], vel_disp[~BIC_mask][vel_disp[~BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:pink')
+
+        #ax[0].errorbar(sfr[vel_disp>=51], vel_diff[vel_disp>=51], xerr=sfr_err[vel_disp>=51], yerr=vel_diff_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:blue')
+        #ax[0].errorbar(sfr[vel_disp<51], vel_diff[vel_disp<51], xerr=sfr_err[vel_disp<51], yerr=vel_diff_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
+
+        #ax[1].errorbar(sfr[vel_disp>=51], vel_disp[vel_disp>=51], xerr=sfr_err[vel_disp>=51], yerr=vel_disp_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_disp), color='tab:blue')
+        #ax[1].errorbar(sfr[vel_disp<51], vel_disp[vel_disp<51], xerr=sfr_err[vel_disp<51], yerr=vel_disp_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
 
 
     ax[0].fill_between(bin_center, vel_diff_bin_lower_q, vel_diff_bin_upper_q, color='tab:blue', alpha=0.3)
