@@ -1874,6 +1874,91 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
 
 
+#===============================================================================
+# READ IN OUTFPUT FILES
+#===============================================================================
+
+def read_output_files(output_folder, galaxy_name, include_const=True, emission_line1='OIII_4', emission_line2=None, OII_doublet=False):
+    """
+    Read in the output files and return numpy arrays (useful when working in ipython terminal)
+    """
+    #first emission line files - usually [OIII]5007
+    outflow_results = np.loadtxt(output_folder+galaxy_name+'_outflow_results_'+emission_line1+'.txt')
+    outflow_error = np.loadtxt(output_folder+galaxy_name+'_outflow_error_'+emission_line1+'.txt')
+
+    no_outflow_results = np.loadtxt(output_folder+galaxy_name+'_no_outflow_results_'+emission_line1+'.txt')
+    no_outflow_error = np.loadtxt(output_folder+galaxy_name+'_no_outflow_error_'+emission_line1+'.txt')
+
+    chi_square = np.loadtxt(output_folder+galaxy_name+'_chi_squared_'+emission_line1+'.txt')
+    statistical_results = np.loadtxt(output_folder+galaxy_name+'_stat_results_'+emission_line1+'.txt')
+
+    #reshape arrays
+    if include_const == True:
+        outflow_results = outflow_results.reshape(7, 67, 24)
+        outflow_error = outflow_error.reshape(7, 67, 24)
+        no_outflow_results = no_outflow_results.reshape(4, 67, 24)
+        no_outflow_error = no_outflow_error.reshape(4, 67, 24)
+        chi_square = chi_square.reshape(2, 67, 24)
+        statistical_results = statistical_results.reshape(67, 24)
+
+    elif include_const == False:
+        outflow_results = outflow_results.reshape(6, 67, 24)
+        outflow_error = outflow_error.reshape(6, 67, 24)
+        no_outflow_results = no_outflow_results.reshape(3, 67, 24)
+        no_outflow_error = no_outflow_error.reshape(3, 67, 24)
+        chi_square = chi_square.reshape(2, 67, 24)
+        statistical_results = statistical_results.reshape(67, 24)
+
+    #second emission line files = Hbeta
+    if emission_line2:
+        outflow_results2 = np.loadtxt(output_folder+galaxy_name+'_outflow_results_'+emission_line2+'.txt')
+        outflow_error2 = np.loadtxt(output_folder+galaxy_name+'_outflow_error_'+emission_line2+'.txt')
+
+        no_outflow_results2 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_results_'+emission_line2+'.txt')
+        no_outflow_error2 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_error_'+emission_line2+'.txt')
+
+        chi_square2 = np.loadtxt(output_folder+galaxy_name+'_chi_squared_'+emission_line2+'.txt')
+
+        #reshape arrays
+        if include_const == True:
+            outflow_results2 = outflow_results2.reshape(7, 67, 24)
+            outflow_error2 = outflow_error2.reshape(7, 67, 24)
+            no_outflow_results2 = no_outflow_results2.reshape(4, 67, 24)
+            no_outflow_error2 = no_outflow_error2.reshape(4, 67, 24)
+            chi_square2 = chi_square2.reshape(2, 67, 24)
+
+        elif include_const == False:
+            outflow_results2 = outflow_results2.reshape(6, 67, 24)
+            outflow_error2 = outflow_error2.reshape(6, 67, 24)
+            no_outflow_results2 = no_outflow_results2.reshape(3, 67, 24)
+            no_outflow_error2 = no_outflow_error2.reshape(3, 67, 24)
+            chi_square2 = chi_square2.reshape(2, 67, 24)
+
+    #second emission line files = Hbeta
+    if OII_doublet == True:
+        outflow_results3 = np.loadtxt(output_folder+galaxy_name+'_outflow_results_OII_doublet.txt')
+        outflow_error3 = np.loadtxt(output_folder+galaxy_name+'_outflow_error_OII_doublet.txt')
+
+        no_outflow_results3 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_results_OII_doublet.txt')
+        no_outflow_error3 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_error_OII_doublet.txt')
+
+        chi_square3 = np.loadtxt(output_folder+galaxy_name+'_chi_squared_OII_doublet.txt')
+
+        #reshape arrays
+        outflow_results3 = outflow_results3.reshape(13, 67, 24)
+        outflow_error3 = outflow_error3.reshape(13, 67, 24)
+        no_outflow_results3 = no_outflow_results3.reshape(7, 67, 24)
+        no_outflow_error3 = no_outflow_error3.reshape(7, 67, 24)
+        chi_square3 = chi_square3.reshape(2, 67, 24)
+
+    if OII_doublet==False and emission_line2:
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, chi_square2
+
+    if OII_doublet==True and emission_line2:
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, chi_square2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, chi_square3
+
+    else:
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square
 
 
 
