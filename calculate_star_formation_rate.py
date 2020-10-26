@@ -277,7 +277,7 @@ def calc_doublet_flux_from_koffee(outflow_results, outflow_error, statistical_re
 
 def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
     """
-    Calculate the luminosity of the H_beta line
+    Calculate the luminosity of the H_beta line by integrating along the line using np.trapz
     The spectrum is in 10^-16 erg/s/cm^2/Ang.  Need to change it to erg/s
 
     Luminosities should be around 10^40
@@ -444,9 +444,9 @@ def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinct
     #calculate the star formation rate
     if include_extinction == True:
         hbeta_extinction = calc_hbeta_extinction(lamdas, z)
-        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*hbeta_extinction) * hbeta_luminosity
+        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*hbeta_extinction) * hbeta_luminosity
     elif include_extinction == False:
-        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*1.0) * (hbeta_luminosity)
+        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*1.0) * (hbeta_luminosity)
 
     #sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*0.29) * hbeta_luminosity
 
@@ -469,7 +469,7 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
         lamdas: array of wavelength
         spectrum: vector or array of spectra (shape: [npix, nspec])
         z: (float) redshift
-        cont_subtract: if True, assumes continuum has not already been subtracted.  Uses the median value of the wavelength range 4850-4855A.
+
 
     Returns:
         sfr: (float, or array of floats) the star formation rate found using hbeta
@@ -536,15 +536,17 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     #calculate the star formation rate
     if include_extinction == True:
         hbeta_extinction = calc_hbeta_extinction(lamdas, z)
-        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*hbeta_extinction) * hbeta_luminosity
+        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*hbeta_extinction) * hbeta_luminosity
 
     elif include_extinction == False:
-        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*1.0) * (hbeta_luminosity)
+        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*1.0) * (hbeta_luminosity)
 
     #sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*0.29) * hbeta_luminosity
 
     total_sfr = np.nansum(sfr)
 
     sfr_surface_density = sfr/((0.7*1.35)*(0.388**2))
+
+    print(sfr.unit)
 
     return sfr.value, total_sfr.value, sfr_surface_density.value, h_beta_integral_err.value
