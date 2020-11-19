@@ -113,7 +113,8 @@ def display_pixels(x, y, val, pixelsize=None, vmin=None, vmax=None,
     if (angle is None) or (angle == 0):
 
         img = ax.imshow(np.rot90(img), interpolation='nearest',
-                        origin='upper', cmap=cmap, vmin=vmin, vmax=vmax,
+                        origin='upper',
+                        cmap=cmap, vmin=vmin, vmax=vmax,
                         extent=[xmin-pixelsize_x/2, xmax+pixelsize_x/2,
                                 ymin-pixelsize_y/2, ymax+pixelsize_y/2], **kwargs)
 
@@ -149,7 +150,7 @@ def display_pixels(x, y, val, pixelsize=None, vmin=None, vmax=None,
 
     ax.minorticks_on()
     ax.tick_params(length=10, width=1, which='major')
-    ax.tick_params(length=5, width=1, which='minor')
+    ax.tick_params(length=5, which='minor') #width=1,
 
     return img
 

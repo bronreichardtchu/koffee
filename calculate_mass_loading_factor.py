@@ -64,8 +64,8 @@ def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error,
     #R_out is the radial extent of the outflow
     #use the 90% radius of the galaxy as the maximum radius - this is 5" or 2kpc
     R_max = 2 * 1000 * u.parsec
-    #use the resolution of the spaxels as the minimum radial extent - this is ~200pc
-    R_min = 200 * u.parsec
+    #use the resolution of the spaxels as the minimum radial extent - this is ~350pc
+    R_min = 350 * u.parsec
     #then use the average as R_out
     R_out = (R_max + R_min)/2
 
@@ -91,6 +91,8 @@ def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error,
 
     #decompose the units to g/s
     M_out = M_out.to(u.g/u.s)
+    M_out_max = M_out_max.to(u.g/u.s)
+    M_out_min = M_out_min.to(u.g/u.s)
 
     return M_out, M_out_max, M_out_min
 
@@ -105,7 +107,7 @@ def calc_mass_loading_factor(OIII_results, OIII_error, hbeta_results, hbeta_erro
 
     #calculate the SFR (I wrote this to give the answer without units...)
     #(I should probably change that!)
-    sfr, total_sfr, sigma_sfr, h_beta_integral_err = calc_sfr.calc_sfr_koffee(hbeta_results, hbeta_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sigma_sfr, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_results, hbeta_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
 
     #put the units back onto the sfr (M_sun/yr)
     sfr = sfr * (u.solMass/u.yr)
@@ -142,6 +144,8 @@ def calc_mass_loading_factor2(OIII_results, OIII_error, hbeta_results, hbeta_err
     #n_e is the local electron density in the outflow
     #use the same value as Davies et al. for now
     n_e = 380 * (u.cm)**-3
+    #could be anywhere from 100-700 so use +/- 300 for error
+    n_e_error = 300 * (u.cm)**-3
 
     #v_out comes from the OIII line
     vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_results, OIII_error, statistical_results, z)
@@ -152,8 +156,8 @@ def calc_mass_loading_factor2(OIII_results, OIII_error, hbeta_results, hbeta_err
     #R_out is the radial extent of the outflow
     #use the 90% radius of the galaxy as the maximum radius - this is 5" or 2kpc
     R_max = 2 * 1000 * u.parsec
-    #use the resolution of the spaxels as the minimum radial extent - this is ~200pc
-    R_min = 200 * u.parsec
+    #use the resolution of the spaxels as the minimum radial extent - this is ~350pc
+    R_min = 350 * u.parsec
     #then use the average as R_out
     R_out = (R_max + R_min)/2
 
@@ -166,12 +170,19 @@ def calc_mass_loading_factor2(OIII_results, OIII_error, hbeta_results, hbeta_err
 
     #outflow_flux_err = outflow_flux_err * 10**(-16) * u.erg / (u.s*(u.cm**2))
 
-    #
+    #define C_Halpha, using Hao et al. 2011 ApJ 741:124
+    #From table 2, uses a Kroupa IMF, solar metallicity and 100Myr
+    #it has units of M_sun yr^-1 erg^-1 s
+    c_halpha = 10**(-41.257) * (u.solMass*u.s)/(u.yr*u.erg)
 
     #do the whole calculation
-    M_out_max = (1.36*m_H) / (gamma_Halpha*n_e) * (vel_out/R_max) * lum_ratio_alpha_to_beta*L_Hbeta
-    M_out_min = (1.36*m_H) / (gamma_Halpha*n_e) * (vel_out/R_min) * lum_ratio_alpha_to_beta*L_Hbeta
-    M_out = (1.36*m_H) / (gamma_Halpha*n_e) * (vel_out/R_out) * lum_ratio_alpha_to_beta*L_Hbeta
+    mlf_max = (1.36*m_H) / (c_halpha*gamma_Halpha*n_e) * (10**(-0.4*0.0)) * (vel_out/R_max) * Hbeta_broad_to_narrow
+    mlf_min = (1.36*m_H) / (c_halpha*gamma_Halpha*n_e) * (10**(-0.4*0.0)) * (vel_out/R_min) * Hbeta_broad_to_narrow
+    mlf = (1.36*m_H) / (c_halpha*gamma_Halpha*n_e) * (10**(-0.4*0.0)) * (vel_out/R_out) * Hbeta_broad_to_narrow
 
-    #decompose the units to g/s
-    M_out = M_out.to(u.g/u.s)
+    #decompose the units
+    mlf_max = mlf_max.decompose()
+    mlf_min = mlf_min.decompose()
+    mlf = mlf.decompose()
+
+    return mlf, mlf_max, mlf_min

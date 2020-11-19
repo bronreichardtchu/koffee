@@ -29,10 +29,10 @@ from matplotlib import gridspec
 from . import brons_display_pixels_kcwi as bdpk
 from . import prepare_cubes as pc
 from . import koffee
+from . import calculate_outflow_velocity as calc_outvel
+from . import calculate_mass_loading_factor as calc_mlf
 
-import importlib
-importlib.reload(pc)
-importlib.reload(bdpk)
+
 
 
 #-------------------------------------------------------------------------------
@@ -141,33 +141,19 @@ def plot_continuum_contours(lamdas, xx, yy, data, z, ax):
 
     return cont_contours
 
-def map_of_outflows(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, outflow_results, statistical_results):
+def map_of_outflows(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, outflow_results, outflow_error, statistical_results):
     """
     Plots the map of outflow velocities.
     """
-
-    #create array to keep velocity difference in
-    vel_out = np.empty_like(statistical_results)
+    #calcualte the outflow velocities
+    vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(outflow_results, outflow_error, statistical_results, z)
 
     #create outflow mask
     flow_mask = (statistical_results>0)
 
-    vel_out = vel_out[flow_mask]
     xx_flat_out = xx_flat[flow_mask.reshape(-1)]
     yy_flat_out = yy_flat[flow_mask.reshape(-1)]
-
-    #de-redshift the data first!!!
-    systemic_mean = outflow_results[1,:,:][flow_mask]/(1+z)
-    flow_mean = outflow_results[4,:,:][flow_mask]/(1+z)
-    flow_sigma = outflow_results[3,:,:][flow_mask]/(1+z)
-
-    #find the velocity difference
-    #doing c*(lam_gal-lam_out)/lam_gal
-    vel_diff = 299792.458*(systemic_mean-flow_mean)/systemic_mean
-
-    v_out = 2*flow_sigma*299792.458/systemic_mean + vel_diff
-
-    vel_out[:] = v_out
+    vel_out = vel_out[flow_mask]
 
     #create an array with zero where there are no outflows, but there is high enough S/N
     no_vel_out = np.empty_like(statistical_results)
@@ -183,29 +169,24 @@ def map_of_outflows(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, outflow_re
     vmin, vmax = vel_out.min(), vel_out.max()
 
     #create figure and subplots
-    plt.rcParams['axes.facecolor']='black'
+    plt.rcParams['axes.facecolor']='white'
     #fig, (ax1, ax2) = plt.subplots(1,2, sharey=True)
     fig, ax1 = plt.subplots(1,1)
 
     #get the continuum contours
     i, j = statistical_results.shape
-    cont_contours1 = plot_continuum_contours(lamdas, np.reshape(xx_flat, (i,j)), np.reshape(yy_flat, (i, j)), np.reshape(data_flat, (data_flat.shape[0],i,j)), z, ax1)
+    #cont_contours1 = plot_continuum_contours(lamdas, np.reshape(xx_flat, (i,j)), np.reshape(yy_flat, (i, j)), np.reshape(data_flat, (data_flat.shape[0],i,j)), z, ax1)
     #cont_contours2 = plot_continuum_contours(lamdas, np.reshape(xx_flat, (67,24)), np.reshape(yy_flat, (67, 24)), np.reshape(data_flat, (data_flat.shape[0],67,24)), z, ax2)
 
     #create figure of just outflows
-    #circle = plt.Circle((0, 0), 6.4, color='r', lw=2, fill=False)
-    ax1.set_title('Outflow Spaxels')
     outflow_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, vel_out.reshape(1,-1), axes=ax1)#, vmin=100, vmax=500)
     ax1.set_xlim(xmin, xmax)
-    #ax1.set_ylim(-7.5,7.5)
     ax1.invert_xaxis()
-    #ax1.add_artist(circle)
     ax1.set_ylabel('Arcseconds')
     ax1.set_xlabel('Arcseconds')
     cbar = plt.colorbar(outflow_spax, ax=ax1, shrink=0.8)
-    #cbar.set_label('Outflow Velocity ($v_{sys}-v_{broad}$)/$v_{sys} + 2\sigma_{broad}$ [km/s]')
     cbar.set_label('Maximum Outflow Velocity [km/s]')
-    cont_contours1
+    #cont_contours1
 
     #create subplot of after S/N cut
     #ax2.set_title('Including No Flow Spaxels')
@@ -221,6 +202,48 @@ def map_of_outflows(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, outflow_re
     #cont_contours2
 
     #plt.suptitle('S/N Threshold: '+str(sn))
+
+    plt.show()
+
+
+def map_of_mlf(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results):
+    """
+    Plots the map of the mass loading factor
+    """
+    #calculate the mass loading factor
+    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+
+    #create outflow mask
+    flow_mask = (statistical_results>0)
+
+    xx_flat_out = xx_flat[flow_mask.reshape(-1)]
+    yy_flat_out = yy_flat[flow_mask.reshape(-1)]
+    mlf = np.log10(mlf[flow_mask])
+
+    #make limits for the plots
+    xmin, xmax = xx_flat.min(), xx_flat.max()
+    ymin, ymax = yy_flat.min(), yy_flat.max()
+    vmin, vmax = np.nanmin(mlf), np.nanmax(mlf)
+
+    #create figure and subplots
+    plt.rcParams['axes.facecolor']='white'
+    #fig, (ax1, ax2) = plt.subplots(1,2, sharey=True)
+    fig, ax1 = plt.subplots(1,1)
+
+    #get the continuum contours
+    i, j = statistical_results.shape
+    #cont_contours1 = plot_continuum_contours(lamdas, np.reshape(xx_flat, (i,j)), np.reshape(yy_flat, (i, j)), np.reshape(data_flat, (data_flat.shape[0],i,j)), z, ax1)
+    #cont_contours2 = plot_continuum_contours(lamdas, np.reshape(xx_flat, (67,24)), np.reshape(yy_flat, (67, 24)), np.reshape(data_flat, (data_flat.shape[0],67,24)), z, ax2)
+
+    #create figure of just outflows
+    outflow_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, mlf.reshape(1,-1), axes=ax1, vmin=vmin, vmax=vmax)
+    ax1.set_xlim(xmin, xmax)
+    ax1.invert_xaxis()
+    ax1.set_ylabel('Arcseconds')
+    ax1.set_xlabel('Arcseconds')
+    cbar = plt.colorbar(outflow_spax, ax=ax1, shrink=0.8)
+    cbar.set_label('Log(Mass Loading Factor)')
+    #cont_contours1
 
     plt.show()
 

@@ -154,7 +154,7 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
     sys_flux = np.sqrt(2*np.pi) * systemic_sigma * outflow_results[2,:,:][flow_mask]
 
     #and calculate the error
-    sys_flux_err = sys_flux * np.sqrt((outflow_error[0,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[2,:,:][flow_mask]/outflow_results[2,:,:][flow_mask])**2)
+    sys_flux_err = sys_flux * np.sqrt(2*np.pi) * np.sqrt((outflow_error[0,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[2,:,:][flow_mask]/outflow_results[2,:,:][flow_mask])**2)
 
     #save the results into the array
     systemic_flux[flow_mask] = sys_flux
@@ -164,7 +164,7 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
     if outflow == True:
         flow_flux = np.sqrt(2*np.pi) * flow_sigma * outflow_results[5,:,:][flow_mask]
 
-        flow_flux_err = sys_flux * np.sqrt((outflow_error[3,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2)
+        flow_flux_err = sys_flux * np.sqrt(2*np.pi) * np.sqrt((outflow_error[3,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2)
 
         #save to array
         outflow_flux[flow_mask] = flow_flux
@@ -446,9 +446,9 @@ def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinct
         hbeta_extinction = calc_hbeta_extinction(lamdas, z)
         sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*hbeta_extinction) * hbeta_luminosity
     elif include_extinction == False:
-        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*1.0) * (hbeta_luminosity)
+        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*0.0) * (hbeta_luminosity)
 
-    #sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*0.29) * hbeta_luminosity
+    #sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*0.29) * hbeta_luminosity
 
     total_sfr = np.sum(sfr)
 
@@ -519,7 +519,7 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     elif include_outflow == True:
         systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_flux_from_koffee(results, error, statistical_results, z, outflow=True)
         h_beta_integral = np.nansum((systemic_flux, outflow_flux), axis=0)
-        h_beta_integral_err = np.sqrt(systemic_flux_err**2 + outflow_flux_err**2)
+        h_beta_integral_err = np.sqrt(np.nansum((systemic_flux_err**2, outflow_flux_err**2), axis=0))
 
     h_beta_integral = h_beta_integral*10**(-16)*units.erg/(units.s*(units.cm*units.cm))
     h_beta_integral_err = h_beta_integral_err*10**(-16)*units.erg/(units.s*(units.cm*units.cm))
@@ -532,21 +532,25 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     print('distance:', dist)
     #multiply by 4*pi*d^2 to get rid of the cm
     hbeta_luminosity = (h_beta_integral*(4*np.pi*(dist**2))).to('erg/s')
+    hbeta_luminosity_err = (h_beta_integral_err*(4*np.pi*(dist**2))).to('erg/s')
 
     #calculate the star formation rate
     if include_extinction == True:
         hbeta_extinction = calc_hbeta_extinction(lamdas, z)
         sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*hbeta_extinction) * hbeta_luminosity
+        sfr_err = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*hbeta_extinction) * hbeta_luminosity_err
 
     elif include_extinction == False:
-        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*1.0) * (hbeta_luminosity)
+        sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*0.0) * (hbeta_luminosity)
+        sfr_err = c_halpha * lum_ratio_alpha_to_beta * 10**(-0.4*0.0) * (hbeta_luminosity_err)
 
     #sfr = c_halpha * lum_ratio_alpha_to_beta * 10**(0.4*0.29) * hbeta_luminosity
 
     total_sfr = np.nansum(sfr)
 
     sfr_surface_density = sfr/((0.7*1.35)*(0.388**2))
+    sfr_surface_density_err = sfr_err/((0.7*1.35)*(0.388**2))
 
     print(sfr.unit)
 
-    return sfr.value, total_sfr.value, sfr_surface_density.value, h_beta_integral_err.value
+    return sfr.value, sfr_err.value, total_sfr.value, sfr_surface_density.value, sfr_surface_density_err.value
