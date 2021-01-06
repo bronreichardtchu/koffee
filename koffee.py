@@ -1469,6 +1469,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_first_try')
                                 plt.close(fig4)
 
+                                """
+
                                 #check the fit using the blue-side-residual test
                                 blue_chi_square_check = check_blue_chi_square(masked_lamdas2, flux2, best_fit2_second, g_model2_second)
 
@@ -1497,8 +1499,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                     pars2_second = pars2_refit_second
                                     best_fit2_second = best_fit2_refit_second
 
+
                                 #check that a single gaussian fit wouldn't be better if the flow amplitude
-                                #is greater than 80% of the galaxy amplitude
+                                #is greater than 90% of the galaxy amplitude
                                 if best_fit2_second.params['Flow_amp'].value > 0.9*best_fit2_second.params['Galaxy_amp'].value:
                                     print('Doing one Gaussian fit for spaxel ', str(i), str(j))
                                     #create the fitting objects
@@ -1536,6 +1539,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                             g_model2_second = g_model1_refit_second
                                             pars2_second = pars1_refit_second
                                             best_fit2_second = best_fit1_refit_second
+
+                                    """
 
 
                             #put the results into the array to be saved

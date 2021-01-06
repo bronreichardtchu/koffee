@@ -150,7 +150,7 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
     if outflow == True:
         flow_sigma = outflow_results[3,:,:][flow_mask]/(1+z)
 
-    #calculate the flux, which is sigma*amplitude
+    #calculate the flux, which is srt(2*pi)*sigma*amplitude
     sys_flux = np.sqrt(2*np.pi) * systemic_sigma * outflow_results[2,:,:][flow_mask]
 
     #and calculate the error
