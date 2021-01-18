@@ -64,40 +64,40 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_err : (array)
+    OIII_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_err : (array)
+    hbeta_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_error : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     weighted_average : boolean
@@ -386,34 +386,34 @@ def plot_sfr_mlf_rad(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_res
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_err : (array)
+    OIII_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_err : (array)
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     Returns
@@ -519,40 +519,40 @@ def plot_mlf_model_rad(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_err : (array)
+    OIII_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_err : (array)
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values (must be same shape as statistical_results)
 
     compare : string
@@ -753,40 +753,40 @@ def plot_mlf_model_sigsfr(OIII_outflow_results, OIII_outflow_error, hbeta_outflo
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_err : (array)
+    OIII_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_err : (array)
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values (must be same shape as statistical_results)
 
     compare : string
@@ -977,40 +977,40 @@ def plot_sfr_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_err : (array)
+    OIII_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_err : (array)
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     weighted_average : boolean
@@ -1217,40 +1217,40 @@ def plot_sfr_mout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_err : (array)
+    OIII_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_err : (array)
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     weighted_average : boolean
@@ -1438,40 +1438,40 @@ def plot_sfr_momentum_out(OIII_outflow_results, OIII_outflow_error, hbeta_outflo
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_err : (array)
+    OIII_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_err : (array)
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     weighted_average : boolean
@@ -1643,40 +1643,40 @@ def plot_sfr_momentum_out2(OIII_outflow_results, OIII_outflow_error, hbeta_outfl
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_err : (array)
+    OIII_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_err : (array)
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     weighted_average : boolean
@@ -1846,40 +1846,40 @@ def plot_radius_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_resu
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_error : (array)
+    OIII_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_error : (array)
+    hbeta_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_error : (array)
+    hbeta_no_outflow_error : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     weighted_average : boolean
@@ -2049,48 +2049,48 @@ def plot_flux_mlf(flux_outflow_results, flux_outflow_error, OIII_outflow_results
 
     Parameters
     ----------
-    flux_outflow_results : (array)
+    flux_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for the emission line for which we
         want to do the ratio.  Should be (7, statistical_results.shape)
 
-    flux_outflow_error : (array)
+    flux_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for the emission line for
         which we want to do the ratio.
 
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_err : (array)
+    OIII_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_error : (array)
+    hbeta_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     weighted_average : boolean
@@ -2279,46 +2279,46 @@ def plot_ew_mlf(lamda, data, OIII_outflow_results, OIII_outflow_error, hbeta_out
 
     Parameters
     ----------
-    lamda : : np.ndarray
+    lamda : :obj:'~numpy.ndarray'
         1D array of wavelengths
 
-    data : np.ndarray of shape (len(lamda), i, j)
+    data : :obj:'~numpy.ndarray' of shape (len(lamda), i, j)
         array of flux values for the data (KCWI data cube)
 
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_error : (array)
+    OIII_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_error : (array)
+    hbeta_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     weighted_average : boolean
@@ -2489,46 +2489,46 @@ def plot_ew_mout(lamda, data, OIII_outflow_results, OIII_outflow_error, hbeta_ou
 
     Parameters
     ----------
-    lamda : : np.ndarray
+    lamda : :obj:'~numpy.ndarray'
         1D array of wavelengths
 
-    data : np.ndarray of shape (len(lamda), i, j)
+    data : :obj:'~numpy.ndarray' of shape (len(lamda), i, j)
         array of flux values for the data (KCWI data cube)
 
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_error : (array)
+    OIII_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_err : (array)
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_err : (array)
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
         redshift
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     weighted_average : boolean
@@ -2703,46 +2703,46 @@ def map_of_mlf(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, OIII_outflow_re
 
     Parameters
     ----------
-    lamdas : (array)
+    lamdas : :obj:'~numpy.ndarray'
         wavelength vector for the data
 
-    xx_flat : (array)
+    xx_flat : :obj:'~numpy.ndarray'
         x-coordinates for the data
 
-    yy_flat : (array)
+    yy_flat : :obj:'~numpy.ndarray'
         y-coordinates for the data (same shape as xx_flat)
 
-    rad_flat : (array)
+    rad_flat : :obj:'~numpy.ndarray'
         galaxy radius for each spaxel (same shape as xx_flat)
 
-    data_flat : (array)
+    data_flat : :obj:'~numpy.ndarray'
         the data in a 2D array with shape [len(lamdas), len(xx_flat)]
 
     z : float
         redshift of the galaxy
 
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of results from KOFFEE.  Used to calculate the outflow velocity.
         Should have shape [7, :, :]
 
-    OIII_outflow_error : (array)
+    OIII_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE.  Same shape as outflow_results
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_error : (array)
+    hbeta_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_error : (array)
+    hbeta_no_outflow_error : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.  Should have same shape as the
         second two dimensions of outflow_results.
 

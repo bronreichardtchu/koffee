@@ -14,6 +14,22 @@ PURPOSE:
 	To prepare 3D data cubes for ppxf, KOFFEE, and any other routines.
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
+FUNCTIONS INCLUDED:
+    read_in_data_fits
+    read_in_data_pickle
+    air_to_vac
+    barycentric_corrections
+    milky_way_extinction_correction
+    load_data
+    data_cubes_combine_by_pixel
+    data_cubes_combine_by_wavelength
+    data_coords
+    flatten_cube
+    sn_cut
+    combine_red_blue
+    prepare_combine_cubes
+    prepare_single_cube
+
 MODIFICATION HISTORY:
 		v.1.0 - first created August 2019
 
@@ -32,6 +48,10 @@ from astropy import constants as consts
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
+#SpectRes is a spectrum resampling module which can be used to resample the fluxes
+# and their uncertainties while preserving the integrated flux more information at 
+# https://spectres.readthedocs.io/en/latest/ or from the paper at
+# https://arxiv.org/pdf/1705.05165.pdf
 from spectres import spectres
 
 #from .display_pixels import cap_display_pixels as cdp
@@ -45,47 +65,65 @@ importlib.reload(bdpk)
 #LOAD DATA
 #====================================================================================================
 def read_in_data_fits(filename):
-	"""
-	Reads in the data if it is contained in a fits file
+    """
+    Reads in the data if it is contained in a fits file
 
-	Args:
-		filename: string pointing to the file
+    Parameters
+    ----------
+    filename : str
+        points to the file
 
-	Returns:
-		lamdas: the wavelength vector constructed from the fits header
-		data: the data cube
-		var: the variance cube (if contained within the fits file)
-		header: the fits header
-	"""
-	#open file and get data and header
-	with fits.open(filename) as hdu:
-		data = hdu[0].data
-		header = hdu[0].header
-		#if there is more than one extension in the fits file, assume the second one is the variance
-		if len(hdu) > 1:
-			var = hdu[1].data
-	hdu.close()
+    Returns
+    -------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector constructed from the fits header
+
+    data : :obj:'~numpy.ndarray'
+        the data cube
+
+    var : :obj:'~numpy.ndarray'
+        the variance cube (if contained within the fits file)
+
+    header : FITS header
+        the fits header
+    """
+    #open file and get data and header
+    with fits.open(filename) as hdu:
+        data = hdu[0].data
+        header = hdu[0].header
+        #if there is more than one extension in the fits file, assume the second one is the variance
+        if len(hdu) > 1:
+            var = hdu[1].data
+    hdu.close()
 
     #create the wavelength vector
-	lamdas = np.arange(header['CRVAL3'], header['CRVAL3']+(header['NAXIS3']*header['CD3_3']), header['CD3_3'])
+    lamdas = np.arange(header['CRVAL3'], header['CRVAL3']+(header['NAXIS3']*header['CD3_3']), header['CD3_3'])
 
-	if 'var' in locals():
-		return lamdas, data, var, header
-	else:
-		return lamdas, data, header
+    if 'var' in locals():
+        return lamdas, data, var, header
+    else:
+        return lamdas, data, header
 
 
 def read_in_data_pickle(filename):
     """
     Reads in the data if it is contained in a pickled file
 
-    Args:
-        filename: string pointing to the file
+    Parameters
+    ----------
+    filename : str
+        points to the file location
 
-    Returns:
-        lamdas: the wavelength vector constructed from the fits header
-        data: the data cube
-        var: the variance cube (if contained within the fits file)
+    Returns
+    -------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector constructed from the fits header
+
+    data : :obj:'~numpy.ndarray'
+        the data cube
+
+    var : :obj:'~numpy.ndarray'
+        the variance cube (if contained within the fits file)
     """
     #open file and get data
     with open(filename, 'rb') as f:
@@ -109,66 +147,85 @@ def read_in_data_pickle(filename):
 #====================================================================================================
 
 def air_to_vac(wavelength):
-	"""
-	Implements the air to vacuum wavelength conversion described in eqn 64 and 65 of Greisen 2006.
-    The error in the index of refraction amounts to 1:10^9, which is less than the empirical formula.
+    """
+    Implements the air to vacuum wavelength conversion described in eqn 64 and
+    65 of Greisen 2006. The error in the index of refraction amounts to 1:10^9,
+    which is less than the empirical formula.
     Function slightly altered from specutils.utils.wcs_utils.
 
-	Args:
-		wavelength: the air wavelength(s) in Angstroms
-	Returns:
-		wavelength: the vacuum wavelength(s) in Angstroms
-	"""
-	#convert wavelength to um from Angstroms
-	wlum = wavelength/10000
-	#apply the equation from the paper
-	return (1+1e-6*(287.6155+1.62887/wlum**2+0.01360/wlum**4)) * wavelength
+    Parameters
+    ----------
+    wavelength : :obj:'~numpy.ndarray'
+        the air wavelength(s) in Angstroms
+
+    Returns
+    -------
+    wavelength : :obj:'~numpy.ndarray'
+        the vacuum wavelength(s) in Angstroms
+    """
+    #convert wavelength to um from Angstroms
+    wlum = wavelength/10000
+    #apply the equation from the paper
+    return (1+1e-6*(287.6155+1.62887/wlum**2+0.01360/wlum**4)) * wavelength
 
 
 def barycentric_corrections(lamdas, header):
-	"""
-	Corrects for the earth's rotation... must have the fits header!!! If using pickled data, this
-    should already have been applied.
+    """
+    Corrects for the earth's rotation... must have the fits header!!! If using
+    pickled data, this should already have been applied.
 
-	Args:
-		lamdas: the wavelength vector
-		header: the header from the fits file
-	Returns:
-		lamdas: the corrected wavelength vector
-	"""
-	keck = EarthLocation.from_geodetic(lat=19.8283*units.deg, lon=-155.4783*units.deg, height=4160*units.m)
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector
 
-	sky_coord = SkyCoord(ra=header['CRVAL1']*units.deg, dec=header['CRVAL2']*units.deg)
+    header : FITS header object
+        the header from the fits file
 
-	try:
-		date = header['DATE-BEG']
-	except:
-		print("No keyword 'DATE-BEG' in header, using alternate date")
-		date = '2018-02-15T08:38:48.054'
-		print(date)
+    Returns
+    -------
+    lamdas : :obj:'~numpy.ndarray'
+        the corrected wavelength vector
+    """
+    keck = EarthLocation.from_geodetic(lat=19.8283*units.deg, lon=-155.4783*units.deg, height=4160*units.m)
 
-	barycentric_correction = sky_coord.radial_velocity_correction(obstime=Time(date), location=keck)
+    sky_coord = SkyCoord(ra=header['CRVAL1']*units.deg, dec=header['CRVAL2']*units.deg)
 
-	barycentric_correction = barycentric_correction.to(units.km/units.s)
+    try:
+        date = header['DATE-BEG']
+    except:
+        print("No keyword 'DATE-BEG' in header, using alternate date")
+        date = '2018-02-15T08:38:48.054'
+        print(date)
 
-	c_val = consts.c.to('km/s').value
+    barycentric_correction = sky_coord.radial_velocity_correction(obstime=Time(date), location=keck)
 
-	lamdas = lamdas*(1.0 + (barycentric_correction.value/c_val))
+    barycentric_correction = barycentric_correction.to(units.km/units.s)
 
-	return lamdas
+    c_val = consts.c.to('km/s').value
+
+    lamdas = lamdas*(1.0 + (barycentric_correction.value/c_val))
+
+    return lamdas
 
 
 def milky_way_extinction_correction(lamdas, data):
     """
-    Corrects for the extinction caused by light travelling through the dust and gas of the Milky Way,
-    as described in Cardelli et al. 1989.
+    Corrects for the extinction caused by light travelling through the dust and
+    gas of the Milky Way, as described in Cardelli et al. 1989.
 
-    Args:
-        lamdas: wavelength vector
-        data: 3D cube of data
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        wavelength vector
 
-    Returns:
-        data: the data corrected for extinction
+    data : :obj:'~numpy.ndarray'
+        3D cube of data
+
+    Returns
+    -------
+    data : :obj:'~numpy.ndarray'
+        the data corrected for extinction
     """
     #convert lamdas from Angstroms into micrometers
     lamdas = lamdas/10000
@@ -192,7 +249,57 @@ def milky_way_extinction_correction(lamdas, data):
     return data
 
 
+#====================================================================================================
+#SIMPLE DATA READ IN
+#====================================================================================================
+def load_data(filename, mw_correction=True):
+    """
+    Get the data from the fits file and correct to vacuum wavelengths and for
+    the earth's rotation
 
+    Parameters
+    ----------
+    filename : str
+        points to the file
+
+    mw_correction : boolean
+        whether to apply the milky way extinction correction. Default is True.
+
+    Returns
+    -------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector constructed from the fits header
+
+    data : :obj:'~numpy.ndarray'
+        the data cube
+
+    var : :obj:'~numpy.ndarray'
+        the variance cube (if contained within the fits file)
+
+    header : FITS header object
+        the fits header
+    """
+    #open the file and get the data
+    fits_stuff = read_in_data_fits(filename)
+    if len(fits_stuff) > 3:
+        lamdas, data, var, header = fits_stuff
+    else:
+        lamdas, data, header = fits_stuff
+
+    #correct this from air to vacuum wavelengths
+    #Greisen 2006 FITS Paper III (eqn 65)
+    lamdas = air_to_vac(lamdas)
+
+    #apply barycentric radial velocity corrections
+    lamdas = barycentric_corrections(lamdas, header)
+
+    #apply Milky Way extinction correction
+    data = milky_way_extinction_correction(lamdas, data)
+
+    if len(fits_stuff) > 3:
+        return lamdas, data, var, header
+    else:
+        return lamdas, data, header
 
 #====================================================================================================
 #COMBINE CUBES
@@ -200,17 +307,33 @@ def milky_way_extinction_correction(lamdas, data):
 
 def data_cubes_combine_by_pixel(filepath, gal_name):
     """
-    Grabs datacubes and combines them by pixel using addition, finding the mean and the median.
+    Grabs datacubes and combines them by pixel using addition, finding the mean
+    and the median.
 
-    Args:
-        filepath: the data cubes filepath string to pass to glob.glob
-        gal_name: galaxy name/descriptor (string)
+    Parameters
+    ----------
+    filepath : list of str
+        the data cubes filepath strings to pass to glob.glob
 
-    Returns:
-        lamdas: the wavelength vector for the cubes
-        cube_added: all cubes added
-        cube_mean: the mean of all the cubes
-        cube_median: the median of all the cubes
+    gal_name : str
+        galaxy name/descriptor
+
+    Returns
+    -------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector for the cubes
+
+    cube_added : :obj:'~numpy.ndarray'
+        all cubes added
+
+    cube_mean : :obj:'~numpy.ndarray'
+        the mean of all the cubes
+
+    cube_median : :obj:'~numpy.ndarray'
+        the median of all the cubes
+
+    header : FITS header object
+        the header from the fits file
     """
     #create list to append datas to
     all_data = []
@@ -239,7 +362,12 @@ def data_cubes_combine_by_pixel(filepath, gal_name):
     if len(all_data) > len(all_var):
         del all_var
 
-    #because the exposures are so close together, the difference in lamda between the first to the last is only around 0.001A.  There's a difference in the total length of about 0.0003A between the longest and shortest wavelength vectors after the corrections.  So I'm taking the median across the whole collection.  This does introduce some error, making the line spread function of the averaged spectra larger.
+    #because the exposures are so close together, the difference in lamda between
+    #the first to the last is only around 0.001A.  There's a difference in the
+    #total length of about 0.0003A between the longest and shortest wavelength
+    #vectors after the corrections.  So I'm taking the median across the whole
+    #collection.  This does introduce some error, making the line spread function
+    #of the averaged spectra larger.
     lamdas = np.median(all_lamdas, axis=0)
 
     #adding the data
@@ -268,17 +396,34 @@ def data_cubes_combine_by_pixel(filepath, gal_name):
 
 def data_cubes_combine_by_wavelength(filepath, gal_name):
     """
-	Grabs datacubes and combines them by interpolating each spectrum in wavelength space and making sure to start and end at exactly the same wavelength for each spectrum before using addition, finding the mean and the median.
+    Grabs datacubes and combines them by interpolating each spectrum in wavelength
+    space and making sure to start and end at exactly the same wavelength for
+    each spectrum before using addition, finding the mean and the median.
 
-	Args:
-		filepath: the filepath string to pass to glob.glob
-        gal_name: galaxy name/descriptor (string)
+    Parameters
+    ----------
+    filepath : list of str
+        the filepath string to pass to glob.glob
 
-	Returns:
-		lamdas: the wavelength vector for the cubes
-		cube_added: all cubes added
-		cube_mean: the mean of all the cubes
-		cube_median: the median of all the cubes
+    gal_name : str
+        galaxy name/descriptor (string)
+
+    Returns
+    -------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector for the cubes
+
+    cube_added : :obj:'~numpy.ndarray'
+        all cubes added
+
+    cube_mean : :obj:'~numpy.ndarray'
+        the mean of all the cubes
+
+    cube_median : :obj:'~numpy.ndarray'
+        the median of all the cubes
+
+    header : FITS header object
+        the header from the fits file
     """
     #create list to append datas to
     all_data = []
@@ -309,9 +454,14 @@ def data_cubes_combine_by_wavelength(filepath, gal_name):
     if len(all_data) > len(all_var):
         del all_var
 
-    #because the exposures are so close together, the difference in starting lamda between the first to the last cube is only around 0.001A.  There's a difference in the total length of about 0.0003A between the longest and shortest wavelength vectors after the corrections.  So we interpolate along each spectrum and make sure they all start and end at the same spot.
+    #because the exposures are so close together, the difference in starting lamda
+    #between the first to the last cube is only around 0.001A.  There's a difference
+    #in the total length of about 0.0003A between the longest and shortest wavelength
+    #vectors after the corrections.  So we interpolate along each spectrum and
+    #make sure they all start and end at the same spot.
 
-    #take 50A off the beginning and end of the spectrum, this area tends to be weird anyway and create the new wavelength vector
+    #take 50A off the beginning and end of the spectrum, this area tends to be
+    #weird anyway and create the new wavelength vector
     new_lamda = np.arange(int(all_lamdas[0][0])+50.0, int(all_lamdas[0][-1])-50.0, 0.5)
 
     #iterate through each data and lamda:
@@ -359,21 +509,48 @@ def data_cubes_combine_by_wavelength(filepath, gal_name):
 #====================================================================================================
 def data_coords(lamdas, data, header, z, cube_colour, shiftx=None, shifty=None):
     """
-    Takes the data cube and creates coordinate arrays that are centred on the galaxy.  The arrays can be shifted manually.  If this is not hardcoded in to the function inputs, the function finds the centre using the maximum continuum value.
+    Takes the data cube and creates coordinate arrays that are centred on the
+    galaxy.  The arrays can be shifted manually.  If this is not hardcoded in to
+    the function inputs, the function finds the centre using the maximum continuum
+    value.
 
-    Args:
-        lamdas: the wavelength vector for the cubes
-        data: the 3D data cube
-        header: the header from the fits file
-        z: redshift
-        cube_colour: whether it is the 'red' or 'blue' cube
-        shiftx: the hardcoded shift in the x direction for the coord arrays (in arcseconds)
-        shifty: the hardcoded shift in the y direction for the coord arrays (in arcseconds)
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector for the cubes
 
-    Returns:
-        xx: 2D x coordinate array
-        yy: 2D y coordinate array
-        rad: 2D radius array
+    data : :obj:'~numpy.ndarray'
+        the 3D data cube
+
+    header : FITS header object
+        the header from the fits file
+
+    z : float
+        redshift
+
+    cube_colour : str
+        whether it is the 'red' or 'blue' cube
+
+    shiftx : float or None
+        the hardcoded shift in the x direction for the coord arrays (in arcseconds).
+        If this is none, it finds the maximum point of the median across a section
+        of continuum, and makes this the centre.  Default is None.
+
+    shifty : float or None
+        the hardcoded shift in the y direction for the coord arrays (in arcseconds).
+        If this is none, it finds the maximum point of the median across a section
+        of continuum, and makes this the centre.  Default is None.
+
+    Returns
+    -------
+    xx : :obj:'~numpy.ndarray'
+        2D x coordinate array
+
+    yy : :obj:'~numpy.ndarray'
+        2D y coordinate array
+
+    rad : :obj:'~numpy.ndarray'
+        2D radius array
     """
     #get the data shape
     s = data[0,:,:].shape
@@ -438,19 +615,39 @@ def flatten_cube(xx, yy, rad, data, var=None):
     """
     Takes the cube of data and the coordinate arrays and flattens them
 
-    Args:
-        xx: 2D x coordinate array
-        yy: 2D y coordinate array
-        rad: 2D radius array
-        data: 3D data cube
-        var: 3D variance cube (optional)
+    Parameters
+    ----------
+    xx : :obj:'~numpy.ndarray'
+        2D x coordinate array
 
-    Returns:
-        xx_flat: flattened x coordinate array (1D)
-        yy_flat: flattened y coordinate array (1D)
-        rad_flat: flattened radius array (1D)
-        data_flat: flattened data array (2D)
-        var_flat: flattened variance array (2D) if variance cube inputed
+    yy : :obj:'~numpy.ndarray'
+        2D y coordinate array
+
+    rad : :obj:'~numpy.ndarray'
+        2D radius array
+
+    data : :obj:'~numpy.ndarray'
+        the 3D data cube
+
+    var : :obj:'~numpy.ndarray' or None
+        the 3D variance cube (optional), Default is None
+
+    Returns
+    -------
+    xx_flat : :obj:'~numpy.ndarray'
+        flattened x coordinate array (1D)
+
+    yy_flat : :obj:'~numpy.ndarray'
+        flattened y coordinate array (1D)
+
+    rad_flat : :obj:'~numpy.ndarray'
+        flattened radius array (1D)
+
+    data_flat : :obj:'~numpy.ndarray'
+        flattened data array (2D)
+
+    var_flat : :obj:'~numpy.ndarray'
+        flattened variance array (2D) if variance cube inputed
     """
     print('        original shape of arrays:')
     print('xx: '+str(xx.shape)+'; yy: '+str(yy.shape))
@@ -483,20 +680,45 @@ def sn_cut(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn=3):
     """
     Takes out the spectra where a S/N limit is not met.
 
-    Args:
-        lamdas: the wavelength vector for the cubes
-        xx_flat: x coordinate array (1D)
-        yy_flat: y coordinate array (1D)
-        rad_flat: radius array (1D)
-        data_flat: data array (2D)
-        z: redshift of galaxy
-        sn: target sn (default is 3)
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector for the cubes
 
-    Returns:
-        xx_flat: cut x coordinate array (1D)
-        yy_flat: cut y coordinate array (1D)
-        rad_flat: cut radius array (1D)
-        data_flat: cut data array (2D)
+    xx_flat : :obj:'~numpy.ndarray'
+        x coordinate array (1D)
+
+    yy_flat : :obj:'~numpy.ndarray'
+        y coordinate array (1D)
+
+    rad_flat : :obj:'~numpy.ndarray'
+        radius array (1D)
+
+    data_flat : :obj:'~numpy.ndarray'
+        data array (2D)
+
+    z : :obj:'~numpy.ndarray'
+        redshift of galaxy
+
+    sn : :obj:'~numpy.ndarray'
+        target sn, below which the data is not included (default is 3)
+
+    Returns
+    -------
+    xx_flat : :obj:'~numpy.ndarray'
+        cut x coordinate array (1D)
+
+    yy_flat : :obj:'~numpy.ndarray'
+        cut y coordinate array (1D)
+
+    rad_flat : :obj:'~numpy.ndarray'
+        cut radius array (1D)
+
+    data_flat : :obj:'~numpy.ndarray'
+        cut data array (2D)
+
+    s_n_OIII : :obj:'~numpy.ndarray'
+        signal-to-noise array
     """
     #use the root mean square error (standard deviation, assuming gaussian distribution) of the continuum as the error
     #cont_mask = (lamdas>4600*(1+z))&(lamdas<4800*(1+z))
@@ -529,19 +751,39 @@ def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noi
     """
     Combines the red and blue cubes into one cube
 
-    Args:
-        lam_blue: (array) wavelength vector for the blue cube
-        lam_red: (array) wavelength vector for the red cube
-        blue_cube: (array) flattened cube
-        red_cube: (array) flattened cube
-        blue_noise: (array) flattened noise cube
-        red_noise: (array) flattened noise cube
-        z: (float) redshift
+    Parameters
+    ----------
+    lam_blue : :obj:'~numpy.ndarray'
+        wavelength vector for the blue cube
 
-    Returns:
-        lam_all: (array) wavelength vector for the full combined cube
-        combined_cube: (array) a flattened cube containing blue and red cubes
-        combined_noise: (array) a flattened cube containing the noise for blue and red cubes
+    lam_red : :obj:'~numpy.ndarray'
+        wavelength vector for the red cube
+
+    blue_cube : :obj:'~numpy.ndarray'
+        flattened blue data cube
+
+    red_cube : :obj:'~numpy.ndarray'
+        flattened red data cube
+
+    blue_noise : :obj:'~numpy.ndarray'
+        flattened blue noise cube
+
+    red_noise: :obj:'~numpy.ndarray'
+        flattened red noise cube
+
+    z : float
+        redshift
+
+    Returns
+    -------
+    lam_all : :obj:'~numpy.ndarray'
+        wavelength vector for the full combined cube
+
+    combined_cube : :obj:'~numpy.ndarray'
+        a flattened cube containing blue and red cubes
+
+    combined_noise : :obj:'~numpy.ndarray'
+        a flattened cube containing the noise for blue and red cubes
     """
     #make sure they cover the same physical space
     assert blue_cube.shape[1]==red_cube.shape[1], "Cubes must have same spatial dimensions"
@@ -609,7 +851,50 @@ def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noi
 #====================================================================================================
 def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour, spatial_crop=False):
     """
-    Runs all the previously defined functions to prepare cubes for KOFFEE, ppxf, voronoi binning or whatever else needs to be done.
+    Runs all the previously defined functions to prepare cubes for KOFFEE, ppxf,
+    voronoi binning or whatever else needs to be done.
+
+    Parameters
+    ----------
+    data_filepath : str
+        path to the data cube file
+
+    var_filepath : str
+        path to the variance cube file
+
+    gal_name : str
+        galaxy name or descriptor
+
+    z : float
+        redshift
+
+    cube_colour : str
+        'red' or 'blue' cube to use in creating the coordinate arrays
+
+    spatial_crop : boolean
+        whether to crop the spatial dimensions - this is needed to match to the
+        IRAS08 metacube
+
+    Returns
+    -------
+    Two saved pickle files combined by pixel and by wavelength with:
+    lamdas : :obj:'~numpy.ndarray'
+        full wavelength array
+
+    xx_flat : :obj:'~numpy.ndarray'
+        x coordinate array (1D)
+
+    yy_flat : :obj:'~numpy.ndarray'
+        y coordinate array (1D)
+
+    rad_flat : :obj:'~numpy.ndarray'
+        radius array (1D)
+
+    data_flat : :obj:'~numpy.ndarray'
+        data array (2D)
+
+    var_flat : :obj:'~numpy.ndarray'
+        variance array (2D)
     """
     #combine all the cubes (includes reading them in from fits, air_to_vac and barycentric_corrections, and saves them)
     lamdas_pix, cube_added_pix, cube_mean_pix, cube_median_pix, header_pix = data_cubes_combine_by_pixel(data_filepath, gal_name)
@@ -662,7 +947,89 @@ def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour,
 
 def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder, data_corrections=True, data_crop=False, var_filepath=None, var_crop=False, var_corrections=True, lamda_crop=False):
     """
-    Runs all the previously defined functions when there is only one cube to read in and nothing to combine.
+    Runs all the previously defined functions when there is only one cube to read
+    in and nothing to combine.
+
+    Parameters
+    ----------
+    data_filepath : str
+        path to the data cube file
+
+    gal_name : str
+        galaxy name or descriptor
+
+    z : float
+        redshift
+
+    cube_colour : str
+        'red' or 'blue' cube to use in creating the coordinate arrays
+
+    results_folder : str
+        where to save the results
+
+    data_corrections : boolean
+        whether to apply the air_to_vac and barycentric corrections.  Default is
+        True.
+
+    data_crop : boolean
+        whether to crop the cube spatially - used to make the blue cube match the
+        spatial extent of the red IRAS08 metacube.  Default is False.
+
+    var_filepath : str or None
+        path to the variance cube file, or None.  Default is None.
+
+    var_crop : boolean
+        whether to crop the variance cube spatially - used to make the blue cube
+        match the spatial extent of the red IRAS08 metacube.  Default is False.
+
+    var_corrections : boolean
+        whether to apply the air_to_vac and barycentric corrections to the variance
+        cube.  Default is True.
+
+    lamda_crop : boolean
+        whether or not to crop off the dodgy edges in the wavelength direction.
+        Default is False.
+
+    Returns
+    -------
+    lamdas : :obj:'~numpy.ndarray'
+        data wavelength array
+
+    var_lamdas : :obj:'~numpy.ndarray'
+        variance wavelength array, if var_filepath given
+
+    xx : :obj:'~numpy.ndarray'
+        x coordinate array (2D)
+
+    yy : :obj:'~numpy.ndarray'
+        y coordinate array (2D)
+
+    rad : :obj:'~numpy.ndarray'
+        radius coordinate array (2D)
+
+    data : :obj:'~numpy.ndarray'
+        data cube array (3D)
+
+    var : :obj:'~numpy.ndarray'
+        variance cube array (3D), if var_filepath given
+
+    xx_flat : :obj:'~numpy.ndarray'
+        flattened x coordinate array (1D)
+
+    yy_flat : :obj:'~numpy.ndarray'
+        flattened y coordinate array (1D)
+
+    rad_flat : :obj:'~numpy.ndarray'
+        flattened radius coordinate array (1D)
+
+    data_flat : :obj:'~numpy.ndarray'
+        flattened data cube array (2D)
+
+    var_flat : :obj:'~numpy.ndarray'
+        flattened variance cube array (2D), if var_filepath given
+
+    header : FITS header object
+        the header from the data fits file
     """
     #read in the data from the fits file
     fits_stuff = read_in_data_fits(data_filepath)

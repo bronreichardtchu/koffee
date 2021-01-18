@@ -14,6 +14,15 @@ PURPOSE:
 	To calculate the SFR and SFR surface density of a data cube.
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
+FUNCTIONS INCLUDED:
+    calc_hbeta_extinction
+    calc_flux_from_koffee
+    calc_doublet_flux_from_koffee
+    calc_hbeta_luminosity
+    calc_hgamma_luminosity
+    calc_sfr_integrate
+    calc_sfr_koffee
+
 MODIFICATION HISTORY:
 		v.1.0 - first created January 2020
 
@@ -35,14 +44,14 @@ def calc_hbeta_extinction(lamdas, z):
 
     Parameters
     ----------
-    lamdas :
+    lamdas : :obj:'~numpy.ndarray'
         the wavelength vector
-    z :
+    z : float
         redshift
 
     Returns
     -------
-    A_hbeta :
+    A_hbeta : float
         the extinction correction factor at the Hbeta line
     """
     #convert lamdas from Angstroms into micrometers
@@ -77,17 +86,20 @@ def calc_hbeta_extinction(lamdas, z):
 
 def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z, outflow=True):
     """
-    Uses koffee outputs to calculate the flux of a single emission line with or without an outflow.
-    In koffee, a gaussian is defined as amp*e^[-(x-mean)**2/2sigma**2] so the integral (which gives
-    us the flux) is sqrt(2*pi)*amp*sigma.
+    Uses koffee outputs to calculate the flux of a single emission line with or
+    without an outflow. In koffee, a gaussian is defined as:
+        amp*e^[-(x-mean)**2/2sigma**2]
+    so the integral (which gives us the flux) is:
+        sqrt(2*pi)*amp*sigma.
 
     Parameters
     ----------
-    outflow_results : :obj:'~numpy.ndarray' object
+    outflow_results : :obj:'~numpy.ndarray'
         Array containing the outflow results found in koffee fits.  This will have
-        either shape [6, i, j] or [7, i, j] depending on whether a constant was included
-        in the koffee fit, or [3, i, j] or [4, i, j] if an outflow was not included.
-        Either way, the flow and galaxy parameters are in the same shape.
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit, or [3, i, j] or [4, i, j] if an outflow was
+        not included. Either way, the flow and galaxy parameters are in the same
+        shape.
         [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
         [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
         or
@@ -95,11 +107,12 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
         [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
         for non-outflow fits.
 
-    outflow_error : :obj:'~numpy.ndarray' object
+    outflow_error : :obj:'~numpy.ndarray'
         Array containing the outflow errors found in koffee fits.  This will have
-        either shape [6, i, j] or [7, i, j] depending on whether a constant was included
-        in the koffee fit, or [3, i, j] or [4, i, j] if an outflow was not included.
-        Either way, the flow and galaxy parameters are in the same shape.
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit, or [3, i, j] or [4, i, j] if an outflow was
+        not included. Either way, the flow and galaxy parameters are in the same
+        shape.
         [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
         [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
         or
@@ -107,12 +120,13 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
         [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
         for non-outflow fits.
 
-    statistical_results : :obj:'~numpy.ndarray' object
-        Array containing the statistical results from koffee.  This has 0 if no flow
-        was found, 1 if a flow was found, 2 if an outflow was found using a forced
-        second fit due to the blue chi square test.
+    statistical_results : :obj:'~numpy.ndarray'
+        Array containing the statistical results from koffee.  This has 0 if no
+        flow was found, 1 if a flow was found, 2 if an outflow was found using a
+        forced second fit due to the blue chi square test.  This should have the
+        shape [i, j]
 
-    redshift : float
+    z : float
         The redshift of the galaxy
 
     outflow : boolean
@@ -121,17 +135,20 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
 
     Returns
     -------
-    systemic_flux : :obj:'~numpy.ndarray' object
+    systemic_flux : :obj:'~numpy.ndarray'
         Array with the systemic line fluxes, and np.nan where no outflow was found.
 
-    systemic_flux_err : :obj:'~numpy.ndarray' object
-        Array with the systemic line flux errors, and np.nan where no outflow was found.
+    systemic_flux_err : :obj:'~numpy.ndarray'
+        Array with the systemic line flux errors, and np.nan where no outflow was
+        found.
 
-    systemic_flux : :obj:'~numpy.ndarray' object
-        Array with the outflow line fluxes, and np.nan where no outflow was found, if outflow==True.
+    outflow_flux : :obj:'~numpy.ndarray'
+        Array with the outflow line fluxes, and np.nan where no outflow was found,
+        if outflow==True.
 
-    systemic_flux_err : :obj:'~numpy.ndarray' object
-        Array with the outflow line flux errors, and np.nan where no outflow was found, if outflow==True.
+    outflow_flux_err : :obj:'~numpy.ndarray'
+        Array with the outflow line flux errors, and np.nan where no outflow was
+        found, if outflow==True.
     """
     ##create array to keep velocity differences in, filled with np.nan
     systemic_flux = np.full_like(statistical_results, np.nan, dtype=np.double)
@@ -179,37 +196,47 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
 
 def calc_doublet_flux_from_koffee(outflow_results, outflow_error, statistical_results, z, outflow=True):
     """
-    Uses koffee outputs to calculate the flux of a doublet emission line with or without an outflow.
-    In koffee, a gaussian is defined as amp*e^[-(x-mean)**2/2sigma**2] so the integral (which gives
-    us the flux) is sqrt(2*pi)*amp*sigma. Since this is a doublet, we therefore have:
-    sqrt(2*pi)*amp1*sigma+sqrt(2*pi)*amp2*sigma.
+    Uses koffee outputs to calculate the flux of a doublet emission line with or
+    without an outflow. In koffee, a gaussian is defined as:
+        amp*e^[-(x-mean)**2/2sigma**2]
+    so the integral (which gives us the flux) is:
+        sqrt(2*pi)*amp*sigma.
+    Since this is a doublet, we therefore have:
+        sqrt(2*pi)*amp1*sigma + sqrt(2*pi)*amp2*sigma.
 
     Parameters
     ----------
-    outflow_results : :obj:'~numpy.ndarray' object
+    outflow_results : :obj:'~numpy.ndarray'
         Array containing the outflow results found in koffee fits.  This will have
-        either shape [13, i, j] or [7, i, j] if an outflow was not included in the koffee fit.
-        Either way, the galaxy parameters are in the same position.
-        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, flow_blue_sigma, flow_blue_mean, flow_blue_amp, flow_red_sigma, flow_red_mean, flow_red_amp, continuum_const], i, j]
+        either shape [13, i, j] or [7, i, j] if an outflow was not included in
+        the koffee fit. Either way, the galaxy parameters are in the same position.
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean,
+        gal_red_amp, flow_blue_sigma, flow_blue_mean, flow_blue_amp, flow_red_sigma,
+        flow_red_mean, flow_red_amp, continuum_const], i, j]
         or
-        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, continuum_const], i, j]
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean,
+        gal_red_amp, continuum_const], i, j]
         for non-outflow fits.
 
-    outflow_error : :obj:'~numpy.ndarray' object
+    outflow_error : :obj:'~numpy.ndarray'
         Array containing the outflow errors found in koffee fits.  This will have
-        either shape [13, i, j] or [7, i, j] if an outflow was not included in the koffee fit.
-        Either way, the galaxy parameters are in the same position.
-        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, flow_blue_sigma, flow_blue_mean, flow_blue_amp, flow_red_sigma, flow_red_mean, flow_red_amp, continuum_const], i, j]
+        either shape [13, i, j] or [7, i, j] if an outflow was not included in
+        the koffee fit. Either way, the galaxy parameters are in the same position.
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean,
+        gal_red_amp, flow_blue_sigma, flow_blue_mean, flow_blue_amp, flow_red_sigma,
+        flow_red_mean, flow_red_amp, continuum_const], i, j]
         or
-        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean, gal_red_amp, continuum_const], i, j]
+        [[gal_blue_sigma, gal_blue_mean, gal_blue_amp, gal_red_sigma, gal_red_mean,
+        gal_red_amp, continuum_const], i, j]
         for non-outflow fits.
 
-    statistical_results : :obj:'~numpy.ndarray' object
-        Array containing the statistical results from koffee.  This has 0 if no flow
-        was found, 1 if a flow was found, 2 if an outflow was found using a forced
-        second fit due to the blue chi square test.
+    statistical_results : :obj:'~numpy.ndarray'
+        Array containing the statistical results from koffee.  This has 0 if no
+        flow was found, 1 if a flow was found, 2 if an outflow was found using a
+        forced second fit due to the blue chi square test.  This should have the
+        shape [i, j]
 
-    redshift : float
+    z : float
         The redshift of the galaxy
 
     outflow : boolean
@@ -218,17 +245,20 @@ def calc_doublet_flux_from_koffee(outflow_results, outflow_error, statistical_re
 
     Returns
     -------
-    systemic_flux : :obj:'~numpy.ndarray' object
+    systemic_flux : :obj:'~numpy.ndarray'
         Array with the systemic line fluxes, and np.nan where no outflow was found.
 
-    systemic_flux_err : :obj:'~numpy.ndarray' object
-        Array with the systemic line flux errors, and np.nan where no outflow was found.
+    systemic_flux_err : :obj:'~numpy.ndarray'
+        Array with the systemic line flux errors, and np.nan where no outflow was
+        found.
 
-    systemic_flux : :obj:'~numpy.ndarray' object
-        Array with the outflow line fluxes, and np.nan where no outflow was found, if outflow==True.
+    outflow_flux : :obj:'~numpy.ndarray'
+        Array with the outflow line fluxes, and np.nan where no outflow was found,
+        if outflow==True.
 
-    systemic_flux_err : :obj:'~numpy.ndarray' object
-        Array with the outflow line flux errors, and np.nan where no outflow was found, if outflow==True.
+    outflow_flux_err : :obj:'~numpy.ndarray'
+        Array with the outflow line flux errors, and np.nan where no outflow was
+        found, if outflow==True.
     """
     ##create array to keep velocity differences in, filled with np.nan
     systemic_flux = np.full_like(statistical_results, np.nan, dtype=np.double)
@@ -277,19 +307,45 @@ def calc_doublet_flux_from_koffee(outflow_results, outflow_error, statistical_re
 
 def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
     """
-    Calculate the luminosity of the H_beta line by integrating along the line using np.trapz
-    The spectrum is in 10^-16 erg/s/cm^2/Ang.  Need to change it to erg/s
+    Calculate the luminosity of the H_beta line by integrating along the line
+    using np.trapz.  The spectrum is in 10^-16 erg/s/cm^2/Ang.  Need to change
+    it to erg/s
 
     Luminosities should be around 10^40
 
-    Inputs:
-        lamdas: the wavelength vector
-        spectrum: the spectrum or array of spectra.  If in array, needs to be in shape [npix, nspec]
-        z: redshift of the galaxy
-        cont_subtract: if True, assumes continuum has not already been subtracted.  Uses the median value of the wavelength range 4850-4855A.
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector
 
-    Returns:
-        h_beta_flux: the flux of the h_beta line
+    spectrum : :obj:'~numpy.ndarray'
+        the spectrum or array of spectra.  If in array, needs to be in shape
+        [npix, nspec]
+
+    z : float
+        redshift of the galaxy
+
+    cont_subtract : boolean
+        if True, assumes continuum has not already been subtracted.  Uses the
+        median value of the wavelength range 4850-4855A.
+
+    plot : boolean
+        if True, plots the area of the spectrum used for the integral.  Default
+        is False.
+
+    Returns
+    -------
+    h_beta_flux : float or :obj:'~numpy.ndarray'
+        the flux of the h_beta line
+
+    s_n_mask : :obj:'~numpy.ndarray'
+        Returned if cont_subtract==True.  The spectrum is used before it is
+        continuum subtracted to find the signal-to-noise value near the Hbeta
+        line for each spectrum
+
+    h_beta_spec : :obj:'~numpy.ndarray'
+        the region of the spectrum used to calculate the Hbeta flux.  Can be
+        plotted to check the whole line is included in the integral.
     """
     #create bounds to integrate over
     #Hbeta is at 4861.33A, allowing 5.5A on either side
@@ -350,14 +406,39 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
 
     Luminosities should be around 10^40
 
-    Inputs:
-        lamdas: the wavelength vector
-        spectrum: the spectrum or array of spectra.  If in array, needs to be in shape [npix, nspec]
-        z: redshift of the galaxy
-        cont_subtract: if True, assumes continuum has not already been subtracted.  Uses the median value of the wavelength range 4850-4855A.
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector
 
-    Returns:
-        h_beta_flux: the flux of the h_beta line
+    spectrum : :obj:'~numpy.ndarray'
+        the spectrum or array of spectra.  If in array, needs to be in shape
+        [npix, nspec]
+
+    z : float
+        redshift of the galaxy
+
+    cont_subtract : boolean
+        if True, assumes continuum has not already been subtracted.  Uses the
+        median value of the wavelength range 4850-4855A.
+
+    plot : boolean
+        if True, plots the area of the spectrum used for the integral.  Default
+        is False.
+
+    Returns
+    -------
+    h_beta_flux : float or :obj:'~numpy.ndarray'
+        the flux of the h_beta line
+
+    s_n_mask : :obj:'~numpy.ndarray'
+        Returned if cont_subtract==True.  The spectrum is used before it is
+        continuum subtracted to find the signal-to-noise value near the Hbeta
+        line for each spectrum
+
+    h_beta_spec : :obj:'~numpy.ndarray'
+        the region of the spectrum used to calculate the Hbeta flux.  Can be
+        plotted to check the whole line is included in the integral.
     """
     #create bounds to integrate over
     #Hgamma is at 4340.47A, allowing 1.5A on either side
@@ -420,14 +501,46 @@ def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinct
     Calculates the star formation rate by integrating over Hbeta
     SFR = C_Halpha (L_Halpha / L_Hbeta)_0 x 10^{-0.4A_Hbeta} x L_Hbeta[erg/s]
 
-    Inputs:
-        lamdas: array of wavelength
-        spectrum: vector or array of spectra (shape: [npix, nspec])
-        z: (float) redshift
-        cont_subtract: if True, assumes continuum has not already been subtracted.  Uses the median value of the wavelength range 4850-4855A.
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector
 
-    Returns:
-        sfr: (float, or array of floats) the star formation rate found using hbeta
+    spectrum : :obj:'~numpy.ndarray'
+        the spectrum or array of spectra.  If in array, needs to be in shape
+        [npix, nspec]
+
+    z : float
+        redshift of the galaxy
+
+    cont_subtract : boolean
+        if True, assumes continuum has not already been subtracted.  Uses the
+        median value of the wavelength range 4850-4855A.
+
+    include_extinction : boolean
+        if True, calculates the extinction at halpha and includes this in the
+        SFR calculation.  Default is True.
+
+
+    Returns
+    -------
+    sfr : float, or :obj:'~numpy.ndarray'
+        the star formation rate found using Hbeta in M_sun/yr
+
+    total_sfr : float
+        the total SFR of all the spectra input in M_sun/yr
+
+    sfr_surface_density : float, or :obj:'~numpy.ndarray'
+        the star formation rate surface density found using Hbeta in M_sun/yr/kpc^2
+
+    h_beta_spec : :obj:'~numpy.ndarray'
+        the area of spectrum around Hbeta used to calculate the flux.  Can be
+        plotted to check the whole emission line is included.
+
+    s_n_mask : :obj:'~numpy.ndarray'
+        Returned if cont_subtract==True.  The spectrum is used before it is
+        continuum subtracted to find the signal-to-noise value near the Hbeta
+        line for each spectrum
     """
     #first we need to define C_Halpha, using Hao et al. 2011 ApJ 741:124
     #From table 2, uses a Kroupa IMF, solar metallicity and 100Myr
@@ -464,15 +577,82 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     """
     Calculates the star formation rate using Hbeta
     SFR = C_Halpha (L_Halpha / L_Hbeta)_0 x 10^{-0.4A_Hbeta} x L_Hbeta[erg/s]
+    The Hbeta flux is calculated using the results from the KOFFEE fits.
 
     Inputs:
         lamdas: array of wavelength
         spectrum: vector or array of spectra (shape: [npix, nspec])
         z: (float) redshift
 
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray'
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit. Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
 
-    Returns:
-        sfr: (float, or array of floats) the star formation rate found using hbeta
+    outflow_error : :obj:'~numpy.ndarray'
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit. Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    no_outflow_results : :obj:'~numpy.ndarray'
+        array of single gaussian results from KOFFEE for Hbeta line. This will
+        have either shape [3, i, j] or [4, i, j] depending on whether a constant
+        was included in the koffee fit. Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+
+    no_outflow_err : :obj:'~numpy.ndarray'
+        array of the single gaussian result errors from KOFFEE for Hbeta line.
+        This will have either shape [3, i, j] or [4, i, j] depending on whether
+        a constant was included in the koffee fit. Either way, the flow and galaxy
+        parameters are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+
+    statistical_results : :obj:'~numpy.ndarray'
+        Array containing the statistical results from koffee.  This has 0 if no
+        flow was found, 1 if a flow was found, 2 if an outflow was found using a
+        forced second fit due to the blue chi square test. This should have the
+        shape [i, j]
+
+    z : float
+        redshift
+
+    include_extinction : boolean
+        if True, calculates the extinction at halpha and includes this in the
+        SFR calculation.  Default is True.
+
+    include_outflow : boolean
+        if True, includes the broad outflow component in the flux calculation.
+        If false, uses only the narrow component to calculate flux.  Default is
+        False.
+
+    Returns
+    -------
+    sfr : float, or :obj:'~numpy.ndarray'
+        the star formation rate found using Hbeta in M_sun/yr
+
+    sfr_err : float, or :obj:'~numpy.ndarray'
+        the error of the star formation rate found using Hbeta in M_sun/yr
+
+    total_sfr : float
+        the total SFR of all the spectra input in M_sun/yr
+
+    sfr_surface_density : float, or :obj:'~numpy.ndarray'
+        the star formation rate surface density found using Hbeta in M_sun/yr/kpc^2
+
+    sfr_surface_density_err : float, or :obj:'~numpy.ndarray'
+        the error of the star formation rate surface density found using Hbeta
+        in M_sun/yr/kpc^2
     """
     #first we need to define C_Halpha, using Hao et al. 2011 ApJ 741:124
     #From table 2, uses a Kroupa IMF, solar metallicity and 100Myr

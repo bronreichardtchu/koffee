@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 """
-Adapted by Bronwyn Reichardt Chu, 2019
 
 Copyright (C) 2014-2017, Michele Cappellari
 E-mail: michele.cappellari_at_physics.ox.ac.uk
+
+(Adapted by Bronwyn Reichardt Chu, 2019)
 
 Updated versions of the software are available from my web page
 http://purl.org/cappellari/software
@@ -53,11 +54,11 @@ import numpy as np
 
 ##############################################################################
 
-def display_pixels(x, y, val, pixelsize=None, vmin=None, vmax=None,
-                   angle=None, colorbar=False, label=None, nticks=7,
-                   cmap='viridis', axes=None, **kwargs):
+def display_pixels(x, y, val, pixelsize_x=None, pixelsize_y=None, vmin=None,
+                    vmax=None, angle=None, colorbar=False, label=None,
+                    nticks=7, cmap='viridis', axes=None, **kwargs):
     """
-    Display vectors of square pixels at coordinates (x,y) coloured with "val".
+    Display vectors of rectangular pixels at coordinates (x,y) coloured with "val".
     An optional rotation around the origin can be applied to the whole image.
 
     The pixels are assumed to be taken from a regular cartesian grid with
@@ -66,6 +67,56 @@ def display_pixels(x, y, val, pixelsize=None, vmin=None, vmax=None,
 
     This routine is designed to be fast even with large images and to produce
     minimal file sizes when the output is saved in a vector format like PDF.
+
+    Parameters
+    ----------
+    x : :obj:'~numpy.ndarray'
+        flattened x-coordinate array (same shape as val)
+
+    y : :obj:'~numpy.ndarray'
+        flattened y-coordinate array (same shape as val)
+
+    val : :obj:'~numpy.ndarray'
+        flattened array of values to be mapped.  Can have some missing data.
+
+    pixelsize_x : float
+        size of the pixels in the x direction.  If None, calculates the minimum
+        distance between unique values in the x array.  (Default=None)
+
+    pixelsize_y : float
+        size of the pixels in the y direction.  If None, calculates the minimum
+        distance between unique values in the y array.  (Default=None)
+
+    vmin : float
+        minimum value plotted in colormap.  If None, uses np.min(val)
+        (Default=None)
+
+    vmax : float
+        maximum value plotted in colormap.  If None, uses np.max(val)
+        (Default=None)
+
+    angle : float
+
+    colorbar : boolean
+        whether to include a colorbar (Default=False)
+
+    label : string
+        the label for the colorbar, if colorbar=True
+
+    nticks : int
+        the number of ticks along the colorbar, if colorbar=True
+
+    cmap : string
+        colormap to use (Default='viridis').
+
+    axes :
+        matplotlib axes to add the map to.  (Default=None)
+
+    **kwargs
+
+    Returns:
+    -------
+    A matplotlib instance of a map using the x and y coordinates given.
 
     """
     x, y, val = map(np.ravel, [x, y, val])
@@ -81,12 +132,17 @@ def display_pixels(x, y, val, pixelsize=None, vmin=None, vmax=None,
     if vmax is None:
         vmax = np.max(val)
 
-    if pixelsize is None:
+    if pixelsize_x is None:
         if x.size < 1e4:
             pixelsize_x = np.min(distance.pdist(np.column_stack([np.unique(x), np.unique(x)])))
+        else:
+            raise ValueError("Dataset is large: Provide `pixelsize_x`")
+
+    if pixelsize_y is None:
+        if y.size < 1e4:
             pixelsize_y = np.min(distance.pdist(np.column_stack([np.unique(y), np.unique(y)])))
         else:
-            raise ValueError("Dataset is large: Provide `pixelsize`")
+            raise ValueError("Dataset is large: Provide `pixelsize_y`")
 
     xmin, xmax = np.min(x), np.max(x)
     ymin, ymax = np.min(y), np.max(y)

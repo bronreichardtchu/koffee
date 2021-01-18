@@ -14,6 +14,9 @@ PURPOSE:
 	Calculates the outflow velocity from koffee results.
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
+FUNCTIONS INCLUDED:
+    calc_outflow_vel
+
 MODIFICATION HISTORY:
 		v.1.0 - first created September 2020
 
@@ -27,43 +30,55 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
 
     Parameters
     ----------
-    outflow_results : :obj:'~numpy.ndarray' object
+    outflow_results : :obj:'~numpy.ndarray'
         Array containing the outflow results found in koffee fits.  This will have
-        either shape [6, i, j] or [7, i, j] depending on whether a constant was included
-        in the koffee fit.  Either way, the flow and galaxy parameters are in the same shape.
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
         [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
         [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
 
-    outflow_error : :obj:'~numpy.ndarray' object
+    outflow_error : :obj:'~numpy.ndarray'
         Array containing the outflow errors found in koffee fits.  This will have
-        either shape [6, i, j] or [7, i, j] depending on whether a constant was included
-        in the koffee fit.  Either way, the flow and galaxy parameters are in the same shape.
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
         [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
         [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
 
-    statistical_results : :obj:'~numpy.ndarray' object
-        Array containing the statistical results from koffee.  This has 0 if no flow
-        was found, 1 if a flow was found, 2 if an outflow was found using a forced
-        second fit due to the blue chi square test.
+    statistical_results : :obj:'~numpy.ndarray'
+        Array containing the statistical results from koffee.  This has 0 if no
+        flow was found, 1 if a flow was found, 2 if an outflow was found using a
+        forced second fit due to the blue chi square test.
 
-    redshift : float
+    z : float
         The redshift of the galaxy
 
     Returns
     -------
-    vel_diff : :obj:'~numpy.ndarray' object
+    vel_disp : :obj:'~numpy.ndarray'
+        Array with the dispersion of the outflow component in km/s, and np.nan
+        where no velocity was found.
+
+    vel_disp_err : :obj:'~numpy.ndarray'
+        Array with the error for dispersion of the outflow component in km/s,
+        and np.nan where no velocity was found.
+
+    vel_diff : :obj:'~numpy.ndarray'
         Array with the mean difference between the outflow and systemic lines in
         km/s, and np.nan where no velocity was found.
 
-    vel_diff_err : :obj:'~numpy.ndarray' object
-        Array with the error for the mean difference between the outflow and systemic
-        lines in km/s, and np.nan where no velocity was found.
+    vel_diff_err : :obj:'~numpy.ndarray'
+        Array with the error for the mean difference between the outflow and
+        systemic lines in km/s, and np.nan where no velocity was found.
 
-    vel_out : :obj:'~numpy.ndarray' object
-        Array with the outflow velocities, and np.nan where no velocity was found.
+    vel_out : :obj:'~numpy.ndarray'
+        Array with the outflow velocities in km/s, and np.nan where no velocity
+        was found.
 
-    vel_out_err : :obj:'~numpy.ndarray' object
-        Array with the outflow velocity errors, and np.nan where no velocity was found.
+    vel_out_err : :obj:'~numpy.ndarray'
+        Array with the outflow velocity errors in km/s, and np.nan where no
+        velocity was found.
     """
     #create array to keep velocity differences in, filled with np.nan
     vel_out = np.full_like(statistical_results, np.nan, dtype=np.double)

@@ -14,6 +14,11 @@ PURPOSE:
 	Calculates the outflow velocity from koffee results.
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
+FUNCTIONS INCLUDED:
+    calc_mass_outflow_rate
+    calc_mass_loading_factor
+    calc_mass_loading_factor2
+
 MODIFICATION HISTORY:
 		v.1.0 - first created September 2020
 
@@ -40,7 +45,41 @@ def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error,
     To convert from Halpha to Hbeta luminosities:
         L_Halpha/L_Hbeta = 2.87
     So:
-        M_out = (1.36m_H)/(gamma_Halpha n_e) * (v_out/R_out) * (L_Halpha,broad/L_Hbeta,broad)*L_Hbeta,broad
+        M_out = (1.36m_H)/(gamma_Halpha n_e) * (v_out/R_out) *
+                (L_Halpha,broad/L_Hbeta,broad) * L_Hbeta,broad
+
+    Parameters
+    ----------
+    OIII_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for OIII line.  Used to calculate
+        the outflow velocity.  Should be (7, statistical_results.shape)
+
+    OIII_error : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for OIII line
+
+    hbeta_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for Hbeta line.  Used to calculate
+        the Sigma SFR.  Should be (7, statistical_results.shape)
+
+    hbeta_error : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for Hbeta line
+
+    statistical_results : :obj:'~numpy.ndarray'
+        array of statistical results from KOFFEE.
+
+    z : float
+        redshift
+
+    Returns
+    -------
+    M_out : :obj:'~numpy.ndarray'
+        mass outflow rate in units of g/s
+
+    M_out_max : :obj:'~numpy.ndarray'
+        maximum mass outflow rate in units of g/s if R_min is 350pc
+
+    M_out_min : :obj:'~numpy.ndarray'
+        minimum mass outflow rate in units of g/s if R_max is 2000pc
     """
     #from Calzetti 2001 PASP 113 we have L_Halpha/L_Hbeta = 2.87
     lum_ratio_alpha_to_beta = 2.87
@@ -101,6 +140,47 @@ def calc_mass_loading_factor(OIII_results, OIII_error, hbeta_results, hbeta_erro
     """
     Calculates the mass loading factor
         eta = M_out/SFR
+    Using the calc_sfr.calc_sfr_koffee and the calc_mass_outflow_rate functions
+
+    Parameters
+    ----------
+    OIII_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for OIII line.  Used to calculate
+        the outflow velocity.  Should be (7, statistical_results.shape)
+
+    OIII_error : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for OIII line
+
+    hbeta_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for Hbeta line.  Used to calculate
+        the Sigma SFR.  Should be (7, statistical_results.shape)
+
+    hbeta_error : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for Hbeta line
+
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
+        array of single gaussian results from KOFFEE for Hbeta line.  Used to
+        calculate the Sigma SFR.  Should be (4, statistical_results.shape)
+
+    hbeta_no_outflow_error : :obj:'~numpy.ndarray'
+        array of the single gaussian result errors from KOFFEE for Hbeta line
+
+    statistical_results : :obj:'~numpy.ndarray'
+        array of statistical results from KOFFEE.
+
+    z : float
+        redshift
+
+    Returns
+    -------
+    mlf_out : :obj:'~numpy.ndarray'
+        mass loading factor
+
+    mlf_max : :obj:'~numpy.ndarray'
+        maximum mass loading factor if R_min is 350pc
+
+    mlf_min : :obj:'~numpy.ndarray'
+        minimum mass loading factor if R_max is 2000pc
     """
     #calculate the mass outflow rate (in g/s)
     m_out, m_out_max, m_out_min = calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error, statistical_results, z)
@@ -128,12 +208,53 @@ def calc_mass_loading_factor2(OIII_results, OIII_error, hbeta_results, hbeta_err
     """
     Calculates the mass loading factor, simplifying the M_out/SFR equation
         eta = M_out/SFR
-    where
+    Using the whole equation, not the functions (to double check).
+    Where
         M_out = (1.36m_H)/(gamma_Halpha n_e) * (v_out/R_out) * (L_Halpha,broad/L_Hbeta,broad)*L_Hbeta,broad
     and
         SFR = C_Halpha (L_Halpha / L_Hbeta)_0 x 10^{-0.4A_Hbeta} x L_Hbeta,narrow[erg/s]
     so:
         eta = (1.36m_H)/(gamma_Halpha n_e) * (v_out/R_out) * (L_Hbeta,broad/L_Hbeta,narrow) * (1/C_Halpha x 10^{-0.4A_Hbeta})
+
+    Parameters
+    ----------
+    OIII_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for OIII line.  Used to calculate
+        the outflow velocity.  Should be (7, statistical_results.shape)
+
+    OIII_error : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for OIII line
+
+    hbeta_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for Hbeta line.  Used to calculate
+        the Sigma SFR.  Should be (7, statistical_results.shape)
+
+    hbeta_error : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for Hbeta line
+
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
+        array of single gaussian results from KOFFEE for Hbeta line.  Used to
+        calculate the Sigma SFR.  Should be (4, statistical_results.shape)
+
+    hbeta_no_outflow_error : :obj:'~numpy.ndarray'
+        array of the single gaussian result errors from KOFFEE for Hbeta line
+
+    statistical_results : :obj:'~numpy.ndarray'
+        array of statistical results from KOFFEE.
+
+    z : float
+        redshift
+
+    Returns
+    -------
+    mlf_out : :obj:'~numpy.ndarray'
+        mass loading factor
+
+    mlf_max : :obj:'~numpy.ndarray'
+        maximum mass loading factor if R_min is 350pc
+
+    mlf_min : :obj:'~numpy.ndarray'
+        minimum mass loading factor if R_max is 2000pc
     """
     #m_H is the atomic mass of Hydrogen (in kg)
     m_H = m_p

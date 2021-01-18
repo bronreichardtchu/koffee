@@ -17,6 +17,7 @@ PURPOSE:
 FUNCTIONS INCLUDED:
     plot_compare_fits
     map_of_outflows
+    map_of_outflows2
     sn_cut_plot
     proposal_plot
     plot_sfr_vout
@@ -60,10 +61,10 @@ def plot_compare_fits(lamdas, data, spaxels, z):
 
     Parameters
     ----------
-    lamdas : array
+    lamdas : :obj:'~numpy.ndarray'
         wavelength vector for the data
 
-    data : array
+    data : :obj:'~numpy.ndarray'
         3D data cube for the galaxy with shape [len(lamdas),:,:]
 
     spaxels : list
@@ -151,32 +152,32 @@ def map_of_outflows(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, outflow_re
 
     Parameters
     ----------
-    lamdas : (array)
+    lamdas : :obj:'~numpy.ndarray'
         wavelength vector for the data
 
-    xx_flat : (array)
+    xx_flat : :obj:'~numpy.ndarray'
         x-coordinates for the data
 
-    yy_flat : (array)
+    yy_flat : :obj:'~numpy.ndarray'
         y-coordinates for the data (same shape as xx_flat)
 
-    rad_flat : (array)
+    rad_flat : :obj:'~numpy.ndarray'
         galaxy radius for each spaxel (same shape as xx_flat)
 
-    data_flat : (array)
+    data_flat : :obj:'~numpy.ndarray'
         the data in a 2D array with shape [len(lamdas), len(xx_flat)]
 
     z : float
         redshift of the galaxy
 
-    outflow_results : (array)
+    outflow_results : :obj:'~numpy.ndarray'
         array of results from KOFFEE.  Used to calculate the outflow velocity.
         Should have shape [7, :, :]
 
-    outflow_error : (array)
+    outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE.  Same shape as outflow_results
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.  Should have same shape as the
         second two dimensions of outflow_results.
 
@@ -249,6 +250,102 @@ def map_of_outflows(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, outflow_re
     plt.show()
 
 
+def map_of_outflows2(outflow_results, statistical_results, lamdas, xx, yy, data, z):
+    """
+    Plots the velocity difference between the main galaxy line and the outflow
+    where there is an outflow, and 0km/s where there is no outflow (v_broad-v_narrow).
+    Contours from the continuum are added on top.  This one uses a different
+    plotting method to the previous function.
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray'
+        array of results from KOFFEE.  Used to calculate the outflow velocity.
+        Should have shape [7, :, :]
+
+    statistical_results : :obj:'~numpy.ndarray'
+        array of statistical results from KOFFEE.  Should have same shape as the
+        second two dimensions of outflow_results.
+
+    xx : :obj:'~numpy.ndarray'
+        x-coordinates for the data (not flattened array)
+
+    yy : :obj:'~numpy.ndarray'
+        y-coordinates for the data (same shape as xx)
+
+    rad : :obj:'~numpy.ndarray'
+        galaxy radius for each spaxel (same shape as xx)
+
+    data : :obj:'~numpy.ndarray'
+        the data in a 3D array with shape [len(lamdas), xx.shape]
+
+    z : float
+        redshift of the galaxy
+
+    Returns
+    -------
+    Two figures, one just of vel_out with continuum contours plotted on top, and
+    the other showing the spaxels which have high enough S/N to be measured, but
+    return a result of no outflow as spaxels with vel_out = 0 km/s.
+    """
+    #create array to keep velocity difference in
+    vel_out = np.empty_like(statistical_results)
+
+    #create outflow mask
+    flow_mask = (statistical_results>0)
+
+    #de-redshift the data first!!!
+    systemic_mean = outflow_results[1,:,:][flow_mask]/(1+z)
+    flow_mean = outflow_results[4,:,:][flow_mask]/(1+z)
+    flow_sigma = outflow_results[3,:,:][flow_mask]/(1+z)
+
+    #find the velocity difference
+    #doing c*(lam_gal-lam_out)/lam_gal
+    vel_diff = 299792.458*(systemic_mean-flow_mean)/systemic_mean
+
+    v_out = 2*flow_sigma*299792.458/systemic_mean + vel_diff
+
+    vel_out[~flow_mask] = np.nan
+    vel_out[flow_mask] = v_out
+
+    #create an array with zero where there are no outflows, but there is high enough S/N
+    no_vel_out = np.empty_like(vel_out)
+    no_vel_out[np.isnan(outflow_results[1,:,:])] = np.nan
+    no_vel_out[flow_mask] = np.nan
+    no_vel_out[np.isnan(outflow_results[1,:,:])][statistical_results[np.isnan(outflow_results[1,:,:])]==0] = 0.0
+
+    #find the median of the continuum for the contours
+    cont_mask = (lamdas>4600*(1+z))&(lamdas<4800*(1+z))
+    cont_median = np.median(data[cont_mask,:,:], axis=0)
+
+    xmin, xmax = xx.min(), xx.max()
+    ymin, ymax = yy.min(), yy.max()
+
+    plt.figure()
+    plt.rcParams['axes.facecolor']='black'
+    im = plt.pcolormesh(xx, yy, vel_out, cmap='viridis_r')
+    plt.contour(yy, xx, cont_median, colors='white', linewidths=0.7, alpha=0.7, levels=(0.2,0.3,0.4,0.7,1.0,2.0,4.0))
+    plt.gca().invert_xaxis()
+    plt.xlim(xmin, xmax)
+    plt.ylim(ymin, ymax)
+    plt.colorbar(im, label=r'$\Delta v_{\rm broad-narrow}$ (km s$^{-1}$)', pad=0.01)
+    plt.xlabel('Arcseconds')
+    plt.ylabel('Arcseconds')
+    plt.show()
+
+    plt.figure()
+    plt.rcParams['axes.facecolor']='black'
+    #im = plt.pcolormesh(yy, xx, vel_diff.T, cmap='viridis_r', vmin=-150, vmax=60)
+    im1 = plt.pcolormesh(xx, yy, no_vel_out, cmap='binary', vmin=0.0, vmax=50.0)
+    im2 = plt.pcolormesh(xx, yy, vel_out, cmap='viridis_r')
+    #plt.gca().invert_xaxis()
+    plt.contour(yy, xx, cont_median, colors='white', linewidths=0.7, alpha=0.7, levels=(0.2,0.3,0.4,0.7,1.0,2.0,4.0))
+    plt.colorbar(im2, label=r'$\Delta v_{\rm broad-narrow}$ (km s$^{-1}$)', pad=0.01)
+    plt.xlabel('Arcseconds')
+    plt.ylabel('Arcseconds')
+    plt.show()
+
+
 
 def sn_cut_plot(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn):
     """
@@ -257,19 +354,19 @@ def sn_cut_plot(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn):
 
     Parameters
     ----------
-    lamdas : (array)
+    lamdas : :obj:'~numpy.ndarray'
         wavelength vector for the data
 
-    xx_flat : (array)
+    xx_flat : :obj:'~numpy.ndarray'
         x-coordinates for the data
 
-    yy_flat : (array)
+    yy_flat : :obj:'~numpy.ndarray'
         y-coordinates for the data (same shape as xx_flat)
 
-    rad_flat : (array)
+    rad_flat : :obj:'~numpy.ndarray'
         galaxy radius for each spaxel (same shape as xx_flat)
 
-    data_flat : (array)
+    data_flat : :obj:'~numpy.ndarray'
         the data in a 2D array with shape [len(lamdas), len(xx_flat)]
 
     z : float
@@ -378,34 +475,34 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_error : (array)
+    OIII_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    hbeta_outflow_results : (array)
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
         the Sigma SFR.  Should be (7, statistical_results.shape)
 
-    hbeta_outflow_error : (array)
+    hbeta_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
 
-    hbeta_no_outflow_results : (array)
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
         array of single gaussian results from KOFFEE for Hbeta line.  Used to
         calculate the Sigma SFR.  Should be (4, statistical_results.shape)
 
-    hbeta_no_outflow_error : (array)
+    hbeta_no_outflow_error : :obj:'~numpy.ndarray'
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
-    BIC_outflow : (array)
+    BIC_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the double gaussian fits
 
-    BIC_no_outflow : (array)
+    BIC_no_outflow : :obj:'~numpy.ndarray'
         array of BIC values from the single gaussian fits
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
@@ -415,7 +512,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
         the variable used for colouring the points on the graph, used in the
         plotting labels for the colourbar (Default=None)
 
-    colour_by_array : (array)
+    colour_by_array : :obj:'~numpy.ndarray'
         the array used for colouring the points on the graph (Default=None)
 
     weighted_average : boolean
@@ -522,25 +619,25 @@ def plot_flux_vout(OIII_outflow_results, OIII_outflow_error, flux_line_outflow_r
 
     Parameters
     ----------
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_error : (array)
+    OIII_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    flux_line_outflow_results : (array)
+    flux_line_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for the emission line used in the
         broad-to-narrow flux ratio.  Should be (7, statistical_results.shape)
 
-    flux_line_outflow_error : (array)
+    flux_line_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for the emission line used
         in the broad-to-narrow flux ratio
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
-    radius : (array)
+    radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
     z : float
@@ -642,17 +739,17 @@ def plot_vel_out_radius(rad, OIII_outflow_results, OIII_outflow_error, statistic
 
     Parameters
     ----------
-    rad : (array)
+    rad : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
-    OIII_outflow_results : (array)
+    OIII_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for OIII line.  Used to calculate
         the outflow velocity.  Should be (7, statistical_results.shape)
 
-    OIII_outflow_error : (array)
+    OIII_outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for OIII line
 
-    statistical_results : (array)
+    statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
 
     z : float
@@ -744,10 +841,10 @@ def plot_outflow_frequency_radius(rad_flat, stat_results):
 
     Parameters
     ----------
-    rad_flat : (array)
+    rad_flat : :obj:'~numpy.ndarray'
         flattened array of galaxy radius values
 
-    stat_results : (array)
+    stat_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE
 
     Returns
@@ -849,14 +946,14 @@ def plot_vel_disp_vel_diff(outflow_results, outflow_error, stat_results, z):
 
     Parameters
     ----------
-    outflow_results : (array)
+    outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE.  Used to calculate the outflow
         velocity. Should be (7, stat_results.shape)
 
-    outflow_error : (array)
+    outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE.
 
-    stat_results : (array)
+    stat_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE
 
     z : float
@@ -910,18 +1007,18 @@ def plot_sigma_sfr(sfr, outflow_results, outflow_error, stat_results, z):
 
     Parameters
     ----------
-    sfr : (array)
+    sfr : :obj:'~numpy.ndarray'
         star formation rate OR star formation rate surface density value for each
         spaxel in the galaxy
 
-    outflow_results : (array)
+    outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE.  Used to calculate the outflow
         velocity. Should be (7, stat_results.shape)
 
-    outflow_error : (array)
+    outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE.
 
-    stat_results : (array)
+    stat_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE
 
     z : float
@@ -978,18 +1075,18 @@ def plot_vel_diff_sfr(sfr, outflow_results, outflow_error, stat_results, z):
 
     Parameters
     ----------
-    sfr : (array)
+    sfr : :obj:'~numpy.ndarray'
         star formation rate OR star formation rate surface density value for each
         spaxel in the galaxy
 
-    outflow_results : (array)
+    outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE.  Used to calculate the outflow
         velocity. Should be (7, stat_results.shape)
 
-    outflow_error : (array)
+    outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE.
 
-    stat_results : (array)
+    stat_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE
 
     z : float
@@ -1041,14 +1138,14 @@ def plot_vdiff_amp_ratio(outflow_results, outflow_error, stat_results, z):
 
     Parameters
     ----------
-    outflow_results : (array)
+    outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE.  Used to calculate the outflow
         velocity. Should be (7, stat_results.shape)
 
-    outflow_error : (array)
+    outflow_error : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE.
 
-    stat_results : (array)
+    stat_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE
 
     z : float

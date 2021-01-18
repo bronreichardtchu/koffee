@@ -11,7 +11,7 @@ EMAIL:
 	<breichardtchu@swin.edu.au>
 
 PURPOSE:
-	To make plots of results from Paper I
+	To hold useful plotting functions
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
 FUNCTIONS INLCUDED:
@@ -106,10 +106,10 @@ def chen_et_al_2010(sfr_surface_density_min, sfr_surface_density_max, scale_fact
 
     Returns
     -------
-    sfr_surface_density : array
+    sfr_surface_density : :obj:'~numpy.ndarray'
         vector of SFR surface densities
 
-    v_out : array
+    v_out : :obj:'~numpy.ndarray'
         vector of outflow velocities following the trend
     """
     #create a vector for sfr surface density
@@ -140,10 +140,10 @@ def murray_et_al_2011(sfr_surface_density_min, sfr_surface_density_max, scale_fa
 
     Returns
     -------
-    sfr_surface_density : array
+    sfr_surface_density : :obj:'~numpy.ndarray'
         vector of SFR surface densities
 
-    v_out : array
+    v_out : :obj:'~numpy.ndarray'
         vector of outflow velocities following the trend
     """
     #create a vector for sfr surface density
@@ -169,10 +169,10 @@ def davies_et_al_2019(sfr_surface_density_min, sfr_surface_density_max):
 
     Returns
     -------
-    sfr_surface_density : array
+    sfr_surface_density : :obj:'~numpy.ndarray'
         vector of SFR surface densities
 
-    vel_disp : array
+    vel_disp : :obj:'~numpy.ndarray'
         vector of outflow velocity dispersions following the trend
     """
     #create a vector for sfr surface density
@@ -202,10 +202,10 @@ def kim_et_al_2020(sfr_surface_density_min, sfr_surface_density_max, scale_facto
 
     Returns
     -------
-    sfr_surface_density : array
+    sfr_surface_density : :obj:'~numpy.ndarray'
         vector of SFR surface densities
 
-    mlf : array
+    mlf : :obj:'~numpy.ndarray'
         vector of mass loading factors following the trend
     """
     #create a vector for sfr surface density
@@ -246,7 +246,7 @@ def running_mean(x, N):
 
     Parameters
     ----------
-    x : array
+    x : :obj:'~numpy.ndarray'
         data
     N : integer
         bin size
@@ -257,13 +257,13 @@ def running_mean(x, N):
 
 def lower_quantile(x):
     """
-    Calculate the lower quantile of x (data array)
+    Calculate the lower quantile of x (data :obj:'~numpy.nd:obj:'~numpy.ndarray'')
     """
     return np.nanquantile(x, 0.33)
 
 def upper_quantile(x):
     """
-    Calculate the upper quantile of x (data array)
+    Calculate the upper quantile of x (data :obj:'~numpy.ndarray')
     """
     return np.nanquantile(x, 0.66)
 
@@ -275,16 +275,16 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
 
     Parameters
     ----------
-    x : array
+    x : :obj:'~numpy.ndarray'
         x-axis logarithmic data
 
-    y : array
+    y : :obj:'~numpy.ndarray'
         y-axis data
 
     num_bins : integer
         the number of bins to divide the data into
 
-    weights : array
+    weights : :obj:'~numpy.ndarray'
         array to multiply x by, usually the error (Default = None)
 
     min_bin : float
@@ -295,16 +295,16 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
 
     Returns
     -------
-    bin_center : array
+    bin_center : :obj:'~numpy.ndarray'
         values indicating the centres of the bins in x
 
-    bin_avg : array
+    bin_avg : :obj:'~numpy.ndarray'
         values of the median of the bins in y
 
-    lower_quantile : array
+    lower_quantile : :obj:'~numpy.ndarray'
         values for the lower quantile of each bin in y
 
-    upper_quantile : array
+    upper_quantile : :obj:'~numpy.ndarray'
         values for the upper quantile of each bin in y
     """
     if min_bin == None:
@@ -365,16 +365,16 @@ def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_b
 
     Parameters
     ----------
-    x : array
+    x : :obj:'~numpy.ndarray'
         x-axis linear data
 
-    y : array
+    y : :obj:'~numpy.ndarray'
         y-axis data
 
     num_bins : integer
         the number of bins to divide the data into
 
-    weights : array
+    weights : :obj:'~numpy.ndarray'
         array to multiply x by, usually the error (Default = None)
 
     min_bin : float
@@ -385,16 +385,16 @@ def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_b
 
     Returns
     -------
-    bin_center : array
+    bin_center : :obj:'~numpy.ndarray'
         values indicating the centres of the bins in x
 
-    bin_avg : array
+    bin_avg : :obj:'~numpy.ndarray'
         values of the median of the bins in y
 
-    lower_quantile : array
+    lower_quantile : :obj:'~numpy.ndarray'
         values for the lower quantile of each bin in y
 
-    upper_quantile : array
+    upper_quantile : :obj:'~numpy.ndarray'
         values for the upper quantile of each bin in y
     """
     if min_bin == None:
@@ -454,10 +454,10 @@ def pearson_correlation(x, y):
 
     Parameters
     ----------
-    x : :obj:'~numpy.ndarray' object
+    x : :obj:'~numpy.ndarray'
         Input array - x values
 
-    y : :obj:'~numpy.ndarray' object
+    y : :obj:'~numpy.ndarray'
         Input array - y values
 
     Returns
@@ -487,7 +487,7 @@ def read_in_create_wcs(fits_file, index=0):
 
     Returns
     -------
-    fits_data : numpy array
+    fits_data : :obj:'~numpy.ndarray'
         the fits data as a numpy array
 
     fits_wcs : astropy WCS object
@@ -509,16 +509,16 @@ def plot_continuum_contours(lamdas, xx, yy, data, z, ax):
 
     Parameters
     ----------
-    lamdas : array
+    lamdas : :obj:'~numpy.ndarray'
         wavelength vector (1D)
 
-    xx : array
+    xx : :obj:'~numpy.ndarray'
         x coordinate array (2D)
 
-    yy : array
+    yy : :obj:'~numpy.ndarray'
         y coordinate array (2D)
 
-    data : array
+    data : :obj:'~numpy.ndarray'
         data array (3D)
 
     z : float

@@ -14,6 +14,10 @@ PURPOSE:
 	To fit gaussians to the Hbeta emission line in 3D data cubes.
 	Written on MacOS Mojave 10.14.5, with Python 3
 
+FUNCTIONS INCLUDED:
+    calculate_hbeta_flux
+    fit_cube
+
 MODIFICATION HISTORY:
 		v.1.0 - first created November 2020
 
@@ -45,16 +49,38 @@ def calculate_hbeta_flux(hbeta_results, hbeta_error):
 
     Parameters
     ----------
-    hbeta_results : array
-        Array of results from fitting
-    hbeta_error : array
-        Array of errors from fitting
+    hbeta_results : :obj:'~numpy.ndarray'
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit, or [3, i, j] or [4, i, j] if an outflow was
+        not included. Either way, the flow and galaxy parameters are in the same
+        shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+        or
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+        for non-outflow fits.
+
+    hbeta_error : :obj:'~numpy.ndarray'
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit, or [3, i, j] or [4, i, j] if an outflow was
+        not included. Either way, the flow and galaxy parameters are in the same
+        shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+        or
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+        for non-outflow fits.
 
     Returns
     -------
-    hbeta_flux : array
+    hbeta_flux : :obj:'~numpy.ndarray'
         Array of hbeta fluxes
-    hbeta_error : array
+
+    hbeta_error : :obj:'~numpy.ndarray'
         Array of hbeta flux errors
     """
     #get the sigma
@@ -84,38 +110,67 @@ def calculate_hbeta_flux(hbeta_results, hbeta_error):
 
 def fit_cube(galaxy_name, redshift, output_folder_loc, filename=None, filename2=None, data_cube_stuff=None, cont_subtract=False, include_const=False, plotting=True, method='leastsq'):
     """
-    Fits the entire cube, and checks whether one or two gaussians fit the emission line best.  Must have either the filename to the fits file, or the data_cube_stuff.
+    Fits the entire cube, and checks whether one or two gaussians fit the
+    emission line best.  Must have either the filename to the fits file, or the
+    data_cube_stuff.
 
     Parameters
     ----------
     galaxy_name : str
         name of the galaxy
+
     redshift : int
         redshift of the galaxy
+
     output_folder_loc : str
         file path to where to put the results and plots output folder
+
     filename : str
-        the file path to the data cube - if data_cube_stuff is not given
+        the file path to the data cube - if data_cube_stuff is not given.  If
+        filename2 is None, filename is used for both fitting and creating the S/N
+        mask.  If filename2 is given, filename is only used to create the S/N mask.
+
     filename2 : str
         the file path to the second data cube - generally the continuum subtracted cube.
         If this is not None, the first cube is used to create the S/N mask, and
         this cube is used for fitting.
-    data_cube_stuff :
+
+    data_cube_stuff : :obj:'~numpy.ndarray'
         [lamdas, data] if the filename is not given
+
     cont_subtract : bool
-        when True, use the first 10 pixels in the spectrum to define the continuum
-        and subtracts it.  Use False when continuum has already been fit and subtracted.
+        when True, uses the first 10 pixels in the spectrum to define the level
+        of the continuum and subtracts it.  Use False when the continuum has
+        already been fit and subtracted.
+
     plotting : bool
         when True, each best_fit is plotted with its residuals and saved
+
     method : str
-        the fitting method (see )
+        the fitting method (see https://lmfit.github.io/lmfit-py/fitting.html,
+        or https://docs.scipy.org/doc/scipy/reference/optimize.html)
 
     Returns
     -------
-    hbeta_results : :obj:'~numpy.ndarray' object
-        array with galaxy sigma, center, amplitude and outflow sigma, center, amplitude values in the same spatial shape as the input data array
+    hbeta_results : :obj:'~numpy.ndarray'
+        array with galaxy sigma, center, amplitude and outflow sigma, center,
+        amplitude values in the same spatial shape as the input data array
+
     hbeta_error : :obj:'~numpy.ndarray'
-        array with galaxy sigma, center, amplitude and outflow sigma, center, amplitude errors in the same spatial shape as the input data array
+        array with galaxy sigma, center, amplitude and outflow sigma, center,
+        amplitude errors in the same spatial shape as the input data array
+
+    chi_square : :obj:'~numpy.ndarray'
+        array with chi_square values for the fits in the same spatial shape as
+        the input data array
+
+    hbeta_flux : :obj:'~numpy.ndarray'
+        array with calculated Hbeta flux values in the same spatial shape as the
+        input data array
+
+    hbeta_flux_error : :obj:'~numpy.ndarray'
+        array with errors for the calculated Hbeta flux values in the same
+        spatial shape as the input data array
     """
     #get the original data to create the S/N mask
     if filename:

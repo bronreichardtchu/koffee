@@ -14,6 +14,14 @@ PURPOSE:
 	To calculate the equivalent width of emission lines
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
+FUNCTIONS INCLUDED:
+    region_around_line
+    calc_ew
+
+DICTONARIES INCLUDED:
+    all_the_lines
+    continuum_bands
+
 MODIFICATION HISTORY:
 		v.1.0 - first created November 2020
 
@@ -33,11 +41,11 @@ def region_around_line(lamda, flux, continuum):
 
     Parameters
     ----------
-    lamda : np.ndarray
+    lamda : :obj:'~numpy.ndarray'
         1D array of wavelengths
 
-    flux : np.ndarray of shape (len(lamda), i, j)
-        array of flux values for the data (KCWI data cube)
+    flux : :obj:'~numpy.ndarray'
+        array of flux values for the data (KCWI data cube) of shape [len(lamda),i,j]
 
     continuum : list of lists
         Wavelengths for the continuum [[begin1, end1], [begin2, end2]]
@@ -45,11 +53,11 @@ def region_around_line(lamda, flux, continuum):
 
     Returns
     -------
-    wavelength : np.ndarray
+    wavelength : :obj:'~numpy.ndarray'
         1D array of wavelengths covering the region the polynomial fit
 
-    flux_results : np.ndarray of shape [len(wavelength), i, j]
-        array of flux values normalised by the continuum fit
+    flux_results : :obj:'~numpy.ndarray'
+        array of flux values normalised by the continuum fit of shape [len(wavelength),i,j]
     """
     #create wavelength mask to isolate the areas of the continuum
     #this is where we will fit a polynomial
@@ -81,6 +89,7 @@ def region_around_line(lamda, flux, continuum):
     return lamda[lamrange_mask], flux_results
 
 
+#dictionaries of where the emission lines are
 all_the_lines = {
 	"Hdelta" : 4102.89,
 	"Hgamma" : 4341.68,
@@ -109,28 +118,28 @@ def calc_ew(lamda, flux, redshift, continuum1=continuum_bands["Hbeta1"], continu
 
     Parameters
     ----------
-    lamda : np.ndarray
+    lamda : :obj:'~numpy.ndarray'
         1D array of wavelengths
 
-    flux : np.ndarray of shape (len(lamda), i, j)
-        array of flux values for the data (KCWI data cube)
+    flux : :obj:'~numpy.ndarray'
+        array of flux values for the data (KCWI data cube) of shape [len(lamda),i,j]
 
     continuum1 : list
-        Wavelengths for the first continuum section [begin1, end1]
-        that describe the area on the first side of the emission line, default is
-        those for Hbeta
+        Wavelengths for the first continuum section [begin1, end1] that describe
+        the area on the first side of the emission line.
+        Default = continuum_bands["Hbeta1"]
 
     continuum2 : list
-        Wavelengths for the second continuum section [begin2, end2]
-        that describe the area on the second side of the emission line, default is
-        those for Hbeta
+        Wavelengths for the second continuum section [begin2, end2] that describe
+        the area on the second side of the emission line.
+        Default = continuum_bands["Hbeta2"]
 
     redshift : float
         the redshift of the galaxy
 
     Returns
     -------
-    ew : nd.array
+    ew : :obj:'~numpy.ndarray'
         array of equivalent widths where the continuum is greater than 1
     """
     #multiply the continuum bands by the redshift factor
