@@ -597,12 +597,10 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         if best_fit2.bic < (best_fit1.bic-10):
                             stat_res = 1
                             #save blue chi square
-                            print(str(type(g_model2)))
                             blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit2, g_model2)
                         else:
                             stat_res = 0
                             #save blue chi square
-                            print(str(type(g_model1)))
                             blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit1, g_model1)
 
                         if koffee_checks == True:
@@ -653,7 +651,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                                 #for the two gaussian fit
                                 best_fit2_second = kff.fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, method=method, verbose=False)
-                                
+
                                 #fit the one gaussian fit of the emission line
                                 fig3 = plot_fit(masked_lamdas2, flux2, g_model1_second, pars1_second, best_fit1_second, plot_initial=False, include_const=include_const)
                                 fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] fit without outflow')

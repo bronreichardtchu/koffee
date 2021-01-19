@@ -49,7 +49,7 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
 #SpectRes is a spectrum resampling module which can be used to resample the fluxes
-# and their uncertainties while preserving the integrated flux more information at 
+# and their uncertainties while preserving the integrated flux more information at
 # https://spectres.readthedocs.io/en/latest/ or from the paper at
 # https://arxiv.org/pdf/1705.05165.pdf
 from spectres import spectres
@@ -97,7 +97,10 @@ def read_in_data_fits(filename):
     hdu.close()
 
     #create the wavelength vector
-    lamdas = np.arange(header['CRVAL3'], header['CRVAL3']+(header['NAXIS3']*header['CD3_3']), header['CD3_3'])
+    try:
+        lamdas = np.arange(header['CRVAL3'], header['CRVAL3']+(header['NAXIS3']*header['CD3_3']), header['CD3_3'])
+    except:
+        lamdas = np.arange(header['CRVAL3'], header['CRVAL3']+(header['NAXIS3']*header['CDELT3']), header['CDELT3'])
 
     if 'var' in locals():
         return lamdas, data, var, header
