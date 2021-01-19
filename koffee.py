@@ -55,6 +55,9 @@ from astropy.modeling import models
 from lmfit import Parameters
 from lmfit import Model
 
+import importlib
+importlib.reload(kff)
+
 #===============================================================================
 #MOCK DATA
 #===============================================================================
@@ -177,7 +180,10 @@ def check_blue_chi_square(wavelength, flux, best_fit, g_model, OII_doublet_fit=F
         if OII_doublet_fit == True:
             one_sigma_blue = (best_fit.best_values['Galaxy_red_mean'] - best_fit.best_values['Galaxy_red_sigma'])-1.0
         else:
-            one_sigma_blue = (best_fit.best_values['Galaxy_mean'] - best_fit.best_values['Galaxy_sigma'])-1.0
+            try:
+                one_sigma_blue = (best_fit.best_values['Galaxy_mean'] - best_fit.best_values['Galaxy_sigma'])-1.0
+            except:
+                one_sigma_blue = (best_fit.best_values['gauss_mean'] - best_fit.best_values['gauss_sigma'])-1.0
 
     blue_left_bound = one_sigma_blue - 4.0
     lam_mask = (wavelength > blue_left_bound) & (wavelength < one_sigma_blue)
@@ -429,7 +435,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
     #get the original data to create the S/N mask
     if filename:
         fits_stuff = pc.load_data(filename, mw_correction=False)
-        if len(fits_stuff > 3):
+        if len(fits_stuff) > 3:
             lamdas, data, var, header = fits_stuff
         else:
             lamdas, data, header = fits_stuff
@@ -480,7 +486,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
     if filename2:
         fits_stuff = pc.load_data(filename2, mw_correction=False)
-        if len(fits_stuff > 3):
+        if len(fits_stuff) > 3:
             lamdas, data, var, header = fits_stuff
         else:
             lamdas, data, header = fits_stuff
@@ -570,11 +576,13 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                     #only fit if the S/N is greater than 20
                     if sn_array[i,j] >= 20:
+                        #print('Spaxel '+str(i)+','+str(j)+' has S/N > 20')
                         #create model for 1 Gaussian fit
                         if include_const == True:
                             g_model1, pars1 = kff.gaussian1_const(masked_lamdas, flux)
                         elif include_const == False:
                             g_model1, pars1 = kff.gaussian1(masked_lamdas, flux)
+
                         #fit model for 1 Gaussian fit
                         best_fit1 = kff.fitter(g_model1, pars1, masked_lamdas, flux, method=method, verbose=False)
 
@@ -585,13 +593,16 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             g_model2, pars2 = kff.gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None)
                         best_fit2 = kff.fitter(g_model2, pars2, masked_lamdas, flux, method=method, verbose=False)
 
+
                         if best_fit2.bic < (best_fit1.bic-10):
                             stat_res = 1
                             #save blue chi square
+                            print(str(type(g_model2)))
                             blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit2, g_model2)
                         else:
                             stat_res = 0
                             #save blue chi square
+                            print(str(type(g_model1)))
                             blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit1, g_model1)
 
                         if koffee_checks == True:
@@ -605,8 +616,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 #force it to take the new fit
                                 stat_res = 2
 
-                        elif koffee_checks == False:
-                            continue
+
 
                         #-------------------
                         #FIT THE SECOND LINE
@@ -643,7 +653,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                                 #for the two gaussian fit
                                 best_fit2_second = kff.fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, method=method, verbose=False)
-
+                                
                                 #fit the one gaussian fit of the emission line
                                 fig3 = plot_fit(masked_lamdas2, flux2, g_model1_second, pars1_second, best_fit1_second, plot_initial=False, include_const=include_const)
                                 fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] fit without outflow')
@@ -727,36 +737,36 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                                 pars2_second = pars1_refit_second
                                                 best_fit2_second = best_fit1_refit_second
 
-                                elif koffee_checks == False:
-                                    continue
 
 
-                            #put the results into the array to be saved
-                            chi_square2[:,i,j] = (best_fit1_second.bic, best_fit2_second.bic)
-                            try:
-                                #try to save the results
-                                if include_const == True:
-                                    outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value, best_fit2_second.params['Constant_Continuum_c'].value)
-                                    outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr, best_fit2_second.params['Constant_Continuum_c'].stderr)
-                                    no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value, best_fit1_second.params['Constant_Continuum_c'].value)
-                                    no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr, best_fit1_second.params['Constant_Continuum_c'].stderr)
-                                elif include_const == False:
-                                    outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value)
-                                    outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr)
-                                    no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value)
-                                    no_outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
-                            except:
-                                #if that doesn't work, then the one gaussian fit was better
-                                if include_const == True:
-                                    outflow_results2[:,i,j] = (best_fit2_second.params['gauss_sigma'].value, best_fit2_second.params['gauss_mean'].value, best_fit2_second.params['gauss_amp'].value, np.nan, np.nan, np.nan, best_fit2_second.params['Constant_Continuum_c'].value)
-                                    outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit2_second.params['gauss_mean'].stderr, best_fit2_second.params['gauss_amp'].stderr, np.nan, np.nan, np.nan, best_fit2_second.params['Constant_Continuum_c'].stderr)
-                                    no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value, best_fit1_second.params['Constant_Continuum_c'].value)
-                                    no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr, best_fit1_second.params['Constant_Continuum_c'].stderr)
-                                elif include_const == False:
-                                    outflow_results2[:,i,j] = (best_fit2_second.params['gauss_sigma'].value, best_fit2_second.params['gauss_mean'].value, best_fit2_second.params['gauss_amp'].value, np.nan, np.nan, np.nan)
-                                    outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit2_second.params['gauss_mean'].stderr, best_fit2_second.params['gauss_amp'].stderr, np.nan, np.nan, np.nan)
-                                    no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value)
-                                    no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
+
+                                #put the results into the array to be saved
+                                chi_square2[:,i,j] = (best_fit1_second.bic, best_fit2_second.bic)
+
+                                try:
+                                    #try to save the results
+                                    if include_const == True:
+                                        outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value, best_fit2_second.params['Constant_Continuum_c'].value)
+                                        outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr, best_fit2_second.params['Constant_Continuum_c'].stderr)
+                                        no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value, best_fit1_second.params['Constant_Continuum_c'].value)
+                                        no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr, best_fit1_second.params['Constant_Continuum_c'].stderr)
+                                    elif include_const == False:
+                                        outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value)
+                                        outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr)
+                                        no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value)
+                                        no_outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
+                                except:
+                                    #if that doesn't work, then the one gaussian fit was better
+                                    if include_const == True:
+                                        outflow_results2[:,i,j] = (best_fit2_second.params['gauss_sigma'].value, best_fit2_second.params['gauss_mean'].value, best_fit2_second.params['gauss_amp'].value, np.nan, np.nan, np.nan, best_fit2_second.params['Constant_Continuum_c'].value)
+                                        outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit2_second.params['gauss_mean'].stderr, best_fit2_second.params['gauss_amp'].stderr, np.nan, np.nan, np.nan, best_fit2_second.params['Constant_Continuum_c'].stderr)
+                                        no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value, best_fit1_second.params['Constant_Continuum_c'].value)
+                                        no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr, best_fit1_second.params['Constant_Continuum_c'].stderr)
+                                    elif include_const == False:
+                                        outflow_results2[:,i,j] = (best_fit2_second.params['gauss_sigma'].value, best_fit2_second.params['gauss_mean'].value, best_fit2_second.params['gauss_amp'].value, np.nan, np.nan, np.nan)
+                                        outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit2_second.params['gauss_mean'].stderr, best_fit2_second.params['gauss_amp'].stderr, np.nan, np.nan, np.nan)
+                                        no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value)
+                                        no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
 
                         #-------------------
                         #FIT THE OII DOUBLET
@@ -828,18 +838,17 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         best_fit2_third = best_fit2_refit_third
                                         print('Replaced OII doublet values with refit values')
 
-                                elif koffee_checks == False:
-                                    continue
 
 
-                            #put the results into the array to be saved
-                            chi_square3[:,i,j] = (best_fit1_third.bic, best_fit2_third.bic)
 
-                            no_outflow_results3[:,i,j] = (best_fit1_third.params['Galaxy_blue_sigma'].value, best_fit1_third.params['Galaxy_blue_mean'].value, best_fit1_third.params['Galaxy_blue_amp'].value, best_fit1_third.params['Galaxy_red_sigma'].value, best_fit1_third.params['Galaxy_red_mean'].value, best_fit1_third.params['Galaxy_red_amp'].value, best_fit1_third.params['Constant_Continuum_c'].value)
-                            no_outflow_error3[:,i,j] = (best_fit1_third.params['Galaxy_blue_sigma'].stderr, best_fit1_third.params['Galaxy_blue_mean'].stderr, best_fit1_third.params['Galaxy_blue_amp'].stderr, best_fit1_third.params['Galaxy_red_sigma'].stderr, best_fit1_third.params['Galaxy_red_mean'].stderr, best_fit1_third.params['Galaxy_red_amp'].stderr, best_fit1_third.params['Constant_Continuum_c'].stderr)
+                                #put the results into the array to be saved
+                                chi_square3[:,i,j] = (best_fit1_third.bic, best_fit2_third.bic)
 
-                            outflow_results3[:,i,j] = (best_fit2_third.params['Galaxy_blue_sigma'].value, best_fit2_third.params['Galaxy_blue_mean'].value, best_fit2_third.params['Galaxy_blue_amp'].value, best_fit2_third.params['Galaxy_red_sigma'].value, best_fit2_third.params['Galaxy_red_mean'].value, best_fit2_third.params['Galaxy_red_amp'].value, best_fit2_third.params['Flow_blue_sigma'].value, best_fit2_third.params['Flow_blue_mean'].value, best_fit2_third.params['Flow_blue_amp'].value, best_fit2_third.params['Flow_red_sigma'].value, best_fit2_third.params['Flow_red_mean'].value, best_fit2_third.params['Flow_red_amp'].value, best_fit2_third.params['Constant_Continuum_c'].value)
-                            outflow_error3[:,i,j] = (best_fit2_third.params['Galaxy_blue_sigma'].stderr, best_fit2_third.params['Galaxy_blue_mean'].stderr, best_fit2_third.params['Galaxy_blue_amp'].stderr, best_fit2_third.params['Galaxy_red_sigma'].stderr, best_fit2_third.params['Galaxy_red_mean'].stderr, best_fit2_third.params['Galaxy_red_amp'].stderr, best_fit2_third.params['Flow_blue_sigma'].stderr, best_fit2_third.params['Flow_blue_mean'].stderr, best_fit2_third.params['Flow_blue_amp'].stderr, best_fit2_third.params['Flow_red_sigma'].stderr, best_fit2_third.params['Flow_red_mean'].stderr, best_fit2_third.params['Flow_red_amp'].stderr, best_fit2_third.params['Constant_Continuum_c'].stderr)
+                                no_outflow_results3[:,i,j] = (best_fit1_third.params['Galaxy_blue_sigma'].value, best_fit1_third.params['Galaxy_blue_mean'].value, best_fit1_third.params['Galaxy_blue_amp'].value, best_fit1_third.params['Galaxy_red_sigma'].value, best_fit1_third.params['Galaxy_red_mean'].value, best_fit1_third.params['Galaxy_red_amp'].value, best_fit1_third.params['Constant_Continuum_c'].value)
+                                no_outflow_error3[:,i,j] = (best_fit1_third.params['Galaxy_blue_sigma'].stderr, best_fit1_third.params['Galaxy_blue_mean'].stderr, best_fit1_third.params['Galaxy_blue_amp'].stderr, best_fit1_third.params['Galaxy_red_sigma'].stderr, best_fit1_third.params['Galaxy_red_mean'].stderr, best_fit1_third.params['Galaxy_red_amp'].stderr, best_fit1_third.params['Constant_Continuum_c'].stderr)
+
+                                outflow_results3[:,i,j] = (best_fit2_third.params['Galaxy_blue_sigma'].value, best_fit2_third.params['Galaxy_blue_mean'].value, best_fit2_third.params['Galaxy_blue_amp'].value, best_fit2_third.params['Galaxy_red_sigma'].value, best_fit2_third.params['Galaxy_red_mean'].value, best_fit2_third.params['Galaxy_red_amp'].value, best_fit2_third.params['Flow_blue_sigma'].value, best_fit2_third.params['Flow_blue_mean'].value, best_fit2_third.params['Flow_blue_amp'].value, best_fit2_third.params['Flow_red_sigma'].value, best_fit2_third.params['Flow_red_mean'].value, best_fit2_third.params['Flow_red_amp'].value, best_fit2_third.params['Constant_Continuum_c'].value)
+                                outflow_error3[:,i,j] = (best_fit2_third.params['Galaxy_blue_sigma'].stderr, best_fit2_third.params['Galaxy_blue_mean'].stderr, best_fit2_third.params['Galaxy_blue_amp'].stderr, best_fit2_third.params['Galaxy_red_sigma'].stderr, best_fit2_third.params['Galaxy_red_mean'].stderr, best_fit2_third.params['Galaxy_red_amp'].stderr, best_fit2_third.params['Flow_blue_sigma'].stderr, best_fit2_third.params['Flow_blue_mean'].stderr, best_fit2_third.params['Flow_blue_amp'].stderr, best_fit2_third.params['Flow_red_sigma'].stderr, best_fit2_third.params['Flow_red_mean'].stderr, best_fit2_third.params['Flow_red_amp'].stderr, best_fit2_third.params['Constant_Continuum_c'].stderr)
 
                         #put stat_res into the array
                         statistical_results[i,j] = stat_res
@@ -896,10 +905,11 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             plt.close(fig2)
 
                             if emission_line2:
-                                fig3 = plot_fit(masked_lamdas2, flux2, g_model2_second, pars2_second, best_fit2_second, plot_initial=False, include_const=include_const)
-                                fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] final fit')
-                                fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_final_fit')
-                                plt.close(fig3)
+                                if stat_res > 0:
+                                    fig3 = plot_fit(masked_lamdas2, flux2, g_model2_second, pars2_second, best_fit2_second, plot_initial=False, include_const=include_const)
+                                    fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] final fit')
+                                    fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_final_fit')
+                                    plt.close(fig3)
 
                             #if OII_doublet == True:
                                 #fig4 = plot_fit(masked_lamdas3, flux3, g_model2_third, pars2_third, best_fit2_third, plot_initial=False, include_const=True)
@@ -910,7 +920,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                     #if the S/N is less than 20:
                     else:
-                        print('S/N for '+str(i)+', '+str(j)+' is '+str(s_n))
+                        #print('S/N for '+str(i)+', '+str(j)+' is '+str(sn_array[i,j]))
                         #statistical results have no outflow
                         statistical_results[i,j] = 0
 
@@ -1016,6 +1026,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         #just emission
                         no_outflow_results3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
                         no_outflow_error3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+
+
 
                 #update progress bar
                 pbar.update(1)

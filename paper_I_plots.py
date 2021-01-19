@@ -1,4 +1,4 @@
-:obj:'~numpy.ndarray'"""
+"""
 NAME:
 	paper_I_plots.py
 
@@ -40,6 +40,7 @@ from astropy.wcs import WCS
 from astropy import units as u
 
 from . import plotting_functions as pf
+from . import koffee_fitting_functions as kff
 from . import calculate_outflow_velocity as calc_outvel
 from . import calculate_star_formation_rate as calc_sfr
 from . import calculate_mass_loading_factor as calc_mlf
@@ -107,12 +108,12 @@ def plot_compare_fits(lamdas, data, spaxels, z):
         flux = data[OIII_mask, spaxels[i][0], spaxels[i][1]]
 
         #fit data with single gaussian:obj:'~numpy.ndarray'
-        gmodel1, pars1 = koffee.gaussian1_const(lam_OIII, flux)
-        bestfit1 = koffee.fitter(gmodel1, pars1, lam_OIII, flux, verbose=False)
+        gmodel1, pars1 = kff.gaussian1_const(lam_OIII, flux)
+        bestfit1 = kff.fitter(gmodel1, pars1, lam_OIII, flux, verbose=False)
 
         #fit the data with double gaussian
-        gmodel2, pars2 = koffee.gaussian2_const(lam_OIII, flux)
-        bestfit2 = koffee.fitter(gmodel2, pars2, lam_OIII, flux, verbose=False)
+        gmodel2, pars2 = kff.gaussian2_const(lam_OIII, flux)
+        bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, verbose=False)
 
         #find the significance level using the BIC difference
         BIC_diff = bestfit2.bic - bestfit1.bic
@@ -249,8 +250,8 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     flux = data[OIII_mask, spaxel[0], spaxel[1]]
 
     #fit the data with double gaussian
-    gmodel2, pars2 = koffee.gaussian2_const(lam_OIII, flux)
-    bestfit2 = koffee.fitter(gmodel2, pars2, lam_OIII, flux, verbose=False)
+    gmodel2, pars2 = kff.gaussian2_const(lam_OIII, flux)
+    bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, verbose=False)
 
     #get the value to normalise by
     max_value = np.nanmax(flux)
