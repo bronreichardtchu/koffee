@@ -48,9 +48,10 @@ from . import prepare_cubes as pc
 from . import koffee
 from . import calculate_outflow_velocity as calc_outvel
 from . import calculate_mass_loading_factor as calc_mlf
+from . import calculate_star_formation_rate as calc_sfr
 
 import importlib
-importlib.reload(pf)
+importlib.reload(calc_sfr)
 
 
 
@@ -225,7 +226,6 @@ def map_of_outflows(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, outflow_re
     #get the continuum contours
     i, j = statistical_results.shape
     cont_contours1 = pf.plot_continuum_contours(lamdas, np.reshape(xx_flat, (i,j)), np.reshape(yy_flat, (i, j)), np.reshape(data_flat, (data_flat.shape[0],i,j)), z, ax1)
-    #cont_contours2 = plot_continuum_contours(lamdas, np.reshape(xx_flat, (67,24)), np.reshape(yy_flat, (67, 24)), np.reshape(data_flat, (data_flat.shape[0],67,24)), z, ax2)
 
     #create figure of just outflows
     outflow_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, vel_out.reshape(1,-1), axes=ax1, cmap=cmr.gem)#, vmin=100, vmax=500)
@@ -352,7 +352,7 @@ def map_of_outflows2(outflow_results, statistical_results, lamdas, xx, yy, data,
 
 
 
-def sn_cut_plot(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn):
+def sn_cut_plot(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn, spatial_shape):
     """
     Plots the two maps before and after the S/N cut is made, so that you can
     check which pixels have been removed.
@@ -380,6 +380,9 @@ def sn_cut_plot(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn):
     sn : float
         signal-to-noise threshold value at which to cut the data
 
+    spatial_shape : list of int
+        the spatial shape of the array.  e.g. for IRAS08 [67, 24]
+
     Returns
     -------
     A two panel figure of the galaxy before and after the S/N cut
@@ -401,8 +404,8 @@ def sn_cut_plot(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn):
     fig, (ax1, ax2) = plt.subplots(1,2, sharey=True)
 
     #get the continuum contours
-    cont_contours1 = pf.plot_continuum_contours(lamdas, np.reshape(xx_flat, (67,24)), np.reshape(yy_flat, (67, 24)), np.reshape(data_flat, (data_flat.shape[0],67,24)), z, ax1)
-    cont_contours2 = pf.plot_continuum_contours(lamdas, np.reshape(xx_flat, (67,24)), np.reshape(yy_flat, (67, 24)), np.reshape(data_flat, (data_flat.shape[0],67,24)), z, ax2)
+    cont_contours1 = pf.plot_continuum_contours(lamdas, np.reshape(xx_flat, (spatial_shape[0], spatial_shape[1])), np.reshape(yy_flat, (spatial_shape[0], spatial_shape[1])), np.reshape(data_flat, (data_flat.shape[0], spatial_shape[0], spatial_shape[1])), z, ax1)
+    cont_contours2 = pf.plot_continuum_contours(lamdas, np.reshape(xx_flat, (spatial_shape[0], spatial_shape[1])), np.reshape(yy_flat, (spatial_shape[0], spatial_shape[1])), np.reshape(data_flat, (data_flat.shape[0], spatial_shape[0], spatial_shape[1])), z, ax2)
 
     #create figure of before S/N cut
     ax1.set_title('Before S/N cut')
@@ -529,26 +532,24 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     """
     #calculate the outflow velocity
-    vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
+    vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
 
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, total_sfr, sfr_surface_density, h_beta_integral_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
 
     #get the sfr for the outflow spaxels
     flow_mask = (statistical_results>0)
 
     #flatten all the arrays and get rid of extra spaxels
     sig_sfr = sfr_surface_density[flow_mask]
-    sig_sfr_err = h_beta_integral_err[flow_mask]
+    sig_sfr_err = sfr_surface_density_err[flow_mask]
     vel_out = vel_out[flow_mask]
     vel_out_err = vel_out_err[flow_mask]
     if colour_by is not None:
         colour_by_array = colour_by_array[flow_mask]
 
-    #
-    colour_by_array = colour_by_array[flow_mask]
-    BIC_mask = (colour_by_array<-10)
+        BIC_mask = (colour_by_array<-10)
 
     #make sure none of the errors are nan values
     vel_out_err[np.where(np.isnan(vel_out_err)==True)] = np.nanmedian(vel_out_err)
@@ -559,7 +560,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = pf.binned_median_quantile_log(sig_sfr[BIC_mask], vel_out[BIC_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        #bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = pf.binned_median_quantile_log(sig_sfr[BIC_mask], vel_out[BIC_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = pf.binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
     elif weighted_average == True:
         bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = pf.binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
@@ -573,11 +575,14 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     #calculate the r value for all the values
     r_vel_out, p_value_v_out = pf.pearson_correlation(sig_sfr, vel_out)
-    r_vel_out_BIC, p_value_v_out_BIC = pf.pearson_correlation(sig_sfr[BIC_mask], vel_out[BIC_mask])
+    #r_vel_out_BIC, p_value_v_out_BIC = pf.pearson_correlation(sig_sfr[BIC_mask], vel_out[BIC_mask])
 
     #create vectors to plot the literature trends
-    sfr_surface_density_chen, v_out_chen = pf.chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out[BIC_mask])/(np.nanmedian(sig_sfr[BIC_mask])**0.1))
-    sfr_surface_density_murray, v_out_murray = pf.murray_et_al_2011(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out[BIC_mask])/(np.nanmedian(sig_sfr[BIC_mask])**2))
+    #sfr_surface_density_chen, v_out_chen = pf.chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out[BIC_mask])/(np.nanmedian(sig_sfr[BIC_mask])**0.1))
+    #sfr_surface_density_murray, v_out_murray = pf.murray_et_al_2011(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out[BIC_mask])/(np.nanmedian(sig_sfr[BIC_mask])**2))
+
+    sfr_surface_density_chen, v_out_chen = pf.chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out)/(np.nanmedian(sig_sfr)**0.1))
+    sfr_surface_density_murray, v_out_murray = pf.murray_et_al_2011(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out)/(np.nanmedian(sig_sfr)**2))
 
     #plot it
     plt.rcParams.update(pf.get_rc_params())
@@ -594,8 +599,9 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     elif colour_by is None:
         #plt.errorbar(sig_sfr, vel_out, xerr=sig_sfr_err, yerr=vel_out_err, marker='o', lw=0, label='Flow spaxels; R={:.2f}'.format(r_vel_out), alpha=0.4, color='tab:blue', ecolor='tab:blue', elinewidth=1)
-        plt.scatter(sig_sfr[BIC_mask], vel_out[BIC_mask], marker='o', lw=0, label='Definite Flow spaxels; R={:.2f}'.format(r_vel_out_BIC), alpha=0.6, c='tab:blue')
-        plt.scatter(sig_sfr[~BIC_mask], vel_out[~BIC_mask], marker='o', lw=0, label='Likely Flow spaxels; R={:.2f}'.format(r_vel_out), alpha=0.6, c='tab:pink')
+        #plt.scatter(sig_sfr[BIC_mask], vel_out[BIC_mask], marker='o', lw=0, label='Definite Flow spaxels; R={:.2f}'.format(r_vel_out_BIC), alpha=0.6, c='tab:blue')
+        #plt.scatter(sig_sfr[~BIC_mask], vel_out[~BIC_mask], marker='o', lw=0, label='Likely Flow spaxels; R={:.2f}'.format(r_vel_out), alpha=0.6, c='tab:pink')
+        plt.scatter(sig_sfr, vel_out, marker='o', lw=0, label='Flow spaxels; R={:.2f}'.format(r_vel_out), alpha=0.6, c='tab:pink')
 
         plt.errorbar(5, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
 
@@ -604,7 +610,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     plt.plot(bin_center, v_out_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_out_med))
     plt.plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     plt.plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
-    plt.ylim(100, 500)
+    #plt.ylim(100, 500)
     #plt.ylim(-50, 550)
     plt.xscale('log')
     lgnd = plt.legend(frameon=False, fontsize='x-small', loc='lower left')

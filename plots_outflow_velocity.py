@@ -2168,7 +2168,6 @@ def map_of_outflows(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, outflow_re
     #get the continuum contours
     i, j = statistical_results.shape
     cont_contours1 = pf.plot_continuum_contours(lamdas, np.reshape(xx_flat, (i,j)), np.reshape(yy_flat, (i, j)), np.reshape(data_flat, (data_flat.shape[0],i,j)), z, ax1)
-    #cont_contours2 = plot_continuum_contours(lamdas, np.reshape(xx_flat, (67,24)), np.reshape(yy_flat, (67, 24)), np.reshape(data_flat, (data_flat.shape[0],67,24)), z, ax2)
 
     #create figure of just outflows
     outflow_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, vel_out.reshape(1,-1), axes=ax1, cmap=cmr.gem)#, vmin=100, vmax=500)

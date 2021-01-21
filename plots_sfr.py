@@ -1050,7 +1050,7 @@ def plot_radius_flux(flux_outflow_results, flux_outflow_error, OIII_outflow_resu
 
 
 
-def maps_of_halpha_hbeta(halpha_fits_file, hbeta_fits_file, xx_flat, yy_flat):#, header, z, OIII_outflow_results, OIII_outflow_error, statistical_results):
+def maps_of_halpha_hbeta(halpha_fits_file, hbeta_fits_file, xx_flat, yy_flat, spatial_shape):#, header, z, OIII_outflow_results, OIII_outflow_error, statistical_results):
     """
     Maps the Halpha flux from the fits file
 
@@ -1067,6 +1067,9 @@ def maps_of_halpha_hbeta(halpha_fits_file, hbeta_fits_file, xx_flat, yy_flat):#,
 
     yy_flat : :obj:'~numpy.ndarray'
         flat (1D) array of the y-coordinates for the fits files
+
+    spatial_shape : list of int
+        the spatial shape of the array.  e.g. for IRAS08 [67, 24]
 
     Returns
     -------
@@ -1130,7 +1133,8 @@ def maps_of_halpha_hbeta(halpha_fits_file, hbeta_fits_file, xx_flat, yy_flat):#,
     #set the x and y limits of the plot
 
     #do the plotting
-    hbeta_spax = bdpk.display_pixels(xx_flat.reshape(67,24).transpose(), yy_flat.reshape(67,24).transpose(), np.log10(hbeta_data).transpose(), angle=360, axes=ax2, cmap=cmr.ember, vmin=-0.5, vmax=2.0)
+    #hbeta_spax = bdpk.display_pixels(xx_flat.reshape(67,24).transpose(), yy_flat.reshape(67,24).transpose(), np.log10(hbeta_data).transpose(), angle=360, axes=ax2, cmap=cmr.ember, vmin=-0.5, vmax=2.0)
+    hbeta_spax = bdpk.display_pixels(xx_flat.reshape(spatial_shape[0],spatial_shape[1]).transpose(), yy_flat.reshape(spatial_shape[0],spatial_shape[1]).transpose(), np.log10(hbeta_data).transpose(), angle=360, axes=ax2, cmap=cmr.ember, vmin=-0.5, vmax=2.0)
     ax2.hlines(1, 1, 10, colors='white')
     ax2.hlines(scale_begin_world[1], scale_begin_world[0], scale_end_world[0], colors='white', transform=ax2.get_transform('world'))
     #ax2.text(fuv_xlim+105, fuv_ylim+105, '10" ', c='white')
