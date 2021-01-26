@@ -17,6 +17,8 @@ PURPOSE:
 FUNCTIONS INCLUDED:
     read_in_data_fits
     read_in_data_pickle
+    bin_data
+    save_binned_data
     air_to_vac
     barycentric_corrections
     milky_way_extinction_correction
@@ -143,6 +145,108 @@ def read_in_data_pickle(filename):
         return lamdas, data, var
     else:
         return lamdas, data
+
+
+#====================================================================================================
+#BINNING
+#====================================================================================================
+
+def bin_data(data, bin_size=3):
+    """
+    Bins the input data
+
+    Parameters
+    ----------
+    data : :obj:'~numpy.ndarray'
+        the data to be binned
+
+    bin_size : int
+        the number of spaxels to bin by (Default is 3, this will bin 3x3)
+
+    Returns
+    -------
+    binned_data : :obj:'~numpy.ndarray'
+        the binned data
+    """
+    #create empty array to put binned data in
+    binned_data = np.empty([data.shape[0], int(data.shape[1]/bin_size), int(data.shape[2]/bin_size)])
+
+    #create counter for x direction
+    start_xi = 0
+    end_xi = bin_size
+
+    #iterate through x direction
+    for x in np.arange(data.shape[1]/bin_size):
+        #create counter for y direction
+        start_yi = 0
+        end_yi = bin_size
+        #iterate through y direction
+        for y in np.arange(data.shape[2]/bin_size):
+            #bin the data
+            binned_data[:, int(x), int(y)] = np.nansum(data[:, start_xi:end_xi, start_yi:end_yi], axis=(1,2))
+
+            #increase y counters
+            start_yi += bin_size
+            end_yi += bin_size
+
+        #increase x counters
+        start_xi += bin_size
+        end_xi += bin_size
+
+    return binned_data
+
+
+def save_binned_data(data, header, data_folder, gal_name, bin_size=3):
+    """
+    Save the binned data or variance cube to a fits file, with the necessary
+    changes to the fits file header.
+
+    Parameters
+    ----------
+    data : :obj:'~numpy.ndarray'
+        the binned data or variance cube
+
+    header : FITS header object
+        the old fits header to be changed for the new file
+
+    data_folder : str
+        the folder in which to save the new file
+
+    gal_name : str
+        the galaxy name and any other descriptors for the filename.
+        E.g. 'cgcg453_red_var' for the red variance cube of cgcg453
+
+    bin_size : int
+        the number of spaxels the cube was binned by.  (Default is 3)
+
+    Returns
+    -------
+    Saves the cube and new header to a fits file.
+    """
+    new_header = header.copy()
+
+    #change the cards to match the binned data
+    #change the size of the spaxels
+    new_header['CDELT1'] = header['CDELT1']*bin_size
+    new_header['CDELT2'] = header['CDELT2']*bin_size
+
+    #change the number of spaxels
+    new_header['NAXIS1'] = int(header['NAXIS1']/bin_size)
+    new_header['NAXIS2'] = int(header['NAXIS2']/bin_size)
+
+    #change the reference pixel to the nearest 0.5
+    new_header['CRPIX1'] = round((header['CRPIX1']/bin_size)*2.0)/2.0
+    new_header['CRPIX2'] = round((header['CRPIX2']/bin_size)*2.0)/2.0
+
+    #create HDU object
+    hdu = fits.PrimaryHDU(data, header=new_header)
+
+    #create HDU list
+    hdul = fits.HDUList([hdu])
+
+    #write to file
+    hdul.writeto(data_folder+gal_name+'_binned_by_'+str(bin_size)+'.fits')
+
 
 
 #====================================================================================================
@@ -571,11 +675,18 @@ def data_coords(lamdas, data, header, z, cube_colour, shiftx=None, shifty=None):
     #CD1_2 = RA degrees per row pixel
     #CD2_2 = DEC degrees per row pixel
 
+    #CD1_1 = CDELT1 * cos(CROTA2)
+    #CD1_2 = -CDELT2 * sin(CROTA2)
+    #CD2_1 = CDELT1 * sin(CROTA2)
+    #CD2_2 = CDELT2 * cos(CROTA2)
+
     #multiply through by header values
-    x = x*header['CD1_2']*60*60
-    y = y*header['CD2_1']*60*60
-    #x = x*header['CDELT1']*60*60
-    #y = y*header['CDELT2']*60*60
+    try:
+        x = x*header['CD1_2']*60*60
+        y = y*header['CD2_1']*60*60
+    except:
+        x = x * (-header['CDELT2']*np.sin(header['CROTA2'])) *60*60
+        y = y * (header['CDELT1']*np.sin(header['CROTA2'])) *60*60
 
     print("x shape, y shape:", x.shape, y.shape)
 
@@ -591,11 +702,13 @@ def data_coords(lamdas, data, header, z, cube_colour, shiftx=None, shifty=None):
             cont_mask = (lamdas>3600*(1+z))&(lamdas<3700*(1+z))
         cont_median = np.median(data[cont_mask,:,:], axis=0)
         i, j = np.unravel_index(cont_median.argmax(), cont_median.shape)
-        shiftx = i*header['CD1_2']*60*60
-        shifty = j*header['CD2_1']*60*60
+        try:
+            shiftx = i*header['CD1_2']*60*60
+            shifty = j*header['CD2_1']*60*60
+        except:
+            shiftx = i * (-header['CDELT2']*np.sin(header['CROTA2'])) *60*60
+            shifty = j * (header['CDELT1']*np.sin(header['CROTA2'])) *60*60
         #i, j = np.median(np.where(cont_median==np.nanmax(cont_median)),axis=1)
-        #shiftx = i*header['CDELT1']*60*60
-        #shifty = j*header['CDELT2']*60*60
         print("shiftx, shifty:", shiftx, shifty)
         x = x - shiftx
         y = y - shifty
