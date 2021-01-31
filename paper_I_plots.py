@@ -44,6 +44,7 @@ from . import koffee_fitting_functions as kff
 from . import calculate_outflow_velocity as calc_outvel
 from . import calculate_star_formation_rate as calc_sfr
 from . import calculate_mass_loading_factor as calc_mlf
+from . import calculate_energy_loading_factor as calc_elf
 from . import calculate_equivalent_width as calc_ew
 from . import brons_display_pixels_kcwi as bdpk
 from . import koffee
@@ -1508,5 +1509,229 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
         ax.set_ylabel(r'$\eta$-model+$const$')
     ax.set_xlabel('Radius (Arcseconds)')
     ax.set_title('all spaxels')
+
+    plt.show()
+
+
+#possible other plot
+def plot_sfr_elf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+    """
+    Plots the SFR surface density against the energy loading factor with
+    Sigma_SFR calculated using only the narrow component.
+
+    Parameters
+    ----------
+    OIII_outflow_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for OIII line.  Used to calculate
+        the outflow velocity.  Should be (7, statistical_results.shape)
+
+    OIII_outflow_error : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for OIII line
+
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for Hbeta line.  Used to calculate
+        the Sigma SFR.  Should be (7, statistical_results.shape)
+
+    hbeta_outflow_error : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for Hbeta line
+
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
+        array of single gaussian results from KOFFEE for Hbeta line.  Used to
+        calculate the Sigma SFR.  Should be (4, statistical_results.shape)
+
+    hbeta_no_outflow_error : :obj:'~numpy.ndarray'
+        array of the single gaussian result errors from KOFFEE for Hbeta line
+
+    BIC_outflow : :obj:'~numpy.ndarray'
+        array of BIC values from the double gaussian fits
+
+    BIC_no_outflow : :obj:'~numpy.ndarray'
+        array of BIC values from the single gaussian fits
+
+    statistical_results : :obj:'~numpy.ndarray'
+        array of statistical results from KOFFEE.
+
+    z : float
+        redshift
+
+    radius : :obj:'~numpy.ndarray'
+        array of galaxy radius values
+
+    weighted_average : boolean
+        whether or not to take a weighted average using the errors (Default=True)
+
+    Returns
+    -------
+    A six panel graph of the mass loading factor and Hbeta flux ratio against
+    the SFR surface density
+
+    """
+    #calculate the sfr surface density - using just the systemic line, and including the flux line
+    #don't include extinction since this was included in the continuum subtraction using ppxf
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+
+    #calculate the mass loading factor
+    elf, elf_max, elf_min = calc_elf.calc_energy_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+
+    #calculate the velocity dispersion for the masking
+    vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
+
+    #create the flow mask
+    flow_mask = (statistical_results>0) & (np.isnan(hbeta_outflow_results[3,:,:])==False)
+
+
+    #flatten all the arrays and get rid of extra spaxels
+    sig_sfr = sfr_surface_density[flow_mask]
+    sig_sfr_err = sfr_surface_density_err[flow_mask]
+
+    elf = elf[flow_mask]
+    elf_max = elf_max[flow_mask]
+    elf_min = elf_min[flow_mask]
+
+    BIC_outflow = BIC_outflow[flow_mask]
+    BIC_no_outflow = BIC_no_outflow[flow_mask]
+
+    vel_disp = vel_disp[flow_mask]
+    radius = radius[flow_mask]
+
+
+    #take the log of the elf
+    elf = np.log10(elf)
+    elf_max = np.log10(elf_max)
+    elf_min = np.log10(elf_min)
+
+    #calculate the errors
+    elf_err_max = elf_max - elf
+    elf_err_min = elf - elf_min
+
+    #create BIC diff
+    BIC_diff = BIC_outflow - BIC_no_outflow
+    BIC_diff_strong = (BIC_diff < -50)
+
+    #physical limits mask -
+    #for the radius mask 6.1" is the 90% radius
+    #also mask out the fits which lie on the lower limit of dispersion < 51km/s
+    physical_mask = (radius < 6.1) & (vel_disp>51)
+
+    #make sure none of the errors are nan values
+    #vel_out_err[np.where(np.isnan(vel_out_err)==True)] = np.nanmedian(vel_out_err)
+
+    #do the calculations for all the bins
+    num_bins = 5
+    min_bin = None #-0.05
+    max_bin = None #0.6
+
+    if weighted_average == False:
+        bin_center_all, elf_bin_medians_all, elf_bin_lower_q_all, elf_bin_upper_q_all = pf.binned_median_quantile_log(sig_sfr, elf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center_physical, elf_bin_medians_physical, elf_bin_lower_q_physical, elf_bin_upper_q_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], elf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center_strong, elf_bin_medians_strong, elf_bin_lower_q_strong, elf_bin_upper_q_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], elf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+
+
+    elif weighted_average == True:
+        bin_center_all, elf_bin_medians_all, elf_bin_lower_q_all, elf_bin_upper_q_all = pf.binned_median_quantile_log(sig_sfr, elf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center_physical, elf_bin_medians_physical, elf_bin_lower_q_physical, elf_bin_upper_q_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], elf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center_strong, elf_bin_medians_strong, elf_bin_lower_q_strong, elf_bin_upper_q_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], elf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+
+
+    #calculate the r value for the median values
+    r_elf_med_all, p_value_elf_all = pf.pearson_correlation(bin_center_all, elf_bin_medians_all)
+    r_elf_med_physical, p_value_elf_physical = pf.pearson_correlation(bin_center_physical, elf_bin_medians_physical)
+    r_elf_med_strong, p_value_elf_strong = pf.pearson_correlation(bin_center_strong, elf_bin_medians_strong)
+
+    #calculate the r value for all the values
+    r_elf_all, p_value_elf_all = pf.pearson_correlation(sig_sfr[~np.isnan(elf)], elf[~np.isnan(elf)])
+    r_elf_physical, p_value_elf_physical = pf.pearson_correlation(sig_sfr[~np.isnan(elf)&physical_mask], elf[~np.isnan(elf)&physical_mask])
+    r_elf_strong, p_value_elf_strong = pf.pearson_correlation(sig_sfr[~np.isnan(elf)&BIC_diff_strong], elf[~np.isnan(elf)&BIC_diff_strong])
+
+
+    #calculate Kim et al. trend
+    #sfr_surface_density_kim, mlf_Kim = pf.kim_et_al_2020(sig_sfr.min(), sig_sfr.max(), scale_factor=0.06)#(10**mlf_bin_medians_all[0])/(bin_center_all[0]**-0.44))#0.06)
+
+
+    #print average numbers for the different panels
+    print('Number of spaxels in the first panel', elf.shape)
+    print('All spaxels median elf:', np.nanmedian(elf))
+    print('All spaxels standard deviation elf:', np.nanstd(elf))
+    print('')
+
+    print('Number of spaxels with broad sigmas at the instrument dispersion:', elf[vel_disp<=51].shape)
+    print('')
+    print('Number of spaxels beyond R_90:', elf[radius>6.1].shape)
+    print('')
+    print('Number of spaxels in the middle panel:', elf[physical_mask].shape)
+    print('')
+
+    print('Physical spaxels median elf:', np.nanmedian(elf[physical_mask]))
+    print('Physical spaxels standard deviation elf:', np.nanstd(elf[physical_mask]))
+    print('')
+
+    print('Number of spaxels with strong BIC differences:', elf[BIC_diff_strong].shape)
+    print('')
+
+    print('Clean spaxels median elf:', np.nanmedian(elf[BIC_diff_strong]))
+    print('Clean spaxels standard deviation elf:', np.nanstd(elf[BIC_diff_strong]))
+    print('')
+
+    #-------
+    #plot it
+    #-------
+    plt.rcParams.update(pf.get_rc_params())
+    fig, ax = plt.subplots(nrows=1, ncols=3, sharex=True, sharey='row', figsize=(10,4), constrained_layout=True)
+
+    #get colours from cmasher
+    colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
+
+    #plot all points
+    #ax[0].errorbar(sig_sfr, elf, xerr=sig_sfr_err, yerr=[elf_err_min, elf_err_max], fmt='o', ms=3, color=colours[0], alpha=0.6, label='All KOFFEE fits; R={:.2f}'.format(r_elf_all))
+    ax[0].fill_between(bin_center_all, elf_bin_lower_q_all, elf_bin_upper_q_all, color=colours[0], alpha=0.3)
+    ax[0].scatter(sig_sfr, elf, marker='o', s=10, label='All KOFFEE fits; R={:.2f}'.format(r_elf_all), color=colours[0], alpha=0.8)
+    ax[0].plot(bin_center_all, elf_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_elf_med_all), color=colours[0])
+
+    #ax[0].plot(sfr_surface_density_kim, np.log10(elf_Kim), ':k', label='Kim+20, $\eta \propto \Sigma_{SFR}^{-0.44}$')
+
+    ax[0].errorbar(0.03, np.nanmin(elf)-0.1, xerr=np.nanmedian(sig_sfr_err), yerr=[[np.nanmedian(elf_err_min)], [np.nanmedian(elf_err_max)]], c='k')
+
+    #ax[0].set_ylim(-2.4, 0.7)
+    ax[0].set_xscale('log')
+    ax[0].set_xlim(0.003, 2)
+    lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    ax[0].set_ylabel(r'Log($\eta_{E}$)')
+    ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+
+
+    #plot points within 90% radius
+    ax[1].fill_between(bin_center_physical, elf_bin_lower_q_physical, elf_bin_upper_q_physical, color=colours[1], alpha=0.3)
+    ax[1].scatter(sig_sfr[radius>6.1], elf[radius>6.1], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
+    ax[1].scatter(sig_sfr[vel_disp<=51], elf[vel_disp<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
+    ax[1].scatter(sig_sfr[physical_mask], elf[physical_mask], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_elf_physical), color=colours[1], alpha=0.8)
+    ax[1].plot(bin_center_physical, elf_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_elf_med_physical), color=colours[1])
+
+    #ax[1].plot(sfr_surface_density_kim, np.log10(elf_Kim), ':k')
+
+    ax[1].errorbar(0.03, np.nanmin(elf)-0.1, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=[[np.nanmedian(elf_err_min[physical_mask])], [np.nanmedian(elf_err_max[physical_mask])]], c='k')
+
+    #ax[1].set_xscale('log')
+    lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+
+
+    #plot points with strong BIC values
+    ax[2].fill_between(bin_center_strong, elf_bin_lower_q_strong, elf_bin_upper_q_strong, color=colours[2], alpha=0.3)
+    ax[2].scatter(sig_sfr[~BIC_diff_strong], elf[~BIC_diff_strong], marker='o', s=10, label='All KOFFEE fits', color=colours[0], alpha=0.3, facecolors='none')
+    ax[2].scatter(sig_sfr[BIC_diff_strong], elf[BIC_diff_strong], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_elf_strong), color=colours[2], alpha=1.0)
+    ax[2].plot(bin_center_strong, elf_bin_medians_strong, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_elf_med_strong), color=colours[2])
+
+    #ax[2].plot(sfr_surface_density_kim, np.log10(elf_Kim), ':k')
+
+    ax[2].errorbar(0.03, np.nanmin(elf)-0.1, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=[[np.nanmedian(elf_err_min[BIC_diff_strong])], [np.nanmedian(elf_err_max[BIC_diff_strong])]], c='k')
+
+    #ax[1].set_xscale('log')
+    lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+
+    #plt.subplots_adjust(left=0.06, right=0.99, top=0.96, bottom=0.07, wspace=0.04, hspace=0.04)
 
     plt.show()

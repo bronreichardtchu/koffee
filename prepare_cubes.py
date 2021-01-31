@@ -49,7 +49,7 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
 #SpectRes is a spectrum resampling module which can be used to resample the fluxes
-# and their uncertainties while preserving the integrated flux more information at 
+# and their uncertainties while preserving the integrated flux more information at
 # https://spectres.readthedocs.io/en/latest/ or from the paper at
 # https://arxiv.org/pdf/1705.05165.pdf
 from spectres import spectres
@@ -294,7 +294,10 @@ def load_data(filename, mw_correction=True):
     lamdas = barycentric_corrections(lamdas, header)
 
     #apply Milky Way extinction correction
-    data = milky_way_extinction_correction(lamdas, data)
+    if mw_correction == True:
+        data = milky_way_extinction_correction(lamdas, data)
+        if len(fits_stuff) > 3:
+            var = milky_way_extinction_correction(lamdas, var)
 
     if len(fits_stuff) > 3:
         return lamdas, data, var, header

@@ -40,7 +40,11 @@ from astropy import units
 #-------------------------------------------------------------------------------
 def calc_hbeta_extinction(lamdas, z):
     """
-    Calculates the H_beta extinction - corrects for the extinction caused by light travelling through the dust and gas of the original galaxy, using the Cardelli et al. 1989 curves and Av = E(B-V)*Rv.  The value for Av ~ 2.11 x C(Hbeta) where C(Hbeta) = 0.24 from Lopez-Sanchez et al. 2006 A&A 449.
+    Calculates the H_beta extinction - corrects for the extinction caused by light
+    travelling through the dust and gas of the original galaxy, using the
+    Cardelli et al. 1989 curves and Av = E(B-V)*Rv.
+    The value for Av ~ 2.11 x C(Hbeta) where C(Hbeta) = 0.24 from
+    Lopez-Sanchez et al. 2006 A&A 449.
 
     Parameters
     ----------
@@ -348,9 +352,9 @@ def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
         plotted to check the whole line is included in the integral.
     """
     #create bounds to integrate over
-    #Hbeta is at 4861.33A, allowing 5.5A on either side
-    left_limit = 4855.83*(1+z)
-    right_limit = 4866.83*(1+z)
+    #Hbeta is at 4862.68A, allowing 5.5A on either side
+    left_limit = 4857.18*(1+z)
+    right_limit = 4868.18*(1+z)
 
     #use the wavelengths to find the values in the spectrum to integrate over
     h_beta_spec = spectrum[(lamdas>=left_limit)&(lamdas<=right_limit),]
@@ -374,7 +378,7 @@ def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
 
     if plot == True:
         plt.figure()
-        plt.step(h_beta_lam, h_beta_spec)
+        plt.step(h_beta_lam, h_beta_spec.reshape([h_beta_lam.shape[0],-1]), where='mid')
         plt.show()
 
     #integrate along the spectrum
@@ -394,9 +398,9 @@ def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
     print(h_beta_flux)
 
     if cont_subtract == True:
-        return h_beta_flux.value, s_n_mask, h_beta_spec
+        return h_beta_integral, h_beta_flux.value, s_n_mask, h_beta_spec
     else:
-        return h_beta_flux.value, h_beta_spec
+        return h_beta_integral, h_beta_flux.value, h_beta_spec
 
 
 def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
@@ -441,9 +445,9 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
         plotted to check the whole line is included in the integral.
     """
     #create bounds to integrate over
-    #Hgamma is at 4340.47A, allowing 1.5A on either side
-    left_limit = 4334.97*(1+z)
-    right_limit = 4345.97*(1+z)
+    #Hgamma is at 4341.68A, allowing 1.5A on either side
+    left_limit = 4338.18*(1+z)
+    right_limit = 4345.18*(1+z)
 
     #use the wavelengths to find the values in the spectrum to integrate over
     h_gamma_spec = spectrum[(lamdas>=left_limit)&(lamdas<=right_limit),]
@@ -456,7 +460,7 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
     #also use the continuum to find the S/N and mask things
     #s_n = []
     if cont_subtract == True:
-        cont = spectrum[(lamdas>=4850.0*(1+z))&(lamdas<=4855.0*(1+z)),]
+        cont = spectrum[(lamdas>=4315.0*(1+z))&(lamdas<=4320.0*(1+z)),]
         cont_median = np.nanmedian(cont, axis=0)
         h_gamma_spec = h_gamma_spec - cont_median
         #find the standard deviation of the continuum section
@@ -467,7 +471,7 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
 
     if plot == True:
         plt.figure()
-        plt.step(h_gamma_lam, h_gamma_spec)
+        plt.step(h_gamma_lam, h_gamma_spec.reshape([h_gamma_lam.shape[0], -1]), where='mid')
         plt.show()
 
     #integrate along the spectrum
@@ -487,9 +491,9 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
     print(h_gamma_flux)
 
     if cont_subtract == True:
-        return h_gamma_flux.value, s_n_mask, h_gamma_spec
+        return h_gamma_integral, h_gamma_flux.value, s_n_mask, h_gamma_spec
     else:
-        return h_gamma_flux.value, h_gamma_spec
+        return h_gamma_integral, h_gamma_flux.value, h_gamma_spec
 
 
 #-------------------------------------------------------------------------------
