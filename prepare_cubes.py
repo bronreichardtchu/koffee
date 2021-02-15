@@ -281,6 +281,7 @@ def load_data(filename, mw_correction=True):
     """
     #open the file and get the data
     fits_stuff = read_in_data_fits(filename)
+
     if len(fits_stuff) > 3:
         lamdas, data, var, header = fits_stuff
     else:
@@ -948,7 +949,7 @@ def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour,
     f.close()
 
 
-def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder, data_corrections=True, data_crop=False, var_filepath=None, var_crop=False, var_corrections=True, lamda_crop=False):
+def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder, data_crop=False, var_filepath=None, var_crop=False, lamda_crop=False, mw_correction=False):
     """
     Runs all the previously defined functions when there is only one cube to read
     in and nothing to combine.
@@ -970,10 +971,6 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
     results_folder : str
         where to save the results
 
-    data_corrections : boolean
-        whether to apply the air_to_vac and barycentric corrections.  Default is
-        True.
-
     data_crop : boolean
         whether to crop the cube spatially - used to make the blue cube match the
         spatial extent of the red IRAS08 metacube.  Default is False.
@@ -985,13 +982,12 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
         whether to crop the variance cube spatially - used to make the blue cube
         match the spatial extent of the red IRAS08 metacube.  Default is False.
 
-    var_corrections : boolean
-        whether to apply the air_to_vac and barycentric corrections to the variance
-        cube.  Default is True.
-
     lamda_crop : boolean
         whether or not to crop off the dodgy edges in the wavelength direction.
         Default is False.
+
+    mw_correction : boolean
+        whether to apply the milky way extinction correction. Default is False.
 
     Returns
     -------
@@ -1034,28 +1030,17 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
     header : FITS header object
         the header from the data fits file
     """
-    #read in the data from the fits file
-    fits_stuff = read_in_data_fits(data_filepath)
+    #read in the data from the fits file, with all corrections
+    fits_stuff = load_data(data_filepath, mw_correction=mw_correction)
 
     if len(fits_stuff) > 3:
         lamdas, data, var, header = fits_stuff
     else:
         lamdas, data, header = fits_stuff
 
-    #apply wavelength corrections
-    if data_corrections == True:
-        lamdas = air_to_vac(lamdas)
-        lamdas = barycentric_corrections(lamdas, header)
-
-    #if there is a variance cube, read in the data from the fits file
+    #if there is a seperate variance cube, read in the data from the fits file
     if var_filepath:
-        var_lamdas, var, var_header = read_in_data_fits(var_filepath)
-
-        #apply wavelength corrections
-        if var_corrections == True:
-            var_lamdas = air_to_vac(var_lamdas)
-            #use same header info as data
-            var_lamdas = barycentric_corrections(var_lamdas, header)
+        var_lamdas, var, var_header = load_data(var_filepath, mw_correction=mw_correction)
 
         #need to make variance cube the same size as the metacube
         if var_crop == True:
@@ -1073,9 +1058,6 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
             if np.any(var==0.0):
                 print('Replacing 0.0 with 0.00000001 in variance')
                 var[np.where(var==0.0)] = 0.00000001
-
-    #apply Milky Way extinction correction
-    data = milky_way_extinction_correction(lamdas, data)
 
     #create data coordinates
     xx, yy, rad = data_coords(lamdas, data, header, z, cube_colour=cube_colour, shiftx=None, shifty=None)
