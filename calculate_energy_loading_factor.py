@@ -15,9 +15,7 @@ PURPOSE:
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
 FUNCTIONS INCLUDED:
-    calc_mass_outflow_rate
-    calc_mass_loading_factor
-    calc_mass_loading_factor2
+    calc_energy_loading_factor
 
 MODIFICATION HISTORY:
 		v.1.0 - first created January 2021
