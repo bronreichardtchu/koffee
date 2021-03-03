@@ -56,10 +56,10 @@ from spectres import spectres
 
 #from .display_pixels import cap_display_pixels as cdp
 from . import brons_display_pixels_kcwi as bdpk
-#import brons_display_pixels_kcwi as bdpk
+from . import calculate_extinction_checks as calc_ext
 
 import importlib
-importlib.reload(bdpk)
+importlib.reload(calc_ext)
 
 #====================================================================================================
 #LOAD DATA
@@ -237,6 +237,7 @@ def milky_way_extinction_correction(lamdas, data):
 
     #define the constants
     Rv = 3.1
+    #Finkel... et al.
     Av = 0.2511
 
     #find A(lambda)
@@ -247,6 +248,110 @@ def milky_way_extinction_correction(lamdas, data):
     data = (10**(0.4*A_lam[:, None, None]))*data
 
     return data
+
+
+def hbeta_extinction_correction(lamdas, data, z):
+    """
+    Corrects for the extinction caused by light travelling through the dust and
+    gas of the galaxy, as described in Cardelli et al. 1989. Uses Hbeta/Hgamma
+    ratio as in Calzetti et al. 2001
+
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        wavelength vector
+
+    data : :obj:'~numpy.ndarray'
+        3D cube of data
+
+    z : float
+        redshift
+
+    Returns
+    -------
+    data : :obj:'~numpy.ndarray'
+        the data corrected for extinction
+    """
+    #use the hbeta/hgamma ratio to calculate EBV
+    ebv = calculate_EBV_from_hbeta_hgamma_ratio(lamdas, data, z)
+
+    #define the constant (using MW expected curve)
+    Rv = 3.1
+
+    #use that to calculate Av
+    Av = ebv * Rv
+
+    #convert lamdas from Angstroms into micrometers
+    lamdas = lamdas/10000
+
+    #define the equations from the paper
+    y = lamdas**(-1) - 1.82
+    a_x = 1.0 + 0.17699*y - 0.50447*(y**2) - 0.02427*(y**3) + 0.72085*(y**4) + 0.01979*(y**5) - 0.77530*(y**6) + 0.32999*(y**7)
+    b_x = 1.41338*y + 2.28305*(y**2) + 1.07233*(y**3) - 5.38434*(y**4) - 0.62251*(y**5) + 5.30260*(y**6) - 2.09002*(y**7)
+
+    #tile a_x and b_x so that they're the right array shape
+    a_x = np.tile(a_x, [data.shape[2], data.shape[1], 1]).T
+    b_x = np.tile(b_x, [data.shape[2], data.shape[1], 1]).T
+
+    print('median a_x:', np.nanmedian(a_x))
+    print('a_x shape:', a_x.shape)
+
+    print('median b_x:', np.nanmedian(b_x))
+    print('b_x shape:', b_x.shape)
+
+    #find A(lambda)
+    A_lam = (a_x + b_x/Rv)*Av
+
+    #apply to the data
+    data = (10**(0.4*A_lam))*data
+
+    return Av, A_lam, data
+
+
+
+def calculate_EBV_from_hbeta_hgamma_ratio(lamdas, data, z):
+    """
+    Uses Hbeta/Hgamma ratio as in Calzetti et al. 2001
+
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        wavelength vector
+
+    data : :obj:'~numpy.ndarray'
+        3D cube of data
+
+    z : float
+        redshift
+
+    Returns
+    -------
+    data : :obj:'~numpy.ndarray'
+        the data corrected for extinction
+    """
+    #calculate the hbeta/hgamma ratio
+    hbeta_flux, hgamma_flux, hbeta_hgamma_obs = calc_ext.calc_hbeta_hgamma_amps(lamdas, data, z, cont_subtract=False)
+
+    #set the expected hbeta/hgamma ratio
+    hbeta_hgamma_actual = 2.15
+
+    #set the expected differential extinction [k(hgamma)-k(hbeta)]=0.465
+    diff_ext = 0.465
+
+    #create an array for the ebv values
+    ebv = np.full_like(hbeta_hgamma_obs, np.nan, dtype=np.double)
+
+    #calculate E(B-V) if hbeta_hgamma_obs >= 2.15
+    for (i,j), hbeta_hgamma_obs_value in np.ndenumerate(hbeta_hgamma_obs):
+        if hbeta_hgamma_obs_value >= 2.15:
+            #calculate ebv
+            ebv[i,j] = (2.5*np.log10(hbeta_hgamma_obs_value/hbeta_hgamma_actual)) / diff_ext
+
+        else:
+            #set ebv to a small value
+            ebv[i,j] = 0.01
+
+    return ebv
 
 
 #====================================================================================================

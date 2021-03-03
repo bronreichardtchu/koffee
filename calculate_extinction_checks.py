@@ -128,7 +128,7 @@ def integrate_spectrum(lamdas, spectrum, left_limit, right_limit, plot=False):
     #plot the area used
     if plot == True:
         plt.figure()
-        plt.step(h_beta_lam, h_beta_spec.reshape([h_beta_lam.shape[0],-1]), where='mid')
+        plt.step(lam, spec.reshape([lam.shape[0],-1]), where='mid')
         plt.show()
 
     #integrate along the spectrum
@@ -190,9 +190,10 @@ def subtract_continuum(lamdas, spectrum, left_limit, right_limit):
     return spectrum, s_n
 
 
-def calc_hbeta_hgamma(lamdas, spectrum, z, cont_subtract=False, plot=False):
+def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=False):
     """
-    Calculate the Hbeta/hgamma ratio, which should be 2.13
+    Calculate the Hbeta/hgamma ratio, which should be 2.13, by integrating over the
+    emission lines.
 
     Parameters
     ----------
@@ -249,27 +250,13 @@ def calc_hbeta_hgamma(lamdas, spectrum, z, cont_subtract=False, plot=False):
         s_n_mask = s_n_hbeta > 20
 
         #integrate over the emission lines
-        if plot == True:
-            hgamma_integral = integrate_spectrum(lamdas, hgamma_spec, hgamma_left_limit, hgamma_right_limit, plot=True)
-
-            hbeta_integral = integrate_spectrum(lamdas, hbeta_spec, hbeta_left_limit, hbeta_right_limit, plot=True)
-
-        elif plot == False:
-            hgamma_integral = integrate_spectrum(lamdas, hgamma_spec, hgamma_left_limit, hgamma_right_limit, plot=False)
-
-            hbeta_integral = integrate_spectrum(lamdas, hbeta_spec, hbeta_left_limit, hbeta_right_limit, plot=False)
+        hgamma_integral = integrate_spectrum(lamdas, hgamma_spec, hgamma_left_limit, hgamma_right_limit, plot=plot)
+        hbeta_integral = integrate_spectrum(lamdas, hbeta_spec, hbeta_left_limit, hbeta_right_limit, plot=plot)
 
     elif cont_subtract == False:
         #integrate over the emission lines
-        if plot == True:
-            hgamma_integral = integrate_spectrum(lamdas, spectrum, hgamma_left_limit, hgamma_right_limit, plot=True)
-
-            hbeta_integral = integrate_spectrum(lamdas, spectrum, hbeta_left_limit, hbeta_right_limit, plot=True)
-
-        elif plot == False:
-            hgamma_integral = integrate_spectrum(lamdas, spectrum, hgamma_left_limit, hgamma_right_limit, plot=False)
-
-            hbeta_integral = integrate_spectrum(lamdas, spectrum, hbeta_left_limit, hbeta_right_limit, plot=False)
+        hgamma_integral = integrate_spectrum(lamdas, spectrum, hgamma_left_limit, hgamma_right_limit, plot=plot)
+        hbeta_integral = integrate_spectrum(lamdas, spectrum, hbeta_left_limit, hbeta_right_limit, plot=plot)
 
     #now get rid of the cm^2
     #get the Hubble constant at z=0; this is in km/Mpc/s
@@ -282,16 +269,97 @@ def calc_hbeta_hgamma(lamdas, spectrum, z, cont_subtract=False, plot=False):
     hgamma_flux = (hgamma_integral*(4*np.pi*(dist**2))).to('erg/s')
     hbeta_flux = (hbeta_integral*(4*np.pi*(dist**2))).to('erg/s')
 
-    print(hgamma_flux)
-    print(hbeta_flux)
+    print('Hgamma flux:', hgamma_flux)
+    print('Hbeta flux:', hbeta_flux)
 
     #calculate the hbeta/hgamma ratio
     hbeta_hgamma = hbeta_flux/hgamma_flux
 
+    print('Median Hbeta/Hgamma:', np.nanmedian(hbeta_hgamma))
+
     if cont_subtract == True:
-        return hbeta_hgamma, s_n_mask
+        return hbeta_flux, hgamma_flux, hbeta_hgamma, s_n_mask
     else:
-        return hbeta_hgamma
+        return hbeta_flux, hgamma_flux, hbeta_hgamma
+
+
+
+def calc_hbeta_hgamma_amps(lamdas, spectrum, z, cont_subtract=False):
+    """
+    Calculate the Hbeta/hgamma ratio, which should be 2.13, by using the amplitudes
+    of the emission lines
+
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector
+
+    spectrum : :obj:'~numpy.ndarray'
+        the spectrum or array of spectra.  If in array, needs to be in shape
+        [npix, nspec]
+
+    z : float
+        redshift of the galaxy
+
+    cont_subtract : boolean
+        if True, assumes continuum has not already been subtracted.
+
+    Returns
+    -------
+    hbeta_hgamma : float or :obj:'~numpy.ndarray'
+        the hbeta to hgamma ratio for each spectrum
+
+    s_n_mask : :obj:'~numpy.ndarray'
+        Returned if cont_subtract==True.  The spectrum is used before it is
+        continuum subtracted to find the signal-to-noise value near the Hbeta
+        line for each spectrum
+    """
+    #create bounds to look for highest amplitude value within
+    hgamma_left_limit = emission_line_limits["Hgamma_left"]*(1+z)
+    hgamma_right_limit = emission_line_limits["Hgamma_right"]*(1+z)
+
+    hbeta_left_limit = emission_line_limits["Hbeta_left"]*(1+z)
+    hbeta_right_limit = emission_line_limits["Hbeta_right"]*(1+z)
+
+    #create bounds for the continuum
+    hgamma_cont_left_limit = continuum_band_limits["Hgamma_left"]*(1+z)
+    hgamma_cont_right_limit = continuum_band_limits["Hgamma_right"]*(1+z)
+
+    hbeta_cont_left_limit = continuum_band_limits["Hbeta_left"]*(1+z)
+    hbeta_cont_right_limit = continuum_band_limits["Hbeta_right"]*(1+z)
+
+    #if the continuum has not already been fit and subtracted, use an approximation
+    #to subtract it off
+    #also use the continuum to find the S/N and mask things
+    if cont_subtract == True:
+        hgamma_spec, s_n_hgamma = subtract_continuum(lamdas, spectrum, hgamma_cont_left_limit, hgamma_cont_right_limit)
+
+        hbeta_spec, s_n_hbeta = subtract_continuum(lamdas, spectrum, hbeta_cont_left_limit, hbeta_cont_right_limit)
+
+        #create the S/N mask
+        s_n_mask = s_n_hbeta > 20
+
+        #find the highest amplitude
+        hgamma_amp = np.nanmax(hgamma_spec[(lamdas>=hgamma_left_limit)&(lamdas<=hgamma_right_limit),], axis=0)
+        hbeta_amp = np.nanmax(hbeta_spec[(lamdas>=hbeta_left_limit)&(lamdas<=hbeta_right_limit),], axis=0)
+
+    elif cont_subtract == False:
+        #find the highest amplitude
+        hgamma_amp = np.nanmax(spectrum[(lamdas>=hgamma_left_limit)&(lamdas<=hgamma_right_limit),], axis=0)
+        hbeta_amp = np.nanmax(spectrum[(lamdas>=hbeta_left_limit)&(lamdas<=hbeta_right_limit),], axis=0)
+
+    print('Hgamma amplitudes:', hgamma_amp)
+    print('Hbeta amplitudes:', hbeta_amp)
+
+    #calculate the hbeta/hgamma ratio
+    hbeta_hgamma = hbeta_amp/hgamma_amp
+
+    print('Median Hbeta/Hgamma:', np.nanmedian(hbeta_hgamma))
+
+    if cont_subtract == True:
+        return hbeta_amp, hgamma_amp, hbeta_hgamma, s_n_mask
+    else:
+        return hbeta_amp, hgamma_amp, hbeta_hgamma
 
 
 def calc_OIII_doublet_ratio(lamdas, spectrum, z, cont_subtract=False, plot=False):
@@ -399,7 +467,8 @@ def plot_ratio_histograms(ratio_arrays, array_labels, xlabel, range=None):
     Parameters
     ----------
     ratio_arrays : list of :obj:'~numpy.ndarray'
-        a list of all the arrays to be plotted on the histogram
+        a list of all the arrays to be plotted on the histogram, these should be
+        flattened
 
     array_labels : list of strings
         a list containing descriptors/labels for the arrays, to use in the legend
@@ -428,7 +497,10 @@ def plot_ratio_histograms(ratio_arrays, array_labels, xlabel, range=None):
 
     #for each array, create the histogram
     for i in np.arange(len(ratio_arrays)):
-        plt.hist(ratio_arrays[i].value, bins=50, range=range, alpha=0.5, color=colours[i])
+        try:
+            plt.hist(ratio_arrays[i].value, bins=50, range=range, alpha=0.5, color=colours[i])
+        except:
+            plt.hist(ratio_arrays[i], bins=50, range=range, alpha=0.5, color=colours[i])
 
     #over the top, plot the median value lines
     for i in np.arange(len(ratio_arrays)):
