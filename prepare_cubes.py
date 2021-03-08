@@ -20,6 +20,8 @@ FUNCTIONS INCLUDED:
     air_to_vac
     barycentric_corrections
     milky_way_extinction_correction
+    hbeta_extinction_correction
+    calculate_EBV_from_hbeta_hgamma_ratio
     load_data
     data_cubes_combine_by_pixel
     data_cubes_combine_by_wavelength
@@ -856,7 +858,7 @@ def sn_cut(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn=3):
 #====================================================================================================
 #COMBINE RED AND BLUE CUBES
 #====================================================================================================
-def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noise, z):
+def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noise, z, header, cube_shape, results_folder):
     """
     Combines the red and blue cubes into one cube
 
@@ -950,6 +952,16 @@ def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noi
     #combined_cube = combined_cube[120:-100,:]
     #lam_all = lam_all[120:-100]
     #combined_noise = combined_noise[120:-100,:]
+
+    #update the fits header
+    header['NAXIS3'] = lam_all.shape[0]
+    header['CRVAL3'] = lam_all[0]
+
+    #save into a fits file
+    hdu_data = fits.PrimaryHDU(combined_cube.reshape(lam_all.shape[0], cube_shape[0], cube_shape[1]), header=header)
+    hdu_var = fits.ImageHDU(combined_noise.reshape(lam_all.shape[0], cube_shape[0], cube_shape[1]), header=header)
+    hdul = fits.HDUList([hdu_data, hdu_var])
+    hdul.writeto(results_folder+'combined_cube.fits')
 
     return lam_all, combined_cube, combined_noise
 
