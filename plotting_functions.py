@@ -309,6 +309,7 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
     """
     if min_bin == None:
         min_bin = np.nanmin(x)
+        
     if max_bin == None:
         max_bin = np.nanmax(x)
 

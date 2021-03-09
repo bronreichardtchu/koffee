@@ -63,7 +63,8 @@ from . import koffee
 def plot_compare_fits(lamdas, data, spaxels, z):
     """
     Plots the normalised single and double gaussian fits for the OIII 5007 line
-    using a list of spaxels.
+    using a list of spaxels.  (Used spaxels [[19, 7], [26, 8], [35, 10]] for the
+    paper.)
 
     Parameters
     ----------
@@ -120,11 +121,11 @@ def plot_compare_fits(lamdas, data, spaxels, z):
         BIC_diff = bestfit2.bic - bestfit1.bic
         print(BIC_diff)
         if -10 > BIC_diff >= -30:
-            significance_level = 'weakly likely'
+            significance_level = 'weakly likely\n -10 > $\delta_{BIC}$ > -30'
         elif -30 > BIC_diff >= -50:
-            significance_level = 'moderately likely'
+            significance_level = 'moderately likely\n -30 > $\delta_{BIC}$ > -50'
         elif -50 > BIC_diff:
-            significance_level = 'strongly likely'
+            significance_level = 'strongly likely\n -50 > $\delta_{BIC}$'
 
         #get the value to normalise by
         max_value = np.nanmax(flux)
@@ -277,7 +278,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     #ax[0].axvline(vel_out_mean, color='tab:red', ls='--', label='KOFFEE fits mean: {:.2f}'.format(vel_out_mean))
 
     ax[0].legend(fontsize='x-small', frameon=False)
-    ax[0].set_ylim(0,60)
+    ax[0].set_ylim(0,90)
     ax[0].set_xlabel('Outflow Velocity (km/s)')
     ax[0].set_ylabel('$N_{spaxels}$')
 
@@ -290,7 +291,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     #ax[1].axvline(flux_ratio_mean, color='tab:red', ls='--', label='KOFFEE fits mean: {:.2f}'.format(flux_ratio_mean))
 
     #ax[1].legend(fontsize='x-small', frameon=False)
-    ax[1].set_ylim(0,60)
+    ax[1].set_ylim(0,90)
     ax[1].set_xlabel('[OIII] Log($f_{broad}/f_{narrow}$)')
 
     #plot the example of a bad fit
@@ -313,7 +314,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
 
 #Figure 3
-def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True, plot_data_fits=False):
     """
     Plots the SFR surface density against the outflow velocity, with Sigma_SFR
     calculated using only the narrow component.
@@ -342,10 +343,12 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
     BIC_outflow : :obj:'~numpy.ndarray'
-        array of BIC values from the double gaussian fits
+        array of BIC values from the double gaussian fits, this is usually
+        chi_square[1,:,:] returned from koffee
 
     BIC_no_outflow : :obj:'~numpy.ndarray'
-        array of BIC values from the single gaussian fits
+        array of BIC values from the single gaussian fits, this is usually
+        chi_square[0,:,:] returned from koffee
 
     statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
@@ -358,6 +361,10 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     weighted_average : boolean
         whether or not to take a weighted average using the errors (Default=True)
+
+    plot_data_fits : boolean
+        whether to plot the fit to the data points, and the fit to the data
+        medians in red on top of the plot (default is False)
 
     Returns
     -------
@@ -395,6 +402,9 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     #for the radius mask 6.1" is the 90% radius
     #also mask out the fits which lie on the lower limit of dispersion < 51km/s
     physical_mask = (radius < 6.1) & (vel_disp>51)
+
+    print(sig_sfr[physical_mask])
+    print(sig_sfr[physical_mask].shape)
 
     #strong BIC and physical limits mask
     #clean_mask = (radius < 6.1) & (vel_disp > 51) & (BIC_diff < -50)
@@ -504,26 +514,28 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     #plot all points
     ax[0].fill_between(bin_center_all, v_out_bin_lower_q_all, v_out_bin_upper_q_all, color=colours[0], alpha=0.3)
-    ax[0].scatter(sig_sfr, vel_out, marker='o', s=10, label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.8)
+    ax[0].scatter(sig_sfr[vel_disp>51], vel_out[vel_disp>51], marker='o', s=10, label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.8)
+    ax[0].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=10, c=colours[0])
     ax[0].plot(bin_center_all, v_out_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_vel_out_med_all), color=colours[0])
 
 
-    ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_all[0], np.sqrt(np.diag(pcov_vout_all))[0], popt_vout_all[1], np.sqrt(np.diag(pcov_vout_all))[1]))
-    ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_all_medians[0], np.sqrt(np.diag(pcov_vout_all_medians))[0], popt_vout_all_medians[1], np.sqrt(np.diag(pcov_vout_all_medians))[1]))
+    if plot_data_fits == True:
+        ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_all[0], np.sqrt(np.diag(pcov_vout_all))[0], popt_vout_all[1], np.sqrt(np.diag(pcov_vout_all))[1]))
+        ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_all_medians[0], np.sqrt(np.diag(pcov_vout_all_medians))[0], popt_vout_all_medians[1], np.sqrt(np.diag(pcov_vout_all_medians))[1]))
 
     ax[0].plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[0].plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
 
     ax[0].errorbar(0.03, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
 
-    ax[0].set_ylim(100, 610)
+    ax[0].set_ylim(100, 700)
     ax[0].set_xscale('log')
-    ax[0].set_xlim(0.002, 3)
+    ax[0].set_xlim(np.nanmin(sig_sfr)-0.001, np.nanmax(sig_sfr)+1.0)
     lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
     ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[0].set_title('all spaxels')
+    ax[0].set_title('S/N > 20 and $\delta_{BIC}$<-10')
 
     #plot points within 90% radius
     ax[1].fill_between(bin_center_physical, v_out_bin_lower_q_physical, v_out_bin_upper_q_physical, color=colours[1], alpha=0.3)
@@ -532,8 +544,9 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     ax[1].scatter(sig_sfr[physical_mask], vel_out[physical_mask], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_physical), color=colours[1], alpha=0.8)
     ax[1].plot(bin_center_physical, v_out_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_physical), color=colours[1])
 
-    ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_physical), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_physical[0], np.sqrt(np.diag(pcov_vout_physical))[0], popt_vout_physical[1], np.sqrt(np.diag(pcov_vout_physical))[1]))
-    ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_physical_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_physical_medians[0], np.sqrt(np.diag(pcov_vout_physical_medians))[0], popt_vout_physical_medians[1], np.sqrt(np.diag(pcov_vout_physical_medians))[1]))
+    if plot_data_fits == True:
+        ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_physical), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_physical[0], np.sqrt(np.diag(pcov_vout_physical))[0], popt_vout_physical[1], np.sqrt(np.diag(pcov_vout_physical))[1]))
+        ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_physical_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_physical_medians[0], np.sqrt(np.diag(pcov_vout_physical_medians))[0], popt_vout_physical_medians[1], np.sqrt(np.diag(pcov_vout_physical_medians))[1]))
 
     ax[1].plot(sfr_surface_density_chen, v_out_chen, ':k')#, label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[1].plot(sfr_surface_density_murray, v_out_murray, '--k')#, label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
@@ -544,19 +557,22 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[1].set_title(r'$r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[1].set_title(r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
     #plot points with strong BIC values
     ax[2].fill_between(bin_center_clean, v_out_bin_lower_q_clean, v_out_bin_upper_q_clean, color=colours[2], alpha=0.3)
     #ax[2].scatter(sig_sfr[radius>6.1], vel_out[radius>6.1], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
     #ax[2].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
     #ax[2].scatter(sig_sfr[physical_mask][BIC_diff[physical_mask]>=-51], vel_out[physical_mask][BIC_diff[physical_mask]>=-51], marker='o', s=10, edgecolors=colours[1], alpha=0.3, facecolors='none')
-    ax[2].scatter(sig_sfr[~BIC_diff_strong], vel_out[~BIC_diff_strong], marker='o', s=10, label='All KOFFEE fits', color=colours[0], alpha=0.3, facecolors='none')
-    ax[2].scatter(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_clean), color=colours[2], alpha=1.0)
+    ax[2].scatter(sig_sfr[~BIC_diff_strong][vel_disp[~BIC_diff_strong]>51], vel_out[~BIC_diff_strong][vel_disp[~BIC_diff_strong]>51], marker='o', s=10, label='All KOFFEE fits', color=colours[0], alpha=0.3, facecolors='none')
+    ax[2].scatter(sig_sfr[~BIC_diff_strong][vel_disp[~BIC_diff_strong]<=51], vel_out[~BIC_diff_strong][vel_disp[~BIC_diff_strong]<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
+    ax[2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_clean), color=colours[2], alpha=1.0)
+    ax[2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_clean), color=colours[2], alpha=1.0)
     ax[2].plot(bin_center_clean, v_out_bin_medians_clean, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_clean), color=colours[2])
 
-    ax[2].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_clean), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_clean[0], np.sqrt(np.diag(pcov_vout_clean))[0], popt_vout_clean[1], np.sqrt(np.diag(pcov_vout_clean))[1]))
-    ax[2].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_clean_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_clean_medians[0], np.sqrt(np.diag(pcov_vout_clean_medians))[0], popt_vout_clean_medians[1], np.sqrt(np.diag(pcov_vout_clean_medians))[1]))
+    if plot_data_fits == True:
+        ax[2].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_clean), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_clean[0], np.sqrt(np.diag(pcov_vout_clean))[0], popt_vout_clean[1], np.sqrt(np.diag(pcov_vout_clean))[1]))
+        ax[2].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_clean_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_clean_medians[0], np.sqrt(np.diag(pcov_vout_clean_medians))[0], popt_vout_clean_medians[1], np.sqrt(np.diag(pcov_vout_clean_medians))[1]))
 
     ax[2].plot(sfr_surface_density_chen, v_out_chen, ':k')#, label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[2].plot(sfr_surface_density_murray, v_out_murray, '--k')#, label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
@@ -567,7 +583,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[2].set_title('strongly likely BIC')
+    ax[2].set_title('strongly likely BIC $\delta_{BIC}$<-50')
 
     plt.show()
 
@@ -797,12 +813,12 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     ax[1,0].plot(sfr_surface_density_kim, np.log10(mlf_Kim), ':k', label='Kim+20, $\eta \propto \Sigma_{SFR}^{-0.44}$')
 
-    ax[1,0].errorbar(0.03, np.nanmin(mlf)-0.1, xerr=np.nanmedian(sig_sfr_err), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
+    ax[1,0].errorbar(0.03, np.nanmin(mlf)+1.5, xerr=np.nanmedian(sig_sfr_err), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
 
-    ax[1,0].set_ylim(-2.4, 0.7)
+    ax[1,0].set_ylim(np.nanmin(mlf)-0.1, np.nanmax(mlf)+0.5)
     ax[1,0].set_xscale('log')
-    ax[1,0].set_xlim(0.003, 2)
-    lgnd = ax[1,0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    ax[1,0].set_xlim(np.nanmin(sig_sfr)-0.001, np.nanmax(sig_sfr+1))
+    lgnd = ax[1,0].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1,0].set_ylabel(r'Log($\eta$)')
     ax[1,0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
@@ -817,10 +833,10 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     ax[1,1].plot(sfr_surface_density_kim, np.log10(mlf_Kim), ':k')
 
-    ax[1,1].errorbar(0.03, np.nanmin(mlf)-0.1, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
+    ax[1,1].errorbar(0.03, np.nanmin(mlf)+1.5, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
 
     #ax[0,1].set_xscale('log')
-    lgnd = ax[1,1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[1,1].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1,1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
@@ -833,10 +849,10 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     ax[1,2].plot(sfr_surface_density_kim, np.log10(mlf_Kim), ':k')
 
-    ax[1,2].errorbar(0.03, np.nanmin(mlf)-0.1, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
+    ax[1,2].errorbar(0.03, np.nanmin(mlf)+1.5, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
 
     #ax[0,1].set_xscale('log')
-    lgnd = ax[1,2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[1,2].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1,2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
@@ -848,13 +864,13 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     ax[0,0].scatter(sig_sfr, flux_ratio, marker='o', s=10, label='All KOFFEE fits; R={:.2f}'.format(r_flux_all), color=colours[0], alpha=0.8)
     ax[0,0].plot(bin_center_all, flux_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_flux_med_all), color=colours[0])
 
-    ax[0,0].errorbar(0.03, np.nanmin(flux_ratio), xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(flux_error), c='k')
+    ax[0,0].errorbar(0.03, np.nanmin(flux_ratio)+1.0, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(flux_error), c='k')
 
     ax[0,0].set_ylim((np.nanmin(flux_ratio)+np.nanmedian(flux_error)-0.1), np.nanmax(flux_ratio)+0.6)
-    lgnd = ax[0,0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5, edgecolor=None)
+    lgnd = ax[0,0].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5, edgecolor=None)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,0].set_ylabel(r'H$\beta$ Log(F$_{broad}$/F$_{narrow}$)')
-    ax[0,0].set_title('all spaxels')
+    ax[0,0].set_title('S/N > 20 and $\delta_{BIC}$<-10')
 
 
 
@@ -865,11 +881,11 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     ax[0,1].scatter(sig_sfr[physical_mask], flux_ratio[physical_mask], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_flux_physical), color=colours[1], alpha=0.8)
     ax[0,1].plot(bin_center_physical, flux_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_physical), color=colours[1])
 
-    ax[0,1].errorbar(0.03, np.nanmin(flux_ratio), xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(flux_error[physical_mask]), c='k')
+    ax[0,1].errorbar(0.03, np.nanmin(flux_ratio)+1.0, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(flux_error[physical_mask]), c='k')
 
-    lgnd = ax[0,1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5, edgecolor=None)
+    lgnd = ax[0,1].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5, edgecolor=None)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[0,1].set_title(r'$r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[0,1].set_title(r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
 
 
@@ -879,11 +895,11 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     ax[0,2].scatter(sig_sfr[BIC_diff_strong], flux_ratio[BIC_diff_strong], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_flux_strong), color=colours[2], alpha=1.0)
     ax[0,2].plot(bin_center_strong, flux_bin_medians_strong, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_strong), color=colours[2])
 
-    ax[0,2].errorbar(0.03, np.nanmin(flux_ratio), xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(flux_error[BIC_diff_strong]), c='k')
+    ax[0,2].errorbar(0.03, np.nanmin(flux_ratio)+1.0, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(flux_error[BIC_diff_strong]), c='k')
 
-    lgnd = ax[0,2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5, edgecolor=None)
+    lgnd = ax[0,2].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5, edgecolor=None)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[0,2].set_title('strongly likely BIC')
+    ax[0,2].set_title('strongly likely BIC $\delta_{BIC}$<-50')
 
     plt.subplots_adjust(left=0.06, right=0.99, top=0.96, bottom=0.07, wspace=0.04, hspace=0.04)
 
@@ -1297,7 +1313,7 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
     ax8 = plt.subplot(338, projection=m_out_wcs, slices=('y', 'x'))
     #m_out_spax = bdpk.display_pixels(xx_flat.reshape(67, 24).transpose(), yy_flat.reshape(67, 24).transpose(), m_out.transpose(), angle=360, axes=ax8, cmap=cmr.gem, vmin=2.2, vmax=2.6)
-    m_out_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, m_out, angle=360, axes=ax8, cmap=cmr.gem, vmin=-4.0, vmax=-1.5)
+    m_out_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, m_out, angle=360, axes=ax8, cmap=cmr.gem)#, vmin=19.5, vmax=24)
     #ax8.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
     ax8.grid(False)
     lon8 = ax8.coords[0]
@@ -1689,15 +1705,16 @@ def plot_sfr_elf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results
 
     #ax[0].plot(sfr_surface_density_kim, np.log10(elf_Kim), ':k', label='Kim+20, $\eta \propto \Sigma_{SFR}^{-0.44}$')
 
-    ax[0].errorbar(0.03, np.nanmin(elf)-0.1, xerr=np.nanmedian(sig_sfr_err), yerr=[[np.nanmedian(elf_err_min)], [np.nanmedian(elf_err_max)]], c='k')
+    ax[0].errorbar(0.03, np.nanmin(elf)+1.0, xerr=np.nanmedian(sig_sfr_err), yerr=[[np.nanmedian(elf_err_min)], [np.nanmedian(elf_err_max)]], c='k')
 
     #ax[0].set_ylim(-2.4, 0.7)
     ax[0].set_xscale('log')
     ax[0].set_xlim(0.003, 2)
-    lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[0].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0].set_ylabel(r'Log($\eta_{E}$)')
     ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    ax[0].set_title('S/N > 20 and $\delta_{BIC}$<-10')
 
 
     #plot points within 90% radius
@@ -1709,12 +1726,13 @@ def plot_sfr_elf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results
 
     #ax[1].plot(sfr_surface_density_kim, np.log10(elf_Kim), ':k')
 
-    ax[1].errorbar(0.03, np.nanmin(elf)-0.1, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=[[np.nanmedian(elf_err_min[physical_mask])], [np.nanmedian(elf_err_max[physical_mask])]], c='k')
+    ax[1].errorbar(0.03, np.nanmin(elf)+1.0, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=[[np.nanmedian(elf_err_min[physical_mask])], [np.nanmedian(elf_err_max[physical_mask])]], c='k')
 
     #ax[1].set_xscale('log')
-    lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[1].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    ax[1].set_title(r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
 
     #plot points with strong BIC values
@@ -1725,12 +1743,13 @@ def plot_sfr_elf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results
 
     #ax[2].plot(sfr_surface_density_kim, np.log10(elf_Kim), ':k')
 
-    ax[2].errorbar(0.03, np.nanmin(elf)-0.1, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=[[np.nanmedian(elf_err_min[BIC_diff_strong])], [np.nanmedian(elf_err_max[BIC_diff_strong])]], c='k')
+    ax[2].errorbar(0.03, np.nanmin(elf)+1.0, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=[[np.nanmedian(elf_err_min[BIC_diff_strong])], [np.nanmedian(elf_err_max[BIC_diff_strong])]], c='k')
 
     #ax[1].set_xscale('log')
-    lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[2].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    ax[2].set_title('strongly likely BIC $\delta_{BIC}$<-50')
 
     #plt.subplots_adjust(left=0.06, right=0.99, top=0.96, bottom=0.07, wspace=0.04, hspace=0.04)
 
