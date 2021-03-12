@@ -126,6 +126,8 @@ def plot_compare_fits(lamdas, data, spaxels, z):
             significance_level = 'moderately likely\n -30 > $\delta_{BIC}$ > -50'
         elif -50 > BIC_diff:
             significance_level = 'strongly likely\n -50 > $\delta_{BIC}$'
+        else:
+            significance_level = str(BIC_diff)
 
         #get the value to normalise by
         max_value = np.nanmax(flux)
