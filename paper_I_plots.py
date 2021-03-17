@@ -569,7 +569,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     ax[2].scatter(sig_sfr[~BIC_diff_strong][vel_disp[~BIC_diff_strong]>51], vel_out[~BIC_diff_strong][vel_disp[~BIC_diff_strong]>51], marker='o', s=10, label='All KOFFEE fits', color=colours[0], alpha=0.3, facecolors='none')
     ax[2].scatter(sig_sfr[~BIC_diff_strong][vel_disp[~BIC_diff_strong]<=51], vel_out[~BIC_diff_strong][vel_disp[~BIC_diff_strong]<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
     ax[2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_clean), color=colours[2], alpha=1.0)
-    ax[2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_clean), color=colours[2], alpha=1.0)
+    ax[2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=10, color=colours[2], alpha=1.0)
     ax[2].plot(bin_center_clean, v_out_bin_medians_clean, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_clean), color=colours[2])
 
     if plot_data_fits == True:

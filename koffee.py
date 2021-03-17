@@ -603,6 +603,32 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             #save blue chi square
                             blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit1, g_model1)
 
+
+
+                        #plot fit results
+                        if plotting == True:
+                            #one gaussian fit
+                            fig1 = plot_fit(masked_lamdas, flux, g_model1, pars1, best_fit1, plot_initial=False, include_const=include_const)
+                            if correct_bad_spaxels == True and (i, j) in dodgy_spaxels[galaxy_name]:
+                                fig1.suptitle('[OIII] '+str(em_rest_OIII_3))
+                                fig1.savefig(output_folder_loc+galaxy_name+'_best_fit_OIII_3_no_outflow_'+str(i)+'_'+str(j))
+                            else:
+                                fig1.suptitle(emission_line+' ['+str(em_rest)+']')
+                                fig1.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line+'_no_outflow_'+str(i)+'_'+str(j))
+                            plt.close(fig1)
+
+                            #two gaussian fit
+                            if stat_res > 0:
+                                fig2 = plot_fit(masked_lamdas, flux, g_model2, pars2, best_fit2, plot_initial=False)
+                                if correct_bad_spaxels == True and (i, j) in dodgy_spaxels[galaxy_name]:
+                                    fig2.suptitle('[OIII] '+str(em_rest_OIII_3)+' First Fit')
+                                    fig2.savefig(output_folder_loc+galaxy_name+'_best_fit_OIII_3_outflow_'+str(i)+'_'+str(j)+'_first_fit')
+                                else:
+                                    fig2.suptitle(emission_line+' ['+str(em_rest)+']'+' First Fit')
+                                    fig2.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line+'_outflow_'+str(i)+'_'+str(j)+'_first_fit')
+                                plt.close(fig2)
+
+
                         if koffee_checks == True:
                             if blue_chi_square[i,j] > 0.1:
                                 if include_const == True:
@@ -611,8 +637,34 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                     g_model2_refit, pars2_refit = kff.gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=[masked_lamdas[flux.argmax()], masked_lamdas[flux.argmax()]-4.0], sigma_guess=[1.0,8.0])
                                 best_fit2_refit = kff.fitter(g_model2_refit, pars2_refit, masked_lamdas, flux, method=method, verbose=False)
 
-                                #force it to take the new fit
-                                stat_res = 2
+                                #force it to take the new fit if it is a better BIC
+                                if (best_fit2_refit.bic < (best_fit1.bic-10)) and (best_fit2_refit.bic < (best_fit2.bic-10)) :
+                                    stat_res = 2
+
+                                if plotting == True:
+                                    fig2 = plot_fit(masked_lamdas, flux, g_model2_refit, pars2_refit, best_fit2_refit, plot_initial=False, include_const=include_const)
+                                    if correct_bad_spaxels == True and (i, j) in dodgy_spaxels[galaxy_name]:
+                                        fig2.suptitle('[OIII] '+str(em_rest_OIII_3)+' Chi Square Refit')
+                                        fig2.savefig(output_folder_loc+galaxy_name+'_best_fit_OIII_3_outflow_'+str(i)+'_'+str(j)+'_chi_square_refit')
+                                    else:
+                                        fig2.suptitle(emission_line+' ['+str(em_rest)+']'+' Chi Square Refit')
+                                        fig2.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line+'_outflow_'+str(i)+'_'+str(j)+'_chi_square_refit')
+                                    plt.close(fig2)
+
+
+                        if plotting == True:
+                            if statistical_results[i,j] == 2:
+                                fig2 = plot_fit(masked_lamdas, flux, g_model2_refit, pars2_refit, best_fit2_refit, plot_initial=False, include_const=include_const)
+                            else:
+                                fig2 = plot_fit(masked_lamdas, flux, g_model2, pars2, best_fit2, plot_initial=False)
+
+                            if correct_bad_spaxels == True and (i, j) in dodgy_spaxels[galaxy_name]:
+                                fig2.suptitle('[OIII] '+str(em_rest_OIII_3)+' Final Fit')
+                                fig2.savefig(output_folder_loc+galaxy_name+'_best_fit_OIII_3_outflow_'+str(i)+'_'+str(j)+'_final_fit')
+                            else:
+                                fig2.suptitle(emission_line+' ['+str(em_rest)+']'+' Final Fit')
+                                fig2.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line+'_outflow_'+str(i)+'_'+str(j)+'_final_fit')
+                            plt.close(fig2)
 
 
 
@@ -652,17 +704,18 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 #for the two gaussian fit
                                 best_fit2_second = kff.fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, method=method, verbose=False)
 
-                                #fit the one gaussian fit of the emission line
-                                fig3 = plot_fit(masked_lamdas2, flux2, g_model1_second, pars1_second, best_fit1_second, plot_initial=False, include_const=include_const)
-                                fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] fit without outflow')
-                                fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_no_outflow_second_fit_'+str(i)+'_'+str(j))
-                                plt.close(fig3)
+                                if plotting == True:
+                                    #plot the one gaussian fit of the emission line
+                                    fig3 = plot_fit(masked_lamdas2, flux2, g_model1_second, pars1_second, best_fit1_second, plot_initial=False, include_const=include_const)
+                                    fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] fit without outflow')
+                                    fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_no_outflow_second_fit_'+str(i)+'_'+str(j))
+                                    plt.close(fig3)
 
-                                #fit the first fit of the second emission line
-                                fig4 = plot_fit(masked_lamdas2, flux2, g_model2_second, pars2_second, best_fit2_second, plot_initial=False, include_const=include_const)
-                                fig4.suptitle(emission_line2+' ['+str(em_rest2)+'] first fit')
-                                fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_first_try')
-                                plt.close(fig4)
+                                    #plot the first fit of the second emission line
+                                    fig4 = plot_fit(masked_lamdas2, flux2, g_model2_second, pars2_second, best_fit2_second, plot_initial=False, include_const=include_const)
+                                    fig4.suptitle(emission_line2+' ['+str(em_rest2)+'] first fit')
+                                    fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_first_try')
+                                    plt.close(fig4)
 
 
                                 if koffee_checks == True:
@@ -684,11 +737,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         print(emission_line2, 'fit blue-chi-squared-fit chi squared value: ', best_fit2_refit_second.bic)
                                         print(emission_line2, 'fit original chi squared value: ', best_fit2_second.bic)
 
-                                        #plot the refit
-                                        fig4 = plot_fit(masked_lamdas2, flux2, g_model2_refit_second, pars2_refit_second, best_fit2_refit_second, plot_initial=False, include_const=include_const)
-                                        fig4.suptitle(emission_line2+' ['+str(em_rest2)+'] Chi Square Refit')
-                                        fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_chi_square_refit')
-                                        plt.close(fig4)
+                                        if plotting == True:
+                                            #plot the refit
+                                            fig4 = plot_fit(masked_lamdas2, flux2, g_model2_refit_second, pars2_refit_second, best_fit2_refit_second, plot_initial=False, include_const=include_const)
+                                            fig4.suptitle(emission_line2+' ['+str(em_rest2)+'] Chi Square Refit')
+                                            fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_chi_square_refit')
+                                            plt.close(fig4)
 
                                         g_model2_second = g_model2_refit_second
                                         pars2_second = pars2_refit_second
@@ -714,11 +768,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         print('Two Gaussian fit BIC: ', str(best_fit2_second.bic))
                                         print('Difference: ', str(best_fit2_second.bic - best_fit1_refit_second.bic))
 
-                                        #plot the refit
-                                        fig4 = plot_fit(masked_lamdas2, flux2, g_model1_refit_second, pars1_refit_second, best_fit1_refit_second, plot_initial=False, include_const=include_const)
-                                        fig4.suptitle(emission_line2+' ['+str(em_rest2)+'] BIC test Refit')
-                                        fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_BIC_test_refit')
-                                        plt.close(fig4)
+                                        if plotting == True:
+                                            #plot the refit
+                                            fig4 = plot_fit(masked_lamdas2, flux2, g_model1_refit_second, pars1_refit_second, best_fit1_refit_second, plot_initial=False, include_const=include_const)
+                                            fig4.suptitle(emission_line2+' ['+str(em_rest2)+'] BIC test Refit')
+                                            fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_BIC_test_refit')
+                                            plt.close(fig4)
 
                                         if best_fit2_second.params['Flow_amp'].value > 0.98*best_fit2_second.params['Galaxy_amp'].value:
                                             print('Using one Gaussian fit for spaxel ', str(i), str(j))
@@ -734,6 +789,15 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                                 g_model2_second = g_model1_refit_second
                                                 pars2_second = pars1_refit_second
                                                 best_fit2_second = best_fit1_refit_second
+
+
+                                #plot final fits
+                                if plotting == True:
+                                    if stat_res > 0:
+                                        fig3 = plot_fit(masked_lamdas2, flux2, g_model2_second, pars2_second, best_fit2_second, plot_initial=False, include_const=include_const)
+                                        fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] final fit')
+                                        fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_final_fit')
+                                        plt.close(fig3)
 
 
 
@@ -789,11 +853,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 #do the fit
                                 best_fit1_third = kff.fitter(g_model1_third, pars1_third, masked_lamdas3, flux3, method=method, verbose=False)
 
-                                #plot the fit
-                                fig4 = plot_fit(masked_lamdas3, flux3, g_model1_third, pars1_third, best_fit1_third, plot_initial=False, include_const=True)
-                                fig4.suptitle('OII doublet ['+str(em_rest3)+', '+str(emission_dict['OII_2']*(1+redshift))+'] not including outflows')
-                                fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_no_outflow_'+str(i)+'_'+str(j))
-                                plt.close(fig4)
+                                if plotting == True:
+                                    #plot the fit
+                                    fig4 = plot_fit(masked_lamdas3, flux3, g_model1_third, pars1_third, best_fit1_third, plot_initial=False, include_const=True)
+                                    fig4.suptitle('OII doublet ['+str(em_rest3)+', '+str(emission_dict['OII_2']*(1+redshift))+'] not including outflows')
+                                    fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_no_outflow_'+str(i)+'_'+str(j))
+                                    plt.close(fig4)
 
                                 #create the fitting objects for the four gaussian fit
                                 g_model2_third, pars2_third = kff.gaussian2_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=None, sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.5], sigma_variations=1.5)
@@ -801,11 +866,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 #do the fit
                                 best_fit2_third = kff.fitter(g_model2_third, pars2_third, masked_lamdas3, flux3, method=method, verbose=False)
 
-                                #plot the fit
-                                fig4 = plot_fit(masked_lamdas3, flux3, g_model2_third, pars2_third, best_fit2_third, plot_initial=False, include_const=True)
-                                fig4.suptitle('OII doublet ['+str(em_rest3)+', '+str(emission_dict['OII_2']*(1+redshift))+']')
-                                fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j))
-                                plt.close(fig4)
+                                if plotting == True:
+                                    #plot the fit
+                                    fig4 = plot_fit(masked_lamdas3, flux3, g_model2_third, pars2_third, best_fit2_third, plot_initial=False, include_const=True)
+                                    fig4.suptitle('OII doublet ['+str(em_rest3)+', '+str(emission_dict['OII_2']*(1+redshift))+']')
+                                    fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j)+'_first_fit')
+                                    plt.close(fig4)
 
                                 #check the fit using the blue-side-residual test
                                 if koffee_checks == True:
@@ -825,16 +891,23 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         print('OII doublet fit blue-chi-squared-fit chi squared value: ', best_fit2_refit_third.bic)
                                         print('OII doublet fit original chi squared value: ', best_fit2_third.bic)
 
-                                        #plot the refit
-                                        fig5 = plot_fit(masked_lamdas3, flux3, g_model2_refit_third, pars2_refit_third, best_fit2_refit_third, plot_initial=False, include_const=True)
-                                        fig5.suptitle('OII doublet Chi Square Refit')
-                                        fig5.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j)+'_chi_square_refit')
-                                        plt.close(fig5)
+                                        if plotting == True:
+                                            #plot the refit
+                                            fig5 = plot_fit(masked_lamdas3, flux3, g_model2_refit_third, pars2_refit_third, best_fit2_refit_third, plot_initial=False, include_const=True)
+                                            fig5.suptitle('OII doublet Chi Square Refit')
+                                            fig5.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j)+'_chi_square_refit')
+                                            plt.close(fig5)
 
                                         g_model2_third = g_model2_refit_third
                                         pars2_third = pars2_refit_third
                                         best_fit2_third = best_fit2_refit_third
                                         print('Replaced OII doublet values with refit values')
+
+                                if plotting == True:
+                                    fig4 = plot_fit(masked_lamdas3, flux3, g_model2_third, pars2_third, best_fit2_third, plot_initial=False, include_const=True)
+                                    fig4.suptitle('OII doublet ['+str(em_rest3)+', '+str(emission_dict['OII_2']*(1+redshift))+'] Final Fit')
+                                    fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j)+'_final_fit')
+                                    plt.close(fig4)
 
 
 
@@ -878,42 +951,6 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             no_outflow_results[:,i,j] = (best_fit1.params['gauss_sigma'].value, best_fit1.params['gauss_mean'].value, best_fit1.params['gauss_amp'].value)
                             no_outflow_error[:,i,j] = (best_fit1.params['gauss_sigma'].stderr, best_fit1.params['gauss_mean'].stderr, best_fit1.params['gauss_amp'].stderr)
 
-                        #plot fit results
-                        if plotting == True:
-                            fig1 = plot_fit(masked_lamdas, flux, g_model1, pars1, best_fit1, plot_initial=False, include_const=include_const)
-                            if correct_bad_spaxels == True and (i, j) in dodgy_spaxels[galaxy_name]:
-                                fig1.suptitle('[OIII] '+str(em_rest_OIII_3))
-                                fig1.savefig(output_folder_loc+galaxy_name+'_best_fit_OIII_3_no_outflow_'+str(i)+'_'+str(j))
-                            else:
-                                fig1.suptitle(emission_line+' ['+str(em_rest)+']')
-                                fig1.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line+'_no_outflow_'+str(i)+'_'+str(j))
-                            plt.close(fig1)
-
-                            if statistical_results[i,j] == 2:
-                                fig2 = plot_fit(masked_lamdas, flux, g_model2_refit, pars2_refit, best_fit2_refit, plot_initial=False, include_const=include_const)
-                            else:
-                                fig2 = plot_fit(masked_lamdas, flux, g_model2, pars2, best_fit2, plot_initial=False)
-
-                            if correct_bad_spaxels == True and (i, j) in dodgy_spaxels[galaxy_name]:
-                                fig2.suptitle('[OIII] '+str(em_rest_OIII_3))
-                                fig2.savefig(output_folder_loc+galaxy_name+'_best_fit_OIII_3_outflow_'+str(i)+'_'+str(j))
-                            else:
-                                fig2.suptitle(emission_line+' ['+str(em_rest)+']')
-                                fig2.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line+'_outflow_'+str(i)+'_'+str(j))
-                            plt.close(fig2)
-
-                            if emission_line2:
-                                if stat_res > 0:
-                                    fig3 = plot_fit(masked_lamdas2, flux2, g_model2_second, pars2_second, best_fit2_second, plot_initial=False, include_const=include_const)
-                                    fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] final fit')
-                                    fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_final_fit')
-                                    plt.close(fig3)
-
-                            #if OII_doublet == True:
-                                #fig4 = plot_fit(masked_lamdas3, flux3, g_model2_third, pars2_third, best_fit2_third, plot_initial=False, include_const=True)
-                                #fig4.suptitle('OII doublet ['+str(em_rest3)+', '+str(emission_dict['OII_2']*(1+redshift))+']')
-                                #fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_OII_doublet_outflow_'+str(i)+'_'+str(j))
-                                #plt.close(fig4)
 
 
                     #if the S/N is less than 20:
