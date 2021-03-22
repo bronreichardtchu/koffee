@@ -49,8 +49,8 @@ from . import calculate_equivalent_width as calc_ew
 from . import brons_display_pixels_kcwi as bdpk
 from . import koffee
 
-#import importlib
-#importlib.reload(calc_sfr)
+import importlib
+importlib.reload(calc_sfr)
 #importlib.reload(calc_mlf)
 #importlib.reload(bdpk)
 
@@ -316,7 +316,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
 
 #Figure 3
-def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True, plot_data_fits=False):
+def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True, plot_data_fits=False):
     """
     Plots the SFR surface density against the outflow velocity, with Sigma_SFR
     calculated using only the narrow component.
@@ -361,6 +361,9 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
+    header : FITS header object
+        the header from the fits file
+
     weighted_average : boolean
         whether or not to take a weighted average using the errors (Default=True)
 
@@ -379,7 +382,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #get the sfr for the outflow spaxels
     flow_mask = (statistical_results>0) #& (sfr_surface_density>0.1)
@@ -591,7 +594,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
 
 #Figure 4
-def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True):
     """
     Plots the SFR surface density against the mass loading factor and the Hbeta
     flux ratio, with Sigma_SFR calculated using only the narrow component.
@@ -634,6 +637,9 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
+    header : FITS header object
+        the header from the fits file
+
     weighted_average : boolean
         whether or not to take a weighted average using the errors (Default=True)
 
@@ -645,7 +651,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     """
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #calculate the mass loading factor
     mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
@@ -1355,7 +1361,7 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
 
 #Figure 6
-def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, compare='divide'):
+def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, compare='divide'):
     """
     Plots the mass loading factor values found with KOFFEE either divided by or
     subtracted from the expected values calculated with the model from
@@ -1399,6 +1405,9 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
     radius : :obj:'~numpy.ndarray'
         array of galaxy radius values (must be same shape as statistical_results)
 
+    header : FITS header object
+        the header from the fits file
+
     compare : string
         string defining how to compare the results to the model.  Can be 'divide'
         or 'subtract' (Default='divide')
@@ -1410,7 +1419,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
     """
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #calculate the mass loading factor
     mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
@@ -1532,7 +1541,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
 
 
 #possible other plot
-def plot_sfr_elf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_sfr_elf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True):
     """
     Plots the SFR surface density against the energy loading factor with
     Sigma_SFR calculated using only the narrow component.
@@ -1575,6 +1584,9 @@ def plot_sfr_elf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results
     radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
+    header : FITS header object
+        the header from the fits file
+
     weighted_average : boolean
         whether or not to take a weighted average using the errors (Default=True)
 
@@ -1586,7 +1598,7 @@ def plot_sfr_elf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results
     """
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #calculate the mass loading factor
     elf, elf_max, elf_min = calc_elf.calc_energy_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)

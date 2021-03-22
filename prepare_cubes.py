@@ -261,15 +261,20 @@ def save_binned_data(data, header, data_folder, gal_name, bin_size=3):
     ----------
     data : :obj:'~numpy.ndarray'
         the binned data or variance cube
+
     header : FITS header object
         the old fits header to be changed for the new file
+
     data_folder : str
         the folder in which to save the new file
+
     gal_name : str
         the galaxy name and any other descriptors for the filename.
         E.g. 'cgcg453_red_var' for the red variance cube of cgcg453
+
     bin_size : int
         the number of spaxels the cube was binned by.  (Default is 3)
+        
     Returns
     -------
     Saves the cube and new header to a fits file.

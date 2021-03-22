@@ -500,7 +500,7 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
 # SFR CALCULATIONS
 #-------------------------------------------------------------------------------
 
-def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinction=True):
+def calc_sfr_integrate(lamdas, spectrum, z, header, cont_subtract=False, include_extinction=True):
     """
     Calculates the star formation rate by integrating over Hbeta
     SFR = C_Halpha (L_Halpha / L_Hbeta)_0 x 10^{-0.4A_Hbeta} x L_Hbeta[erg/s]
@@ -516,6 +516,9 @@ def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinct
 
     z : float
         redshift of the galaxy
+
+    header : FITS header object
+        the header from the fits file
 
     cont_subtract : boolean
         if True, assumes continuum has not already been subtracted.  Uses the
@@ -569,7 +572,11 @@ def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinct
 
     total_sfr = np.sum(sfr)
 
-    sfr_surface_density = sfr/((0.7*1.35)*(0.388**2))
+    #get the proper distance per arcsecond
+    proper_dist = cosmo.kpc_proper_per_arcmin(z).to(units.kpc/units.arcsec)
+
+    #sfr_surface_density = sfr/((0.7*1.35)*(proper_dist**2))
+    sfr_surface_density = sfr/((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2))
 
     if cont_subtract == True:
         return sfr, total_sfr, sfr_surface_density, s_n_mask, h_beta_spec
@@ -577,16 +584,11 @@ def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinct
         return sfr, total_sfr, sfr_surface_density, h_beta_spec
 
 
-def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, z, include_extinction=True, include_outflow=False):
+def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, z, header, include_extinction=True, include_outflow=False):
     """
     Calculates the star formation rate using Hbeta
     SFR = C_Halpha (L_Halpha / L_Hbeta)_0 x 10^{-0.4A_Hbeta} x L_Hbeta[erg/s]
     The Hbeta flux is calculated using the results from the KOFFEE fits.
-
-    Inputs:
-        lamdas: array of wavelength
-        spectrum: vector or array of spectra (shape: [npix, nspec])
-        z: (float) redshift
 
     Parameters
     ----------
@@ -630,6 +632,9 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
 
     z : float
         redshift
+
+    header : FITS header object
+        the header from the fits file
 
     include_extinction : boolean
         if True, calculates the extinction at halpha and includes this in the
@@ -732,8 +737,14 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
 
     total_sfr = np.nansum(sfr)
 
-    sfr_surface_density = sfr/((0.7*1.35)*(0.388**2))
-    sfr_surface_density_err = sfr_err/((0.7*1.35)*(0.388**2))
+    #get the proper distance per arcsecond
+    proper_dist = cosmo.kpc_proper_per_arcmin(z).to(units.kpc/units.arcsec)
+
+    #sfr_surface_density = sfr/((0.7*1.35)*(proper_dist**2))
+    #sfr_surface_density_err = sfr_err/((0.7*1.35)*(proper_dist**2))
+
+    sfr_surface_density = sfr/((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2))
+    sfr_surface_density_err = sfr_err/((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2))
 
     print(sfr.unit)
 
