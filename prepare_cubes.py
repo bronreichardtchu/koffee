@@ -149,14 +149,20 @@ def read_in_data_pickle(filename):
 #BINNING
 #====================================================================================================
 
-def bin_data(data, bin_size=3):
+def bin_data(lamdas, data, z, bin_size=3):
     """
     Bins the input data
 
     Parameters
     ----------
+    lamdas : :obj:'~numpy.ndarray'
+        wavelength vector
+
     data : :obj:'~numpy.ndarray'
         the data to be binned
+
+    z : int
+        the redshift
 
     bin_size : int
         the number of spaxels to bin by (Default is 3, this will bin 3x3)
@@ -169,6 +175,9 @@ def bin_data(data, bin_size=3):
     #create empty array to put binned data in
     binned_data = np.empty([data.shape[0], math.ceil(data.shape[1]/bin_size), math.ceil(data.shape[2]/bin_size)])
 
+    #create lamda mask for hbeta
+    hbeta_mask = (lamdas>4862.68*(1+z)-2.0) & (lamdas<4862.68*(1+z)+2.0)
+
     #create counter for x direction
     start_xi = 0
     end_xi = bin_size
@@ -180,6 +189,56 @@ def bin_data(data, bin_size=3):
         end_yi = bin_size
         #iterate through y direction
         for y in np.arange(data.shape[2]/bin_size):
+            #find the central spaxel of the bin
+            center_x = int((start_xi+end_xi)/2)
+            center_y = int((start_yi+end_yi)/2)
+
+            #find where the peak of the hbeta line is
+            try:
+                hbeta_peak = np.argmax(data[:, center_x, center_y][hbeta_mask])
+            except:
+                hbeta_peak = np.argmax(data[:, start_xi, start_yi][hbeta_mask])
+            #print(data[:, center_x, center_y][hbeta_mask].shape)
+            #print('Hbeta peak for central spaxel:', hbeta_peak)
+
+            #find where the peak of the rest of the spaxels is
+            other_hbeta_peaks = np.argmax(data[:, start_xi:end_xi, start_yi: end_yi][hbeta_mask], axis=0)
+            #print('Other Hbeta peaks', other_hbeta_peaks)
+
+            #find difference between other_hbeta_peaks and hbeta_peak
+            hbeta_peak_diff = other_hbeta_peaks - hbeta_peak
+            #print('Hbeta peak diff', hbeta_peak_diff, '\n\n')
+
+            #iterate through the peak differences
+            for (i,j), diff in np.ndenumerate(hbeta_peak_diff):
+                if diff < 0:
+                    #shift the spectra to the right
+                    data[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
+
+                if diff > 0:
+                    #shift the spectra to the left
+                    data[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
+
+
+            """
+            #checks
+            #find where the peak of the hbeta line is
+            try:
+                hbeta_peak = np.argmax(data[:, center_x, center_y][hbeta_mask])
+            except:
+                hbeta_peak = np.argmax(data[:, start_xi, start_yi][hbeta_mask])
+            #print(data[:, center_x, center_y][hbeta_mask].shape)
+            print('Checking Hbeta peak for central spaxel:', hbeta_peak)
+
+            #find where the peak of the rest of the spaxels is
+            other_hbeta_peaks = np.argmax(data[:, start_xi:end_xi, start_yi: end_yi][hbeta_mask], axis=0)
+            print('Checking Other Hbeta peaks', other_hbeta_peaks)
+
+            #find difference between other_hbeta_peaks and hbeta_peak
+            hbeta_peak_diff = other_hbeta_peaks - hbeta_peak
+            print('Checking Hbeta peak diff', hbeta_peak_diff, '\n\n')
+            """
+
             #bin the data
             binned_data[:, int(x), int(y)] = np.nansum(data[:, start_xi:end_xi, start_yi:end_yi], axis=(1,2))
 
