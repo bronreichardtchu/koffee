@@ -674,11 +674,11 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     #and one gaussian fits where there are no outflows
     #if not including outflow
     if include_outflow == False:
-        results = np.full((3, 67, 24), np.nan, dtype=np.double)
-        error = np.full((3, 67, 24), np.nan, dtype=np.double)
+        results = np.full((3, outflow_results.shape[1], outflow_results.shape[2]), np.nan, dtype=np.double)
+        error = np.full((3, outflow_results.shape[1], outflow_results.shape[2]), np.nan, dtype=np.double)
     elif include_outflow == True:
-        results = np.full((6, 67, 24), np.nan, dtype=np.double)
-        error = np.full((6, 67, 24), np.nan, dtype=np.double)
+        results = np.full((6, outflow_results.shape[1], outflow_results.shape[2]), np.nan, dtype=np.double)
+        error = np.full((6, outflow_results.shape[1], outflow_results.shape[2]), np.nan, dtype=np.double)
 
     #create the mask of where outflows are
     flow_mask = (statistical_results>0)
@@ -693,11 +693,11 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
 
     elif include_outflow == True:
         results[:3,~flow_mask] = no_outflow_results[:3, ~flow_mask]
-        results[3:,~flow_mask] = np.zeros((3, 67, 24))[:,~flow_mask]
+        results[3:,~flow_mask] = np.zeros((3, outflow_results.shape[1], outflow_results.shape[2]))[:,~flow_mask]
         results[:,flow_mask] = outflow_results[:6, flow_mask]
 
         error[:3,~flow_mask] = no_outflow_error[:3, ~flow_mask]
-        error[3:,~flow_mask] = np.zeros((3, 67, 24))[:,~flow_mask]
+        error[3:,~flow_mask] = np.zeros((3, outflow_results.shape[1], outflow_results.shape[2]))[:,~flow_mask]
         error[:,flow_mask] = outflow_error[:6, flow_mask]
 
     #make the flux calculation
