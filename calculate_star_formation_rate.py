@@ -22,6 +22,7 @@ FUNCTIONS INCLUDED:
     calc_hgamma_luminosity
     calc_sfr_integrate
     calc_sfr_koffee
+    calc_save_as_fits
 
 MODIFICATION HISTORY:
 		v.1.0 - first created January 2020
@@ -33,6 +34,8 @@ import matplotlib.pyplot as plt
 from astropy.cosmology import WMAP9 as cosmo
 from astropy.constants import c
 from astropy import units
+
+from astropy.io import fits
 
 
 #-------------------------------------------------------------------------------
@@ -749,3 +752,113 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     print(sfr.unit)
 
     return sfr.value, sfr_err.value, total_sfr.value, sfr_surface_density.value, sfr_surface_density_err.value
+
+
+def calc_save_as_fits(outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, z, header, gal_name, output_folder, include_extinction=True, include_outflow=False):
+    """
+    Calculates the outflow velocity and saves the results into a fits file.
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray'
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    outflow_error : :obj:'~numpy.ndarray'
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    no_outflow_results : :obj:'~numpy.ndarray'
+        array of single gaussian results from KOFFEE for Hbeta line. This will
+        have either shape [3, i, j] or [4, i, j] depending on whether a constant
+        was included in the koffee fit. Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+
+    no_outflow_err : :obj:'~numpy.ndarray'
+        array of the single gaussian result errors from KOFFEE for Hbeta line.
+        This will have either shape [3, i, j] or [4, i, j] depending on whether
+        a constant was included in the koffee fit. Either way, the flow and galaxy
+        parameters are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+
+    statistical_results : :obj:'~numpy.ndarray'
+        Array containing the statistical results from koffee.  This has 0 if no
+        flow was found, 1 if a flow was found, 2 if an outflow was found using a
+        forced second fit due to the blue chi square test.
+
+    z : float
+        The redshift of the galaxy
+
+    header : FITS file object
+        The header of the data fits file, to be used in the new fits file
+
+    gal_name : str
+        the name of the galaxy, and whatever descriptor to be used in the saving
+        (e.g. IRAS08_binned_2_by_1)
+
+    output_folder : str
+        where to save the fits file
+
+    include_extinction : boolean
+        if True, calculates the extinction at halpha and includes this in the
+        SFR calculation.  Default is True.
+
+    include_outflow : boolean
+        if True, includes the broad outflow component in the flux calculation.
+        If false, uses only the narrow component to calculate flux.  Default is
+        False.
+
+    Returns
+    -------
+    A saved fits file
+    """
+    #calculate the SFR
+    sfr, sfr_err, total_sfr, sig_sfr, sig_sfr_err = calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, z, header, include_extinction=include_extinction, include_outflow=include_outflow)
+
+    #copy the header and change the keywords so it's just 2 axes
+    new_header = header.copy()
+
+    new_header['NAXIS'] = 2
+
+    del new_header['NAXIS3']
+    del new_header['CNAME3']
+    del new_header['CRPIX3']
+    del new_header['CRVAL3']
+    del new_header['CTYPE3']
+    del new_header['CUNIT3']
+
+    try:
+        del new_header['CD3_3']
+    except:
+        del new_header['CDELT3']
+
+    #create HDU object for star formation rate
+    hdu = fits.PrimaryHDU(sfr, header=new_header)
+    hdu_error = fits.ImageHDU(sfr_err, name='Error')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_star_formation_rate.fits')
+
+    #create HDU object for star formation rate surface density
+    hdu = fits.PrimaryHDU(sig_sfr, header=new_header)
+    hdu_error = fits.ImageHDU(sig_sfr_err, name='Error')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_star_formation_rate_surface_density.fits')
