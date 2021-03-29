@@ -591,15 +591,19 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             g_model2, pars2 = kff.gaussian2_const(masked_lamdas, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None)
                         elif include_const == False:
                             g_model2, pars2 = kff.gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None)
+
+                        #fit model for 2 gaussian fit
                         best_fit2 = kff.fitter(g_model2, pars2, masked_lamdas, flux, method=method, verbose=False)
 
 
                         if best_fit2.bic < (best_fit1.bic-10):
                             stat_res = 1
+                            #print('2 Gaussian fit better, BIC_diff=', str(best_fit1.bic-best_fit2.bic))
                             #save blue chi square
                             blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit2, g_model2)
                         else:
                             stat_res = 0
+                            #print('1 Gaussian fit better, BIC_diff=', str(best_fit1.bic-best_fit2.bic))
                             #save blue chi square
                             blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit1, g_model1)
 
@@ -637,9 +641,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                     g_model2_refit, pars2_refit = kff.gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=[masked_lamdas[flux.argmax()], masked_lamdas[flux.argmax()]-4.0], sigma_guess=[1.0,8.0])
                                 best_fit2_refit = kff.fitter(g_model2_refit, pars2_refit, masked_lamdas, flux, method=method, verbose=False)
 
+                                print('Refit 2 gaussians for spaxel', str(i), str(j))
+
                                 #force it to take the new fit if it is a better BIC
                                 if (best_fit2_refit.bic < (best_fit1.bic-10)) and (best_fit2_refit.bic < (best_fit2.bic-10)) :
                                     stat_res = 2
+                                    #print('Refit 2 Gaussians fit better, BIC_diff=', str(best_fit2_refit.bic-best_fit2.bic))
 
                                 if plotting == True:
                                     fig2 = plot_fit(masked_lamdas, flux, g_model2_refit, pars2_refit, best_fit2_refit, plot_initial=False, include_const=include_const)
@@ -653,7 +660,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
 
                         if plotting == True:
-                            if statistical_results[i,j] == 2:
+                            if stat_res == 2:
                                 fig2 = plot_fit(masked_lamdas, flux, g_model2_refit, pars2_refit, best_fit2_refit, plot_initial=False, include_const=include_const)
                             else:
                                 fig2 = plot_fit(masked_lamdas, flux, g_model2, pars2, best_fit2, plot_initial=False)
@@ -743,6 +750,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                             fig4.suptitle(emission_line2+' ['+str(em_rest2)+'] Chi Square Refit')
                                             fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_chi_square_refit')
                                             plt.close(fig4)
+                                            #print('plotted hbeta refit')
 
                                         g_model2_second = g_model2_refit_second
                                         pars2_second = pars2_refit_second
@@ -752,7 +760,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                     #check that a single gaussian fit wouldn't be better if the flow amplitude
                                     #is greater than 90% of the galaxy amplitude
                                     if best_fit2_second.params['Flow_amp'].value > 0.9*best_fit2_second.params['Galaxy_amp'].value:
-                                        print('Doing one Gaussian fit for spaxel ', str(i), str(j))
+                                        print('Doing one Gaussian hbeta fit for spaxel ', str(i), str(j))
                                         #create the fitting objects
                                         if include_const == True:
                                             g_model1_refit_second, pars1_refit_second = kff.gaussian1_const(masked_lamdas2, flux2)#, amp_guess=None, mean_guess=masked_lamdas2[flux2.argmax()])#, sigma_guess=sigma_guess[0])
@@ -760,7 +768,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                             g_model1_refit_second, pars1_refit_second = kff.gaussian1(masked_lamdas2, flux2)#, amp_guess=None, mean_guess=masked_lamdas2[flux2.argmax()], sigma_guess=sigma_guess[0])
 
                                         #do the fit
-                                        best_fit1_refit_second = fitter(g_model1_refit_second, pars1_refit_second, masked_lamdas2, flux2, method=method, verbose=False)
+                                        best_fit1_refit_second = kff.fitter(g_model1_refit_second, pars1_refit_second, masked_lamdas2, flux2, method=method, verbose=False)
 
                                         #do the BIC test
                                         #if the 2 gaussian fit has a lower BIC by 10 or more, it's the better fit
@@ -784,7 +792,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                                         else:
                                             if best_fit1_refit_second.bic < best_fit2_second.bic+50:
-                                                print('One Gaussian fit better for spaxel ', str(i), str(j))
+                                                #print('One Gaussian fit better for spaxel ', str(i), str(j))
 
                                                 g_model2_second = g_model1_refit_second
                                                 pars2_second = pars1_refit_second
@@ -798,37 +806,44 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] final fit')
                                         fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_final_fit')
                                         plt.close(fig3)
-
-
-
+                                        #print('plotted final hbeta fit')
 
                                 #put the results into the array to be saved
                                 chi_square2[:,i,j] = (best_fit1_second.bic, best_fit2_second.bic)
+                                #print('saved hbeta fit chi_square values')
 
                                 try:
                                     #try to save the results
                                     if include_const == True:
                                         outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value, best_fit2_second.params['Constant_Continuum_c'].value)
                                         outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr, best_fit2_second.params['Constant_Continuum_c'].stderr)
+
                                         no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value, best_fit1_second.params['Constant_Continuum_c'].value)
                                         no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr, best_fit1_second.params['Constant_Continuum_c'].stderr)
                                     elif include_const == False:
                                         outflow_results2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].value, best_fit2_second.params['Galaxy_mean'].value, best_fit2_second.params['Galaxy_amp'].value, best_fit2_second.params['Flow_sigma'].value, best_fit2_second.params['Flow_mean'].value, best_fit2_second.params['Flow_amp'].value)
                                         outflow_error2[:,i,j] = (best_fit2_second.params['Galaxy_sigma'].stderr, best_fit2_second.params['Galaxy_mean'].stderr, best_fit2_second.params['Galaxy_amp'].stderr, best_fit2_second.params['Flow_sigma'].stderr, best_fit2_second.params['Flow_mean'].stderr, best_fit2_second.params['Flow_amp'].stderr)
+
                                         no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value)
-                                        no_outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
+                                        no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
+                                        #print('saved hbeta fit for spaxel', str(i), str(j))
                                 except:
                                     #if that doesn't work, then the one gaussian fit was better
                                     if include_const == True:
                                         outflow_results2[:,i,j] = (best_fit2_second.params['gauss_sigma'].value, best_fit2_second.params['gauss_mean'].value, best_fit2_second.params['gauss_amp'].value, np.nan, np.nan, np.nan, best_fit2_second.params['Constant_Continuum_c'].value)
                                         outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit2_second.params['gauss_mean'].stderr, best_fit2_second.params['gauss_amp'].stderr, np.nan, np.nan, np.nan, best_fit2_second.params['Constant_Continuum_c'].stderr)
+
                                         no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value, best_fit1_second.params['Constant_Continuum_c'].value)
                                         no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr, best_fit1_second.params['Constant_Continuum_c'].stderr)
                                     elif include_const == False:
                                         outflow_results2[:,i,j] = (best_fit2_second.params['gauss_sigma'].value, best_fit2_second.params['gauss_mean'].value, best_fit2_second.params['gauss_amp'].value, np.nan, np.nan, np.nan)
                                         outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit2_second.params['gauss_mean'].stderr, best_fit2_second.params['gauss_amp'].stderr, np.nan, np.nan, np.nan)
+
                                         no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value)
                                         no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
+                                        print('saved hbeta fit for spaxel', str(i), str(j), 'exception')
+
+                                #print('saved hbeta fit for spaxel', str(i), str(j))
 
                         #-------------------
                         #FIT THE OII DOUBLET
@@ -923,6 +938,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                         #put stat_res into the array
                         statistical_results[i,j] = stat_res
+                        #print('Saved stat_res', str(stat_res))
 
                         #emission and outflow
                         if statistical_results[i,j] == 2:
@@ -957,7 +973,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                     else:
                         #print('S/N for '+str(i)+', '+str(j)+' is '+str(sn_array[i,j]))
                         #statistical results have no outflow
-                        statistical_results[i,j] = 0
+                        statistical_results[i,j] = -1
 
                         #chi squared for the fits
                         chi_square[:,i,j] = (np.nan, np.nan)
@@ -1009,9 +1025,11 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             no_outflow_error3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
 
 
-                except:
+                except Exception as e:
+                    print('EXCEPTION:')
+                    print(e, '\n\n')
                     #statistical results obviously no outflow
-                    statistical_results[i,j] = 0
+                    statistical_results[i,j] = np.nan
 
                     #chi squared for the fits
                     chi_square[:,i,j] = (np.nan, np.nan)
