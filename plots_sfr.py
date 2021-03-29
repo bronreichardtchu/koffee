@@ -40,6 +40,8 @@ from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
 
 from astropy.wcs import WCS
+from astropy.cosmology import WMAP9 as cosmo
+from astropy.constants import c
 from astropy import units as u
 
 from . import plotting_functions as pf
@@ -56,10 +58,10 @@ from . import koffee
 # PLOTTING FUNCTION FOR PAPER I
 #===============================================================================
 #Figure 3
-def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True, plot_data_fits=False):
     """
-    Plots the SFR surface density against the outflow velocity, with Sigma_SFR calculated
-    using only the narrow component.
+    Plots the SFR surface density against the outflow velocity, with Sigma_SFR
+    calculated using only the narrow component.
 
     Parameters
     ----------
@@ -72,7 +74,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     hbeta_outflow_results : :obj:'~numpy.ndarray'
         array of outflow results from KOFFEE for Hbeta line.  Used to calculate
-        the Sigma SFR.  Should be (7, statistical_results.shape)
+        the Sigma SFR. Should be (7, statistical_results.shape)
 
     hbeta_outflow_err : :obj:'~numpy.ndarray'
         array of the outflow result errors from KOFFEE for Hbeta line
@@ -85,10 +87,12 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
         array of the single gaussian result errors from KOFFEE for Hbeta line
 
     BIC_outflow : :obj:'~numpy.ndarray'
-        array of BIC values from the double gaussian fits
+        array of BIC values from the double gaussian fits, this is usually
+        chi_square[1,:,:] returned from koffee
 
     BIC_no_outflow : :obj:'~numpy.ndarray'
-        array of BIC values from the single gaussian fits
+        array of BIC values from the single gaussian fits, this is usually
+        chi_square[0,:,:] returned from koffee
 
     statistical_results : :obj:'~numpy.ndarray'
         array of statistical results from KOFFEE.
@@ -99,12 +103,20 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
+    header : FITS header object
+        the header from the fits file
+
     weighted_average : boolean
         whether or not to take a weighted average using the errors (Default=True)
 
+    plot_data_fits : boolean
+        whether to plot the fit to the data points, and the fit to the data
+        medians in red on top of the plot (default is False)
+
     Returns
     -------
-    A graph of outflow velocity against the SFR surface density
+    A graph of outflow velocity against the SFR surface density in three panels
+    with different data selections
 
     """
     #calculate the outflow velocity
@@ -112,7 +124,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #get the sfr for the outflow spaxels
     flow_mask = (statistical_results>0) #& (sfr_surface_density>0.1)
@@ -137,6 +149,9 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     #for the radius mask 6.1" is the 90% radius
     #also mask out the fits which lie on the lower limit of dispersion < 51km/s
     physical_mask = (radius < 6.1) & (vel_disp>51)
+
+    print(sig_sfr[physical_mask])
+    print(sig_sfr[physical_mask].shape)
 
     #strong BIC and physical limits mask
     #clean_mask = (radius < 6.1) & (vel_disp > 51) & (BIC_diff < -50)
@@ -205,6 +220,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     print('Number of spaxels in the first panel', vel_out.shape)
     print('All spaxels median v_out:', np.nanmedian(vel_out))
     print('All spaxels standard deviation v_out:', np.nanstd(vel_out))
+    print('All spaxels median sigma_sfr:', np.nanmedian(sig_sfr))
+    print('All spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr))
     print('')
 
     print('All spaxels best fit coefficients:', popt_vout_all)
@@ -220,6 +237,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     print('Physical spaxels median v_out:', np.nanmedian(vel_out[physical_mask]))
     print('Physical spaxels standard deviation v_out:', np.nanstd(vel_out[physical_mask]))
+    print('Physical spaxels median sigma_sfr:', np.nanmedian(sig_sfr[physical_mask]))
+    print('Physical spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[physical_mask]))
     print('')
     print('Physical spaxels best fit coefficients:', popt_vout_physical)
     print('Physical spaxels best fit errors', np.sqrt(np.diag(pcov_vout_physical)))
@@ -230,6 +249,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     print('Clean spaxels median v_out:', np.nanmedian(vel_out[BIC_diff_strong]))
     print('Clean spaxels standard deviation v_out:', np.nanstd(vel_out[BIC_diff_strong]))
+    print('Clean spaxels median sigma_sfr:', np.nanmedian(sig_sfr[BIC_diff_strong]))
+    print('Clean spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[BIC_diff_strong]))
     print('')
     print('Clean spaxels best fit coefficients:', popt_vout_clean)
     print('Clean spaxels best fit errors', np.sqrt(np.diag(pcov_vout_clean)))
@@ -246,26 +267,28 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     #plot all points
     ax[0].fill_between(bin_center_all, v_out_bin_lower_q_all, v_out_bin_upper_q_all, color=colours[0], alpha=0.3)
-    ax[0].scatter(sig_sfr, vel_out, marker='o', s=10, label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.8)
+    ax[0].scatter(sig_sfr[vel_disp>51], vel_out[vel_disp>51], marker='o', s=10, label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.8)
+    ax[0].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=10, c=colours[0])
     ax[0].plot(bin_center_all, v_out_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_vel_out_med_all), color=colours[0])
 
 
-    ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_all[0], np.sqrt(np.diag(pcov_vout_all))[0], popt_vout_all[1], np.sqrt(np.diag(pcov_vout_all))[1]))
-    ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_all_medians[0], np.sqrt(np.diag(pcov_vout_all_medians))[0], popt_vout_all_medians[1], np.sqrt(np.diag(pcov_vout_all_medians))[1]))
+    if plot_data_fits == True:
+        ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_all[0], np.sqrt(np.diag(pcov_vout_all))[0], popt_vout_all[1], np.sqrt(np.diag(pcov_vout_all))[1]))
+        ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_all_medians[0], np.sqrt(np.diag(pcov_vout_all_medians))[0], popt_vout_all_medians[1], np.sqrt(np.diag(pcov_vout_all_medians))[1]))
 
     ax[0].plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[0].plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
 
-    ax[0].errorbar(0.03, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
+    ax[0].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
 
-    ax[0].set_ylim(100, 610)
+    ax[0].set_ylim(100, 700)
     ax[0].set_xscale('log')
-    ax[0].set_xlim(0.002, 3)
+    ax[0].set_xlim(np.nanmin(sig_sfr)-0.001, np.nanmax(sig_sfr)+1.0)
     lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
     ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[0].set_title('all spaxels')
+    ax[0].set_title('S/N > 20 and $\delta_{BIC}$<-10')
 
     #plot points within 90% radius
     ax[1].fill_between(bin_center_physical, v_out_bin_lower_q_physical, v_out_bin_upper_q_physical, color=colours[1], alpha=0.3)
@@ -274,48 +297,52 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     ax[1].scatter(sig_sfr[physical_mask], vel_out[physical_mask], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_physical), color=colours[1], alpha=0.8)
     ax[1].plot(bin_center_physical, v_out_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_physical), color=colours[1])
 
-    ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_physical), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_physical[0], np.sqrt(np.diag(pcov_vout_physical))[0], popt_vout_physical[1], np.sqrt(np.diag(pcov_vout_physical))[1]))
-    ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_physical_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_physical_medians[0], np.sqrt(np.diag(pcov_vout_physical_medians))[0], popt_vout_physical_medians[1], np.sqrt(np.diag(pcov_vout_physical_medians))[1]))
+    if plot_data_fits == True:
+        ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_physical), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_physical[0], np.sqrt(np.diag(pcov_vout_physical))[0], popt_vout_physical[1], np.sqrt(np.diag(pcov_vout_physical))[1]))
+        ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_physical_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_physical_medians[0], np.sqrt(np.diag(pcov_vout_physical_medians))[0], popt_vout_physical_medians[1], np.sqrt(np.diag(pcov_vout_physical_medians))[1]))
 
     ax[1].plot(sfr_surface_density_chen, v_out_chen, ':k')#, label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[1].plot(sfr_surface_density_murray, v_out_murray, '--k')#, label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
 
-    ax[1].errorbar(0.03, 150, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(vel_out_err[physical_mask]), c='k')
+    ax[1].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(vel_out_err[physical_mask]), c='k')
 
     #ax[1].set_xscale('log')
     lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[1].set_title(r'$r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[1].set_title(r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
     #plot points with strong BIC values
     ax[2].fill_between(bin_center_clean, v_out_bin_lower_q_clean, v_out_bin_upper_q_clean, color=colours[2], alpha=0.3)
     #ax[2].scatter(sig_sfr[radius>6.1], vel_out[radius>6.1], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
     #ax[2].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
     #ax[2].scatter(sig_sfr[physical_mask][BIC_diff[physical_mask]>=-51], vel_out[physical_mask][BIC_diff[physical_mask]>=-51], marker='o', s=10, edgecolors=colours[1], alpha=0.3, facecolors='none')
-    ax[2].scatter(sig_sfr[~BIC_diff_strong], vel_out[~BIC_diff_strong], marker='o', s=10, label='All KOFFEE fits', color=colours[0], alpha=0.3, facecolors='none')
-    ax[2].scatter(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_clean), color=colours[2], alpha=1.0)
+    ax[2].scatter(sig_sfr[~BIC_diff_strong][vel_disp[~BIC_diff_strong]>51], vel_out[~BIC_diff_strong][vel_disp[~BIC_diff_strong]>51], marker='o', s=10, label='All KOFFEE fits', color=colours[0], alpha=0.3, facecolors='none')
+    ax[2].scatter(sig_sfr[~BIC_diff_strong][vel_disp[~BIC_diff_strong]<=51], vel_out[~BIC_diff_strong][vel_disp[~BIC_diff_strong]<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
+    ax[2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_clean), color=colours[2], alpha=1.0)
+    ax[2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=10, color=colours[2], alpha=1.0)
     ax[2].plot(bin_center_clean, v_out_bin_medians_clean, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_clean), color=colours[2])
 
-    ax[2].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_clean), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_clean[0], np.sqrt(np.diag(pcov_vout_clean))[0], popt_vout_clean[1], np.sqrt(np.diag(pcov_vout_clean))[1]))
-    ax[2].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_clean_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_clean_medians[0], np.sqrt(np.diag(pcov_vout_clean_medians))[0], popt_vout_clean_medians[1], np.sqrt(np.diag(pcov_vout_clean_medians))[1]))
+    if plot_data_fits == True:
+        ax[2].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_clean), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_clean[0], np.sqrt(np.diag(pcov_vout_clean))[0], popt_vout_clean[1], np.sqrt(np.diag(pcov_vout_clean))[1]))
+        ax[2].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_clean_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_clean_medians[0], np.sqrt(np.diag(pcov_vout_clean_medians))[0], popt_vout_clean_medians[1], np.sqrt(np.diag(pcov_vout_clean_medians))[1]))
 
     ax[2].plot(sfr_surface_density_chen, v_out_chen, ':k')#, label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[2].plot(sfr_surface_density_murray, v_out_murray, '--k')#, label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
 
-    ax[2].errorbar(0.03, 150, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(vel_out_err[BIC_diff_strong]), c='k')
+    ax[2].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(vel_out_err[BIC_diff_strong]), c='k')
 
     #ax[1].set_xscale('log')
     lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
     lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[2].set_title('strongly likely BIC')
+    ax[2].set_title('strongly likely BIC $\delta_{BIC}$<-50')
 
     plt.show()
 
 
 #Figure 4
-def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True):
     """
     Plots the SFR surface density against the mass loading factor and the Hbeta
     flux ratio, with Sigma_SFR calculated using only the narrow component.
@@ -358,6 +385,9 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
+    header : FITS header object
+        the header from the fits file
+
     weighted_average : boolean
         whether or not to take a weighted average using the errors (Default=True)
 
@@ -369,7 +399,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     """
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #calculate the mass loading factor
     mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
@@ -637,7 +667,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 # OTHER PLOTTING FUNCTIONS
 #===============================================================================
 
-def plot_sfr_flux(flux_outflow_results, flux_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, flux_ratio_line='OIII', weighted_average=True):
+def plot_sfr_flux(flux_outflow_results, flux_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, flux_ratio_line='OIII', weighted_average=True):
     """
     Plots the SFR surface density against the broad-to-narrow flux ratio, with
     Sigma_SFR calculated using only the narrow component.
@@ -680,6 +710,9 @@ def plot_sfr_flux(flux_outflow_results, flux_outflow_error, hbeta_outflow_result
     radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
+    header : FITS header object
+        the header from the fits file
+
     flux_ratio_line : string
         the emission line being used for the broad-to-narrow flux ratio, used for
         plotting labels (Default='OIII')
@@ -694,7 +727,7 @@ def plot_sfr_flux(flux_outflow_results, flux_outflow_error, hbeta_outflow_result
     """
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #calculate the flux for systematic and flow gaussians
     systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_sfr.calc_flux_from_koffee(flux_outflow_results, flux_outflow_error, statistical_results, z, outflow=True)
@@ -1149,11 +1182,405 @@ def maps_of_halpha_hbeta(halpha_fits_file, hbeta_fits_file, xx_flat, yy_flat):#,
     plt.show()
 
 
+
+def plot_sfr_vout_multiple(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, data_descriptor, plot_data_fits=False):
+    """
+    Plots the SFR surface density against the outflow velocity, with Sigma_SFR
+    calculated using only the narrow component.
+
+    Parameters
+    ----------
+    OIII_outflow_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for OIII line.  Used to calculate
+        the outflow velocity.  Should be (7, statistical_results.shape)
+
+    OIII_outflow_err : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for OIII line
+
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for Hbeta line.  Used to calculate
+        the Sigma SFR. Should be (7, statistical_results.shape)
+
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for Hbeta line
+
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
+        array of single gaussian results from KOFFEE for Hbeta line.  Used to
+        calculate the Sigma SFR.  Should be (4, statistical_results.shape)
+
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
+        array of the single gaussian result errors from KOFFEE for Hbeta line
+
+    BIC_outflow : :obj:'~numpy.ndarray'
+        array of BIC values from the double gaussian fits, this is usually
+        chi_square[1,:,:] returned from koffee
+
+    BIC_no_outflow : :obj:'~numpy.ndarray'
+        array of BIC values from the single gaussian fits, this is usually
+        chi_square[0,:,:] returned from koffee
+
+    statistical_results : :obj:'~numpy.ndarray'
+        array of statistical results from KOFFEE.
+
+    z : float
+        redshift
+
+    radius : :obj:'~numpy.ndarray'
+        array of galaxy radius values
+
+    header : FITS header object
+        the header from the fits file
+
+    weighted_average : boolean
+        whether or not to take a weighted average using the errors (Default=True)
+
+    plot_data_fits : boolean
+        whether to plot the fit to the data points, and the fit to the data
+        medians in red on top of the plot (default is False)
+
+    Returns
+    -------
+    A graph of outflow velocity against the SFR surface density in three panels
+    with different data selections
+
+    """
+    #create the figure
+    plt.rcParams.update(pf.get_rc_params())
+    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, sharex=True, figsize=(8,4), constrained_layout=True)
+
+    #get colours from cmasher, using as many colours as there are data sets
+    colours = cmr.take_cmap_colors('cmr.gem', len(OIII_outflow_results), cmap_range=(0.25, 0.85), return_fmt='hex')
+
+    for i in np.arange(len(OIII_outflow_results)):
+
+        #calculate the outflow velocity
+        vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results[i], OIII_outflow_error[i], statistical_results[i], z)
+
+        #calculate the sfr surface density - using just the systemic line, and including the flux line
+        #don't include extinction since this was included in the continuum subtraction using ppxf
+        sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results[i], hbeta_outflow_error[i], hbeta_no_outflow_results[i], hbeta_no_outflow_error[i], statistical_results[i], z, header[i], include_extinction=False, include_outflow=False)
+
+        #get the sfr for the outflow spaxels
+        flow_mask = (statistical_results[i]>0) #& (sfr_surface_density>0.1)
+
+        #flatten all the arrays and get rid of extra spaxels
+        sig_sfr = sfr_surface_density[flow_mask]
+        sig_sfr_err = sfr_surface_density_err[flow_mask]
+        vel_out = vel_out[flow_mask]
+        vel_out_err = vel_out_err[flow_mask]
+        vel_disp = vel_disp[flow_mask]
+
+        #make sure none of the errors are nan values
+        vel_out_err[np.where(np.isnan(vel_out_err)==True)] = np.nanmedian(vel_out_err)
+
+        #do the calculations for all the bins
+        num_bins = 5
+        min_bin = None #-0.05
+        max_bin = None #0.6
+
+
+        bin_center_all, v_out_bin_medians_all, v_out_bin_lower_q_all, v_out_bin_upper_q_all = pf.binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+
+
+        #calculate the r value for the median values
+        r_vel_out_med_all, p_value_v_out_all = pf.pearson_correlation(bin_center_all, v_out_bin_medians_all)
+
+        #calculate the r value for all the values
+        r_vel_out_all, p_value_v_out_all = pf.pearson_correlation(sig_sfr, vel_out)
+
+
+        #fit our own trends
+        popt_vout_all_medians, pcov_vout_all_medians = curve_fit(pf.fitting_function, bin_center_all, v_out_bin_medians_all)
+
+        popt_vout_all, pcov_vout_all = curve_fit(pf.fitting_function, sig_sfr, vel_out)
+
+        print(popt_vout_all, pcov_vout_all)
+        print([popt_vout_all_medians[0], np.sqrt(np.diag(pcov_vout_all_medians))[0], popt_vout_all_medians[1], np.sqrt(np.diag(pcov_vout_all_medians))[1]])
+
+        sfr_linspace = np.linspace(sig_sfr.min(), sig_sfr.max()+4, num=1000)
+
+
+
+        #print average numbers for the different panels
+        print('Number of spaxels in data set', data_descriptor, vel_out.shape)
+        print('All spaxels median v_out:', np.nanmedian(vel_out))
+        print('All spaxels standard deviation v_out:', np.nanstd(vel_out))
+        print('All spaxels median sigma_sfr:', np.nanmedian(sig_sfr))
+        print('All spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr))
+        print('')
+
+        print('All spaxels best fit coefficients:', popt_vout_all)
+        print('All spaxels best fit errors', np.sqrt(np.diag(pcov_vout_all)))
+        print('')
+
+        #-------
+        #plot it
+        #-------
+
+        #plot all points
+        ax[0].scatter(sig_sfr[vel_disp>51], vel_out[vel_disp>51], marker='o', s=10, label=data_descriptor[i]+'; R={:.2f}'.format(r_vel_out_all), color=colours[i], alpha=0.8)
+        ax[0].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=10, c=colours[i])
+
+        #plot medians
+        ax[1].fill_between(bin_center_all, v_out_bin_lower_q_all, v_out_bin_upper_q_all, color=colours[i], alpha=0.3)
+        ax[1].plot(bin_center_all, v_out_bin_medians_all, marker='', lw=3, label=data_descriptor[i]+' Median; R={:.2f}'.format(r_vel_out_med_all), color=colours[i])
+
+
+        if plot_data_fits == True:
+            ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all), ls='--', color=colours[i], label=data_descriptor[i]+' Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_all[0], np.sqrt(np.diag(pcov_vout_all))[0], popt_vout_all[1], np.sqrt(np.diag(pcov_vout_all))[1]))
+            ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all_medians), ls='--', color=colours[i], label=data_descriptor[i]+' Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_all_medians[0], np.sqrt(np.diag(pcov_vout_all_medians))[0], popt_vout_all_medians[1], np.sqrt(np.diag(pcov_vout_all_medians))[1]))
+
+        if i == 0:
+            ax[0].set_xlim(np.nanmin(sig_sfr)-0.001, np.nanmax(sig_sfr)+1.0)
+
+
+
+    #create vectors to plot the literature trends
+    sfr_surface_density_chen, v_out_chen = pf.chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out)/(np.nanmedian(sig_sfr)**0.1))
+    sfr_surface_density_murray, v_out_murray = pf.murray_et_al_2011(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out)/(np.nanmedian(sig_sfr)**2))
+
+    ax[0].plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
+    ax[0].plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
+
+    ax[1].plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
+    ax[1].plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
+
+    ax[0].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
+
+    ax[0].set_ylim(100, 700)
+    ax[0].set_xscale('log')
+
+    lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
+    ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    ax[0].set_title('S/N > 20 and $\delta_{BIC}$<-10')
+
+    lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    ax[1].set_title('Median values of all points')
+
+    plt.show()
+
+
+def plot_sfr_vout_correlation_with_binning(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, data_descriptor, plot_data_fits=False):
+    """
+    Plots the SFR surface density against the outflow velocity, with Sigma_SFR
+    calculated using only the narrow component.
+
+    Parameters
+    ----------
+    OIII_outflow_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for OIII line.  Used to calculate
+        the outflow velocity.  Should be (7, statistical_results.shape)
+
+    OIII_outflow_err : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for OIII line
+
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for Hbeta line.  Used to calculate
+        the Sigma SFR. Should be (7, statistical_results.shape)
+
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for Hbeta line
+
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
+        array of single gaussian results from KOFFEE for Hbeta line.  Used to
+        calculate the Sigma SFR.  Should be (4, statistical_results.shape)
+
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
+        array of the single gaussian result errors from KOFFEE for Hbeta line
+
+    BIC_outflow : :obj:'~numpy.ndarray'
+        array of BIC values from the double gaussian fits, this is usually
+        chi_square[1,:,:] returned from koffee
+
+    BIC_no_outflow : :obj:'~numpy.ndarray'
+        array of BIC values from the single gaussian fits, this is usually
+        chi_square[0,:,:] returned from koffee
+
+    statistical_results : :obj:'~numpy.ndarray'
+        array of statistical results from KOFFEE.
+
+    z : float
+        redshift
+
+    radius : :obj:'~numpy.ndarray'
+        array of galaxy radius values
+
+    header : FITS header object
+        the header from the fits file
+
+    weighted_average : boolean
+        whether or not to take a weighted average using the errors (Default=True)
+
+    plot_data_fits : boolean
+        whether to plot the fit to the data points, and the fit to the data
+        medians in red on top of the plot (default is False)
+
+    Returns
+    -------
+    A graph of outflow velocity against the SFR surface density in three panels
+    with different data selections
+
+    """
+    #create figure
+    plt.rcParams.update(pf.get_rc_params())
+    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, sharex=True, figsize=(8,4), constrained_layout=True)
+
+    #get colours from cmasher
+    colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
+
+    #create arrays to save results to
+    spaxel_area = np.full(len(OIII_outflow_results), np.nan, dtype=np.double)
+
+    corr_coeff_all = np.full(len(OIII_outflow_results), np.nan, dtype=np.double)
+    corr_coeff_physical = np.full(len(OIII_outflow_results), np.nan, dtype=np.double)
+    corr_coeff_strong = np.full(len(OIII_outflow_results), np.nan, dtype=np.double)
+
+    corr_coeff_all_median = np.full(len(OIII_outflow_results), np.nan, dtype=np.double)
+    corr_coeff_physical_median = np.full(len(OIII_outflow_results), np.nan, dtype=np.double)
+    corr_coeff_strong_median = np.full(len(OIII_outflow_results), np.nan, dtype=np.double)
+
+    #calculate the proper distance
+    proper_dist = cosmo.kpc_proper_per_arcmin(z).to(u.kpc/u.arcsec)
+
+
+    #iterate through all of the data sets
+    for i in np.arange(len(OIII_outflow_results)):
+        #calculate the outflow velocity
+        vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results[i], OIII_outflow_error[i], statistical_results[i], z)
+
+        #calculate the sfr surface density - using just the systemic line, and including the flux line
+        #don't include extinction since this was included in the continuum subtraction using ppxf
+        sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results[i], hbeta_outflow_error[i], hbeta_no_outflow_results[i], hbeta_no_outflow_error[i], statistical_results[i], z, header[i], include_extinction=False, include_outflow=False)
+
+        #get the sfr for the outflow spaxels
+        flow_mask = (statistical_results[i]>0) #& (sfr_surface_density>0.1)
+
+        #flatten all the arrays and get rid of extra spaxels
+        sig_sfr = sfr_surface_density[flow_mask]
+        sig_sfr_err = sfr_surface_density_err[flow_mask]
+        vel_out = vel_out[flow_mask]
+        vel_out_err = vel_out_err[flow_mask]
+        BIC_outflow_masked = BIC_outflow[i][flow_mask]
+        BIC_no_outflow_masked = BIC_no_outflow[i][flow_mask]
+        vel_disp = vel_disp[flow_mask]
+        radius_masked = radius[i][flow_mask]
+
+        #create BIC diff
+        BIC_diff = BIC_outflow_masked - BIC_no_outflow_masked
+        #BIC_diff_weak = (BIC_diff < -10) & (BIC_diff >= -30)
+        #BIC_diff_moderate = (BIC_diff < -30) & (BIC_diff >= -50)
+        BIC_diff_strong = (BIC_diff < -50)
+
+        #physical limits mask -
+        #for the radius mask 6.1" is the 90% radius
+        #also mask out the fits which lie on the lower limit of dispersion < 51km/s
+        physical_mask = (radius_masked < 6.1) & (vel_disp>51)
+
+        print(sig_sfr[physical_mask])
+        print(sig_sfr[physical_mask].shape)
+
+        #strong BIC and physical limits mask
+        #clean_mask = (radius < 6.1) & (vel_disp > 51) & (BIC_diff < -50)
+
+        #make sure none of the errors are nan values
+        vel_out_err[np.where(np.isnan(vel_out_err)==True)] = np.nanmedian(vel_out_err)
+
+        #do the calculations for all the bins
+        num_bins = 5
+        min_bin = None #-0.05
+        max_bin = None #0.6
+
+
+        bin_center_all, v_out_bin_medians_all, v_out_bin_lower_q_all, v_out_bin_upper_q_all = pf.binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center_physical, v_out_bin_medians_physical, v_out_bin_lower_q_physical, v_out_bin_upper_q_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], vel_out[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        bin_center_clean, v_out_bin_medians_clean, v_out_bin_lower_q_clean, v_out_bin_upper_q_clean = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+
+        #calculate the r value for the median values
+        r_vel_out_med_all, p_value_v_out_all = pf.pearson_correlation(bin_center_all, v_out_bin_medians_all)
+        r_vel_out_med_physical, p_value_v_out_physical = pf.pearson_correlation(bin_center_physical, v_out_bin_medians_physical)
+        r_vel_out_med_clean, p_value_v_out_clean = pf.pearson_correlation(bin_center_clean, v_out_bin_medians_clean)
+
+        #calculate the r value for all the values
+        r_vel_out_all, p_value_v_out_all = pf.pearson_correlation(sig_sfr, vel_out)
+        r_vel_out_physical, p_value_v_out_physical = pf.pearson_correlation(sig_sfr[physical_mask], vel_out[physical_mask])
+        r_vel_out_clean, p_value_v_out_clean = pf.pearson_correlation(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong])
+
+        #save results to arrays
+        spaxel_area[i] = ((header[i]['CD1_2']*60*60*header[i]['CD2_1']*60*60)*(proper_dist**2)).value
+
+        corr_coeff_all[i] = r_vel_out_all
+        corr_coeff_physical[i] = r_vel_out_physical
+        corr_coeff_strong[i] = r_vel_out_clean
+
+        corr_coeff_all_median[i] = r_vel_out_med_all
+        corr_coeff_physical_median[i] = r_vel_out_med_physical
+        corr_coeff_strong_median[i] = r_vel_out_med_clean
+
+        #print average numbers for the different panels
+        print(data_descriptor[i])
+        print('Number of spaxels with outflows', vel_out.shape)
+        print('All spaxels median v_out:', np.nanmedian(vel_out))
+        print('All spaxels standard deviation v_out:', np.nanstd(vel_out))
+        print('All spaxels median sigma_sfr:', np.nanmedian(sig_sfr))
+        print('All spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr))
+        print('')
+
+
+        print('Number of spaxels with broad sigmas at the instrument dispersion:', vel_out[vel_disp<=51].shape)
+        print('')
+        print('Number of spaxels beyond R_90:', vel_out[radius_masked>6.1].shape)
+        print('')
+        print('Number of spaxels in the middle panel:', vel_out[physical_mask].shape)
+        print('')
+
+        print('Physical spaxels median v_out:', np.nanmedian(vel_out[physical_mask]))
+        print('Physical spaxels standard deviation v_out:', np.nanstd(vel_out[physical_mask]))
+        print('Physical spaxels median sigma_sfr:', np.nanmedian(sig_sfr[physical_mask]))
+        print('Physical spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[physical_mask]))
+        print('')
+
+
+        print('Number of spaxels with strong BIC differences:', vel_out[BIC_diff_strong].shape)
+        print('')
+
+        print('Clean spaxels median v_out:', np.nanmedian(vel_out[BIC_diff_strong]))
+        print('Clean spaxels standard deviation v_out:', np.nanstd(vel_out[BIC_diff_strong]))
+        print('Clean spaxels median sigma_sfr:', np.nanmedian(sig_sfr[BIC_diff_strong]))
+        print('Clean spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[BIC_diff_strong]))
+        print('')
+
+
+    #-------
+    #plot it
+    #-------
+    ax[0].scatter(spaxel_area, corr_coeff_all, marker='o', s=20, label='S/N>20 and $\delta_{BIC}$<-10', color=colours[0])
+    ax[0].scatter(spaxel_area, corr_coeff_physical, marker='o', s=20, label=r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
+    ax[0].scatter(spaxel_area, corr_coeff_strong, marker='o', s=20, label='strongly likely BIC $\delta_{BIC}$<-50', color=colours[2])
+
+    ax[1].scatter(spaxel_area, corr_coeff_all_median, marker='s', s=20, color=colours[0])
+    ax[1].scatter(spaxel_area, corr_coeff_physical_median, marker='s', s=20, color=colours[1])
+    ax[1].scatter(spaxel_area, corr_coeff_strong_median, marker='s', s=20, color=colours[2])
+
+
+    lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    ax[0].set_ylabel('Pearson Correlation Coefficient')
+    ax[0].set_xlabel('Spaxel Area [kpc$^{2}$]')
+    ax[1].set_xlabel('Spaxel Area [kpc$^{2}$]')
+
+    ax[0].set_title('All points')
+    ax[1].set_title('Median values')
+
+    plt.show()
+
 #===============================================================================
 # OLDER PLOTTING FUNCTIONS
 #===============================================================================
 
-def plot_sfr_vout_compare_sfr_calcs(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, radius, weighted_average=True, colour_by_radius=False):
+def plot_sfr_vout_compare_sfr_calcs(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, radius, header, weighted_average=True, colour_by_radius=False):
     """
     Plots the SFR surface density against the outflow velocity, comparing Sigma_SFR
     calculated from the full line to Sigma_SFR calculated using only the narrow
@@ -1191,6 +1618,9 @@ def plot_sfr_vout_compare_sfr_calcs(OIII_outflow_results, OIII_outflow_error, hb
     radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
+    header : FITS header object
+        the header from the fits file
+
     weighted_average : boolean
         whether or not to take a weighted average using the errors (Default=True)
         array of galaxy radius values
@@ -1209,8 +1639,8 @@ def plot_sfr_vout_compare_sfr_calcs(OIII_outflow_results, OIII_outflow_error, hb
 
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr_sys, total_sfr_sys, sfr_surface_density_sys, h_beta_integral_err_sys = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
-    sfr_flow, total_sfr_flow, sfr_surface_density_flow, h_beta_integral_err_flow = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=True)
+    sfr_sys, total_sfr_sys, sfr_surface_density_sys, h_beta_integral_err_sys = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
+    sfr_flow, total_sfr_flow, sfr_surface_density_flow, h_beta_integral_err_flow = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=True)
 
     print('$\Sigma_{SFR}$ difference between including and not including flow for whole cube:', np.nanmedian(sfr_surface_density_sys)-np.nanmedian(sfr_surface_density_flow))
     print('')
