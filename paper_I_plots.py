@@ -478,6 +478,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     print('Number of spaxels in the first panel', vel_out.shape)
     print('All spaxels median v_out:', np.nanmedian(vel_out))
     print('All spaxels standard deviation v_out:', np.nanstd(vel_out))
+    print('All spaxels median sigma_sfr:', np.nanmedian(sig_sfr))
+    print('All spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr))
     print('')
 
     print('All spaxels best fit coefficients:', popt_vout_all)
@@ -493,6 +495,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     print('Physical spaxels median v_out:', np.nanmedian(vel_out[physical_mask]))
     print('Physical spaxels standard deviation v_out:', np.nanstd(vel_out[physical_mask]))
+    print('Physical spaxels median sigma_sfr:', np.nanmedian(sig_sfr[physical_mask]))
+    print('Physical spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[physical_mask]))
     print('')
     print('Physical spaxels best fit coefficients:', popt_vout_physical)
     print('Physical spaxels best fit errors', np.sqrt(np.diag(pcov_vout_physical)))
@@ -503,6 +507,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     print('Clean spaxels median v_out:', np.nanmedian(vel_out[BIC_diff_strong]))
     print('Clean spaxels standard deviation v_out:', np.nanstd(vel_out[BIC_diff_strong]))
+    print('Clean spaxels median sigma_sfr:', np.nanmedian(sig_sfr[BIC_diff_strong]))
+    print('Clean spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[BIC_diff_strong]))
     print('')
     print('Clean spaxels best fit coefficients:', popt_vout_clean)
     print('Clean spaxels best fit errors', np.sqrt(np.diag(pcov_vout_clean)))
@@ -531,7 +537,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     ax[0].plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[0].plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
 
-    ax[0].errorbar(0.03, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
+    ax[0].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
 
     ax[0].set_ylim(100, 700)
     ax[0].set_xscale('log')
@@ -556,7 +562,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     ax[1].plot(sfr_surface_density_chen, v_out_chen, ':k')#, label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[1].plot(sfr_surface_density_murray, v_out_murray, '--k')#, label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
 
-    ax[1].errorbar(0.03, 150, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(vel_out_err[physical_mask]), c='k')
+    ax[1].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(vel_out_err[physical_mask]), c='k')
 
     #ax[1].set_xscale('log')
     lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
@@ -582,7 +588,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     ax[2].plot(sfr_surface_density_chen, v_out_chen, ':k')#, label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[2].plot(sfr_surface_density_murray, v_out_murray, '--k')#, label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
 
-    ax[2].errorbar(0.03, 150, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(vel_out_err[BIC_diff_strong]), c='k')
+    ax[2].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(vel_out_err[BIC_diff_strong]), c='k')
 
     #ax[1].set_xscale('log')
     lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
