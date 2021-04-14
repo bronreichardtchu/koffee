@@ -17,11 +17,13 @@ PURPOSE:
 FUNCTIONS INCLUDED:
     calc_outflow_vel
     calc_save_as_fits
+    binned_velocities
 
 MODIFICATION HISTORY:
 		v.1.0 - first created September 2020
 
 """
+import math
 import numpy as np
 from astropy.io import fits
 
@@ -224,3 +226,54 @@ def calc_save_as_fits(outflow_results, outflow_error, statistical_results, z, he
 
     #write to file
     hdul.writeto(output_folder+gal_name+'_outflow_velocity_dispersion.fits')
+
+
+
+def binned_velocities(out_vel, bin_size=[3,3]):
+    """
+    Calculates the range and median of the velocities in the binned area
+
+    Parameters
+    ----------
+    data : :obj:'~numpy.ndarray'
+        the data to be binned
+
+    bin_size : int
+        the number of spaxels to bin by (Default is [3,3], this will bin 3x3)
+
+    Returns
+    -------
+    binned_data : :obj:'~numpy.ndarray'
+        the binned data
+    """
+    #create empty array to put binned things in:
+    #vel_out min, max, median and standard deviation
+    binned_data = np.empty([4, math.ceil(out_vel.shape[0]/bin_size[0]), math.ceil(out_vel.shape[1]/bin_size[1])])
+
+    #create counter for x direction
+    start_xi = 0
+    end_xi = bin_size[0]
+
+    #iterate through x direction
+    for x in np.arange(out_vel.shape[0]/bin_size[0]):
+        #create counter for y direction
+        start_yi = 0
+        end_yi = bin_size[1]
+        #iterate through y direction
+        for y in np.arange(out_vel.shape[1]/bin_size[1]):
+
+            #bin the data
+            binned_data[0, int(x), int(y)] = np.nanmin(out_vel[start_xi:end_xi, start_yi:end_yi])
+            binned_data[1, int(x), int(y)] = np.nanmax(out_vel[start_xi:end_xi, start_yi:end_yi])
+            binned_data[2, int(x), int(y)] = np.nanmedian(out_vel[start_xi:end_xi, start_yi:end_yi])
+            binned_data[3, int(x), int(y)] = np.nanstd(out_vel[start_xi:end_xi, start_yi:end_yi])
+
+            #increase y counters
+            start_yi += bin_size[1]
+            end_yi += bin_size[1]
+
+        #increase x counters
+        start_xi += bin_size[0]
+        end_xi += bin_size[0]
+
+    return binned_data
