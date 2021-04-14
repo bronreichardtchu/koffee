@@ -20,6 +20,8 @@ FUNCTIONS INCLUDED:
     plot_sfr_flux
     plot_radius_flux
     maps_of_halpha_hbeta
+    plot_sfr_vout_multiple
+    plot_sfr_vout_correlation_with_binning
     plot_sfr_vout_compare_sfr_calcs
     plot_sfr_surface_density_radius
     plot_outflow_frequency_sfr_surface_density
@@ -43,7 +45,9 @@ from astropy.wcs import WCS
 from astropy.cosmology import WMAP9 as cosmo
 from astropy.constants import c
 from astropy import units as u
+from astropy.io import fits
 
+from . import prepare_cubes as pc
 from . import plotting_functions as pf
 from . import calculate_outflow_velocity as calc_outvel
 from . import calculate_star_formation_rate as calc_sfr
@@ -1427,7 +1431,8 @@ def plot_sfr_vout_correlation_with_binning(OIII_outflow_results, OIII_outflow_er
     """
     #create figure
     plt.rcParams.update(pf.get_rc_params())
-    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, sharex=True, figsize=(8,4), constrained_layout=True)
+    #fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, sharex=True, figsize=(8,4), constrained_layout=True)
+    fig, ax = plt.subplots(nrows=1, ncols=1, sharey=True, sharex=True, figsize=(5,4), constrained_layout=True)
 
     #get colours from cmasher
     colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
@@ -1554,27 +1559,253 @@ def plot_sfr_vout_correlation_with_binning(OIII_outflow_results, OIII_outflow_er
         print('')
 
 
+    #convert spaxel area to circularised radius Area = pi*r^2
+    #so r = sqrt(Area/pi)
+    circularised_radius = np.sqrt(spaxel_area/np.pi)
+
     #-------
     #plot it
     #-------
-    ax[0].scatter(spaxel_area, corr_coeff_all, marker='o', s=20, label='S/N>20 and $\delta_{BIC}$<-10', color=colours[0])
-    ax[0].scatter(spaxel_area, corr_coeff_physical, marker='o', s=20, label=r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
-    ax[0].scatter(spaxel_area, corr_coeff_strong, marker='o', s=20, label='strongly likely BIC $\delta_{BIC}$<-50', color=colours[2])
+    ax.plot(circularised_radius, corr_coeff_all, marker='o', label='S/N>20 and $\delta_{BIC}$<-10', color=colours[0])
+    ax.plot(circularised_radius, corr_coeff_physical, marker='o', label=r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
+    ax.plot(circularised_radius, corr_coeff_strong, marker='o', label='strongly likely BIC $\delta_{BIC}$<-50', color=colours[2])
 
-    ax[1].scatter(spaxel_area, corr_coeff_all_median, marker='s', s=20, color=colours[0])
-    ax[1].scatter(spaxel_area, corr_coeff_physical_median, marker='s', s=20, color=colours[1])
-    ax[1].scatter(spaxel_area, corr_coeff_strong_median, marker='s', s=20, color=colours[2])
+    #ax[1].scatter(spaxel_area, corr_coeff_all_median, marker='s', s=20, color=colours[0])
+    #ax[1].scatter(spaxel_area, corr_coeff_physical_median, marker='s', s=20, color=colours[1])
+    #ax[1].scatter(spaxel_area, corr_coeff_strong_median, marker='s', s=20, color=colours[2])
 
 
-    lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
-    ax[0].set_ylabel('Pearson Correlation Coefficient')
-    ax[0].set_xlabel('Spaxel Area [kpc$^{2}$]')
-    ax[1].set_xlabel('Spaxel Area [kpc$^{2}$]')
+    lgnd = ax.legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    ax.set_ylabel('Pearson Correlation Coefficient')
+    ax.set_xlabel('Circularised Bin Radius [kpc]')
+    #ax[0].set_xlabel('Spaxel Area [kpc$^{2}$]')
+    #ax[1].set_xlabel('Spaxel Area [kpc$^{2}$]')
 
-    ax[0].set_title('All points')
-    ax[1].set_title('Median values')
+    #ax[0].set_title('All points')
+    #ax[1].set_title('Median values')
 
     plt.show()
+
+
+def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files, outflow_dispersion_fits_files, sig_sfr_fits_files, chi_square_text_files, statistical_results_text_files, z, data_fits_files, data_descriptor):
+    """
+    Plots the SFR surface density against the outflow velocity, with Sigma_SFR
+    calculated using only the narrow component.
+
+    Parameters
+    ----------
+    OIII_outflow_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for OIII line.  Used to calculate
+        the outflow velocity.  Should be (7, statistical_results.shape)
+
+    OIII_outflow_err : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for OIII line
+
+    hbeta_outflow_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for Hbeta line.  Used to calculate
+        the Sigma SFR. Should be (7, statistical_results.shape)
+
+    hbeta_outflow_err : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for Hbeta line
+
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
+        array of single gaussian results from KOFFEE for Hbeta line.  Used to
+        calculate the Sigma SFR.  Should be (4, statistical_results.shape)
+
+    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
+        array of the single gaussian result errors from KOFFEE for Hbeta line
+
+    BIC_outflow : :obj:'~numpy.ndarray'
+        array of BIC values from the double gaussian fits, this is usually
+        chi_square[1,:,:] returned from koffee
+
+    BIC_no_outflow : :obj:'~numpy.ndarray'
+        array of BIC values from the single gaussian fits, this is usually
+        chi_square[0,:,:] returned from koffee
+
+    statistical_results : :obj:'~numpy.ndarray'
+        array of statistical results from KOFFEE.
+
+    z : float
+        redshift
+
+    radius : :obj:'~numpy.ndarray'
+        array of galaxy radius values
+
+    header : FITS header object
+        the header from the fits file
+
+    weighted_average : boolean
+        whether or not to take a weighted average using the errors (Default=True)
+
+    plot_data_fits : boolean
+        whether to plot the fit to the data points, and the fit to the data
+        medians in red on top of the plot (default is False)
+
+    Returns
+    -------
+    A graph of outflow velocity against the SFR surface density in three panels
+    with different data selections
+
+    """
+    #create figure
+    plt.rcParams.update(pf.get_rc_params())
+    #fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, sharex=True, figsize=(8,4), constrained_layout=True)
+    fig, ax = plt.subplots(nrows=1, ncols=1, sharey=True, sharex=True, figsize=(5,4), constrained_layout=True)
+
+    #get colours from cmasher
+    colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
+
+    #create arrays to save results to
+    spaxel_area = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+
+    corr_coeff_all = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+    corr_coeff_physical = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+    corr_coeff_strong = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+
+    #calculate the proper distance
+    proper_dist = cosmo.kpc_proper_per_arcmin(z).to(u.kpc/u.arcsec)
+
+
+    #iterate through all of the data sets
+    for i in np.arange(len(outflow_velocity_fits_files)):
+        #load the outflow velocity
+        with fits.open(outflow_velocity_fits_files[i]) as hdu:
+            vel_out = hdu[0].data
+            vel_out_err = hdu[1].data
+        hdu.close()
+
+        print(data_descriptor[i], 'vel_out shape:', vel_out.shape)
+
+        #load the velocity dispersion
+        with fits.open(outflow_dispersion_fits_files[i]) as hdu:
+            vel_disp = hdu[0].data
+        hdu.close()
+
+        #load the sfr surface density
+        with fits.open(sig_sfr_fits_files[i]) as hdu:
+            sfr_surface_density = hdu[0].data
+            sfr_surface_density_err = hdu[1].data
+        hdu.close()
+
+        print(data_descriptor[i], 'sfr_surface_density shape:', sfr_surface_density.shape)
+
+        #load the chi squared results
+        chi_square = np.loadtxt(chi_square_text_files[i])
+        print(data_descriptor[i], 'chi_square shape:', chi_square.shape)
+        BIC_outflow = chi_square[1,:]
+        BIC_no_outflow = chi_square[0,:]
+        del chi_square
+
+        #load the statistical results
+        statistical_results = np.loadtxt(statistical_results_text_files[i])
+        print('stat_res shape:', statistical_results.shape)
+
+        #reshape the things to not be flat
+        statistical_results = statistical_results.reshape(vel_out.shape[0], vel_out.shape[1])
+        BIC_outflow = BIC_outflow.reshape(vel_out.shape[0], vel_out.shape[1])
+        BIC_no_outflow = BIC_no_outflow.reshape(vel_out.shape[0], vel_out.shape[1])
+
+        print('stat_res shape:', statistical_results.shape)
+
+        #load the radius
+        lam, xx, yy, rad, data, xx_flat, yy_flat, rad_flat, data_flat, header = pc.prepare_single_cube(data_fits_files[i], 'IRAS08_'+data_descriptor[i], z, 'red', '../../code_outputs/koffee_results_IRAS08/')
+        del lam, xx, yy, data, xx_flat, yy_flat, rad_flat, data_flat
+
+        #get the sfr for the outflow spaxels
+        flow_mask = (statistical_results>0) #& (sfr_surface_density>0.1)
+
+        print('flow mask data_shape:', flow_mask.shape)
+
+        #flatten all the arrays and get rid of extra spaxels
+        sig_sfr = sfr_surface_density[flow_mask]
+        sig_sfr_err = sfr_surface_density_err[flow_mask]
+        vel_out = vel_out[flow_mask]
+        vel_out_err = vel_out_err[flow_mask]
+        BIC_outflow_masked = BIC_outflow[flow_mask]
+        BIC_no_outflow_masked = BIC_no_outflow[flow_mask]
+        vel_disp = vel_disp[flow_mask]
+        radius_masked = rad[flow_mask]
+
+        #create BIC diff
+        BIC_diff = BIC_outflow_masked - BIC_no_outflow_masked
+        BIC_diff_strong = (BIC_diff < -50)
+
+        #physical limits mask -
+        #for the radius mask 6.1" is the 90% radius
+        #also mask out the fits which lie on the lower limit of dispersion < 51km/s
+        physical_mask = (radius_masked < 6.1) & (vel_disp>51)
+
+        print(sig_sfr[physical_mask])
+        print(sig_sfr[physical_mask].shape)
+
+        #make sure none of the errors are nan values
+        vel_out_err[np.where(np.isnan(vel_out_err)==True)] = np.nanmedian(vel_out_err)
+
+        #calculate the r value for all the values
+        r_vel_out_all, p_value_v_out_all = pf.pearson_correlation(sig_sfr, vel_out)
+        r_vel_out_physical, p_value_v_out_physical = pf.pearson_correlation(sig_sfr[physical_mask], vel_out[physical_mask])
+        r_vel_out_clean, p_value_v_out_clean = pf.pearson_correlation(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong])
+
+        #save results to arrays
+        spaxel_area[i] = ((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2)).value
+
+        corr_coeff_all[i] = r_vel_out_all
+        corr_coeff_physical[i] = r_vel_out_physical
+        corr_coeff_strong[i] = r_vel_out_clean
+
+        #print average numbers for the different panels
+        print(data_descriptor[i])
+        print('Number of spaxels with outflows', vel_out.shape)
+        print('All spaxels median v_out:', np.nanmedian(vel_out))
+        print('All spaxels standard deviation v_out:', np.nanstd(vel_out))
+        print('All spaxels median sigma_sfr:', np.nanmedian(sig_sfr))
+        print('All spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr))
+        print('')
+
+
+        print('Number of spaxels with broad sigmas at the instrument dispersion:', vel_out[vel_disp<=51].shape)
+        print('')
+        print('Number of spaxels beyond R_90:', vel_out[radius_masked>6.1].shape)
+        print('')
+        print('Number of spaxels in the middle panel:', vel_out[physical_mask].shape)
+        print('')
+
+        print('Physical spaxels median v_out:', np.nanmedian(vel_out[physical_mask]))
+        print('Physical spaxels standard deviation v_out:', np.nanstd(vel_out[physical_mask]))
+        print('Physical spaxels median sigma_sfr:', np.nanmedian(sig_sfr[physical_mask]))
+        print('Physical spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[physical_mask]))
+        print('')
+
+
+        print('Number of spaxels with strong BIC differences:', vel_out[BIC_diff_strong].shape)
+        print('')
+
+        print('Clean spaxels median v_out:', np.nanmedian(vel_out[BIC_diff_strong]))
+        print('Clean spaxels standard deviation v_out:', np.nanstd(vel_out[BIC_diff_strong]))
+        print('Clean spaxels median sigma_sfr:', np.nanmedian(sig_sfr[BIC_diff_strong]))
+        print('Clean spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[BIC_diff_strong]))
+        print('')
+
+
+    #convert spaxel area to circularised radius Area = pi*r^2
+    #so r = sqrt(Area/pi)
+    circularised_radius = np.sqrt(spaxel_area/np.pi)
+
+    #-------
+    #plot it
+    #-------
+    ax.plot(circularised_radius*2, corr_coeff_all, marker='o', label='S/N>20 and $\delta_{BIC}$<-10', color=colours[0])
+    ax.plot(circularised_radius*2, corr_coeff_physical, marker='o', label=r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
+    ax.plot(circularised_radius*2, corr_coeff_strong, marker='o', label='strongly likely BIC $\delta_{BIC}$<-50', color=colours[2])
+
+
+    lgnd = ax.legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    ax.set_ylabel('Pearson Correlation Coefficient')
+    ax.set_xlabel('Circularised Bin Diameter [kpc]')
+
+    plt.show()
+
 
 #===============================================================================
 # OLDER PLOTTING FUNCTIONS
