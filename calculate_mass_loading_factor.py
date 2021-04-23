@@ -41,11 +41,11 @@ importlib.reload(calc_sfr)
 def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error, statistical_results, z):
     """
     Calculates the mass outflow rate using the equation:
-        M_out = (1.36m_H)/(gamma_Halpha n_e) * (v_out/R_out) * L_Halpha,broad
+        M_out = (1.36m_H)/(gamma_Hbeta n_e) * (v_out/R_out) * L_Halpha,broad
     To convert from Halpha to Hbeta luminosities:
         L_Halpha/L_Hbeta = 2.87
     So:
-        M_out = (1.36m_H)/(gamma_Halpha n_e) * (v_out/R_out) *
+        M_out = (1.36m_H)/(gamma_Hbeta n_e) * (v_out/R_out) *
                 (L_Halpha,broad/L_Hbeta,broad) * L_Hbeta,broad
 
     Parameters
@@ -88,7 +88,9 @@ def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error,
     m_H = m_p
 
     #gamma_Halpha is the Halpha emissivity at 10^4K (in erg cm^3 s^-1)
-    gamma_Halpha = 3.56*10**-25 * u.erg * u.cm**3 / u.s
+    #gamma_Halpha = 3.56*10**-25 * u.erg * u.cm**3 / u.s
+    #actually we use Hbeta so:
+    gamma_Hbeta = 1.24*10**-25 * u.erg * u.cm**3 / u.s
 
     #n_e is the local electron density in the outflow
     #use the same value as Davies et al. for now
@@ -124,9 +126,9 @@ def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error,
     L_Hbeta = (outflow_flux*(4*np.pi*(dist**2))).to('erg/s')
 
     #do the whole calculation
-    M_out_max = (1.36*m_H) / (gamma_Halpha*n_e) * (vel_out/R_max) * lum_ratio_alpha_to_beta*L_Hbeta
-    M_out_min = (1.36*m_H) / (gamma_Halpha*n_e) * (vel_out/R_min) * lum_ratio_alpha_to_beta*L_Hbeta
-    M_out = (1.36*m_H) / (gamma_Halpha*n_e) * (vel_out/R_out) * lum_ratio_alpha_to_beta*L_Hbeta
+    M_out_max = (1.36*m_H) / (gamma_Hbeta*n_e) * (vel_out/R_max) * lum_ratio_alpha_to_beta*L_Hbeta
+    M_out_min = (1.36*m_H) / (gamma_Hbeta*n_e) * (vel_out/R_min) * lum_ratio_alpha_to_beta*L_Hbeta
+    M_out = (1.36*m_H) / (gamma_Hbeta*n_e) * (vel_out/R_out) * lum_ratio_alpha_to_beta*L_Hbeta
 
     #decompose the units to g/s
     M_out = M_out.to(u.g/u.s)
@@ -210,11 +212,11 @@ def calc_mass_loading_factor2(OIII_results, OIII_error, hbeta_results, hbeta_err
         eta = M_out/SFR
     Using the whole equation, not the functions (to double check).
     Where
-        M_out = (1.36m_H)/(gamma_Halpha n_e) * (v_out/R_out) * (L_Halpha,broad/L_Hbeta,broad)*L_Hbeta,broad
+        M_out = (1.36m_H)/(gamma_Hbeta n_e) * (v_out/R_out) * (L_Halpha,broad/L_Hbeta,broad)*L_Hbeta,broad
     and
         SFR = C_Halpha (L_Halpha / L_Hbeta)_0 x 10^{-0.4A_Hbeta} x L_Hbeta,narrow[erg/s]
     so:
-        eta = (1.36m_H)/(gamma_Halpha n_e) * (v_out/R_out) * (L_Hbeta,broad/L_Hbeta,narrow) * (1/C_Halpha x 10^{-0.4A_Hbeta})
+        eta = (1.36m_H)/(gamma_Hbeta n_e) * (v_out/R_out) * (L_Hbeta,broad/L_Hbeta,narrow) * (1/C_Halpha x 10^{-0.4A_Hbeta})
 
     Parameters
     ----------
@@ -260,7 +262,8 @@ def calc_mass_loading_factor2(OIII_results, OIII_error, hbeta_results, hbeta_err
     m_H = m_p
 
     #gamma_Halpha is the Halpha emissivity at 10^4K (in erg cm^3 s^-1)
-    gamma_Halpha = 3.56*10**-25 * u.erg * u.cm**3 / u.s
+    #gamma_Halpha = 3.56*10**-25 * u.erg * u.cm**3 / u.s
+    gamma_Hbeta = 1.24*10**-25 * u.erg * u.cm**3 / u.s
 
     #n_e is the local electron density in the outflow
     #use the same value as Davies et al. for now
@@ -297,9 +300,9 @@ def calc_mass_loading_factor2(OIII_results, OIII_error, hbeta_results, hbeta_err
     c_halpha = 10**(-41.257) * (u.solMass*u.s)/(u.yr*u.erg)
 
     #do the whole calculation
-    mlf_max = (1.36*m_H) / (c_halpha*gamma_Halpha*n_e) * (10**(-0.4*0.0)) * (vel_out/R_max) * Hbeta_broad_to_narrow
-    mlf_min = (1.36*m_H) / (c_halpha*gamma_Halpha*n_e) * (10**(-0.4*0.0)) * (vel_out/R_min) * Hbeta_broad_to_narrow
-    mlf = (1.36*m_H) / (c_halpha*gamma_Halpha*n_e) * (10**(-0.4*0.0)) * (vel_out/R_out) * Hbeta_broad_to_narrow
+    mlf_max = (1.36*m_H) / (c_halpha*gamma_Hbeta*n_e) * (10**(-0.4*0.0)) * (vel_out/R_max) * Hbeta_broad_to_narrow
+    mlf_min = (1.36*m_H) / (c_halpha*gamma_Hbeta*n_e) * (10**(-0.4*0.0)) * (vel_out/R_min) * Hbeta_broad_to_narrow
+    mlf = (1.36*m_H) / (c_halpha*gamma_Hbeta*n_e) * (10**(-0.4*0.0)) * (vel_out/R_out) * Hbeta_broad_to_narrow
 
     #decompose the units
     mlf_max = mlf_max.decompose()
