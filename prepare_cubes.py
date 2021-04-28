@@ -17,6 +17,8 @@ PURPOSE:
 FUNCTIONS INCLUDED:
     read_in_data_fits
     read_in_data_pickle
+    bin_data
+    save_binned_data
     air_to_vac
     barycentric_corrections
     milky_way_extinction_correction
