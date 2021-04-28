@@ -15,13 +15,17 @@ PURPOSE:
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
 FUNCTIONS INCLUDED:
-    calc_hbeta_extinction
-    calc_flux_from_koffee
-    calc_doublet_flux_from_koffee
-    calc_hbeta_luminosity
-    calc_hgamma_luminosity
-    calc_sfr_integrate
-    calc_sfr_koffee
+    integrate_spectrum
+    subtract_continuum
+    calc_hbeta_hgamma_integrals
+    calc_hbeta_hgamma_amps
+    calc_OIII_doublet_ratio
+    plot_ratio_histograms
+
+DICTIONARIES INCLUDED:
+    all_the_lines
+    emission_line_limits
+    continuum_band_limits
 
 MODIFICATION HISTORY:
 		v.1.0 - first created February 2021
