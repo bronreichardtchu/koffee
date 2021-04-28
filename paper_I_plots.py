@@ -159,7 +159,7 @@ def plot_compare_fits(lamdas, data, spaxels, z):
 
 
 #Figure 2
-def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfixed, outflow_error_unfixed, statistical_results, lamdas, data, spaxel, z):
+def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfixed, outflow_error_unfixed, statistical_results, lamdas, data, spaxel, z, plot_fit_parameters=False):
     """
     Plots a three panel graph of two histograms of the outflow velocity and the flux
     ratio for [OIII] for before and after koffee's selection criteria for outflows
@@ -198,6 +198,11 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     z : float
         redshift
 
+    plot_fit_parameters : boolean
+        When True, plots histograms of the velocity difference and [OIII] amplitude
+        ratio.  When False, plots the results for the outflow velocity and [OIII]
+        broad-to-narrow flux ratio.  Default is False.
+
     Returns
     -------
     A three panel graph, two histograms and an example emission line fit
@@ -217,29 +222,41 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
     systemic_flux_unfixed, systemic_flux_err_unfixed, outflow_flux_unfixed, outflow_flux_err_unfixed = calc_sfr.calc_flux_from_koffee(outflow_results_unfixed, outflow_error_unfixed, statistical_results_unfixed, z, outflow=True)
 
-    #calculate flux ratios
-    flux_ratio = np.log10(outflow_flux/systemic_flux)
+    if plot_fit_parameters == True:
+        #calculate the amplitude ratio
+        amp_ratio = np.log10(outflow_results[2,:,:]/outflow_results[5,:,:])
+        amp_ratio_unfixed = np.log10(outflow_results_unfixed[2,:,:]/outflow_results_unfixed[5,:,:])
 
-    flux_ratio_unfixed = np.log10(outflow_flux_unfixed/systemic_flux_unfixed)
+        #calculate the medians
+        amp_ratio_median = np.nanmedian(amp_ratio)
+        amp_ratio_unfixed_median = np.nanmedian(amp_ratio_unfixed)
 
-    #calculate the medians
-    vel_out_median = np.nanmedian(vel_out)
-    vel_out_unfixed_median = np.nanmedian(vel_out_unfixed)
+        vel_diff_median = np.nanmedian(vel_diff)
+        vel_diff_unfixed_median = np.nanmedian(vel_diff_unfixed)
 
-    flux_ratio_median = np.nanmedian(flux_ratio)
-    flux_ratio_unfixed_median = np.nanmedian(flux_ratio_unfixed)
+    elif plot_fit_parameters == False:
+        #calculate flux ratios
+        flux_ratio = np.log10(outflow_flux/systemic_flux)
+        flux_ratio_unfixed = np.log10(outflow_flux_unfixed/systemic_flux_unfixed)
 
-    print('All fits vel_out median:', vel_out_median)
-    print('KOFFEE fits vel_out median:', vel_out_unfixed_median)
-    print('All fits flux_ratio median:', flux_ratio_median)
-    print('KOFFEE fits flux_ratio median:', flux_ratio_unfixed_median)
+        #calculate the medians
+        flux_ratio_median = np.nanmedian(flux_ratio)
+        flux_ratio_unfixed_median = np.nanmedian(flux_ratio_unfixed)
 
-    #calculate the means
-    #vel_out_mean = np.nanmean(vel_out)
-    #vel_out_unfixed_mean = np.nanmean(vel_out_unfixed)
+        vel_out_median = np.nanmedian(vel_out)
+        vel_out_unfixed_median = np.nanmedian(vel_out_unfixed)
 
-    #flux_ratio_mean = np.nanmean(flux_ratio)
-    #flux_ratio_unfixed_mean = np.nanmean(flux_ratio_unfixed)
+    if plot_fit_parameters == True:
+        print('All fits vel_diff median:', vel_diff_median)
+        print('KOFFEE fits vel_diff median:', vel_diff_unfixed_median)
+        print('All fits amp_ratio median:', amp_ratio_median)
+        print('KOFFEE fits amp_ratio median:', amp_ratio_unfixed_median)
+
+    elif plot_fit_parameters == False:
+        print('All fits vel_out median:', vel_out_median)
+        print('KOFFEE fits vel_out median:', vel_out_unfixed_median)
+        print('All fits flux_ratio median:', flux_ratio_median)
+        print('KOFFEE fits flux_ratio median:', flux_ratio_unfixed_median)
 
     #make a mask for the emission line
     OIII_mask = (lamdas>5008.24*(1+z)-20.0) & (lamdas<5008.24*(1+z)+20.0)
@@ -271,30 +288,42 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     #get colours from cmasher
     colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
 
-    ax[0].hist(vel_out_unfixed[statistical_results_unfixed>0], alpha=0.5, color='tab:blue', label='All fits')
-    #ax[0].axvline(vel_out_unfixed_median, color='tab:blue', label='All fits median: {:.2f}'.format(vel_out_unfixed_median))
-    #ax[0].axvline(vel_out_unfixed_mean, ls='--', color='tab:blue', label='All fits mean: {:.2f}'.format(vel_out_unfixed_mean))
+    if plot_fit_parameters == True:
+        ax[0].hist(vel_diff_unfixed[statistical_results_unfixed>0], alpha=0.5, color='tab:blue', label='All spaxels S/N > 20')
 
-    ax[0].hist(vel_out[statistical_results>0], alpha=0.5, color='tab:red', label='KOFFEE fits')
-    #ax[0].axvline(vel_out_median, color='tab:red', label='KOFFEE fits median: {:.2f}'.format(vel_out_median))
-    #ax[0].axvline(vel_out_mean, color='tab:red', ls='--', label='KOFFEE fits mean: {:.2f}'.format(vel_out_mean))
+        ax[0].hist(vel_diff[statistical_results>0], alpha=0.5, color='tab:red', label='KOFFEE fits')
+
+        ax[0].set_ylim(0,90)
+        ax[0].set_xlabel('Velocity Difference $v_{narrow}-v_{broad}$ [km s$^{-1}$]')
+
+    elif plot_fit_parameters == False:
+        ax[0].hist(vel_out_unfixed[statistical_results_unfixed>0], alpha=0.5, color='tab:blue', label='All spaxels S/N > 20')
+
+        ax[0].hist(vel_out[statistical_results>0], alpha=0.5, color='tab:red', label='KOFFEE fits')
+
+        ax[0].set_ylim(0,75)
+        ax[0].set_xlabel('Maximum Outflow Velocity [km s$^{-1}$]')
 
     ax[0].legend(fontsize='x-small', frameon=False)
-    ax[0].set_ylim(0,90)
-    ax[0].set_xlabel('Outflow Velocity (km/s)')
     ax[0].set_ylabel('$N_{spaxels}$')
 
-    ax[1].hist(flux_ratio_unfixed[statistical_results_unfixed>0], alpha=0.5, label='All fits', color='tab:blue')
-    #ax[1].axvline(flux_ratio_unfixed_median, color='tab:blue', label='All fits median: {:.2f}'.format(flux_ratio_unfixed_median))
-    #ax[1].axvline(flux_ratio_unfixed_mean, color='tab:blue', ls='--', label='All fits mean: {:.2f}'.format(flux_ratio_unfixed_mean))
 
-    ax[1].hist(flux_ratio[statistical_results>0], alpha=0.5, label='KOFFEE fits', color='tab:red')
-    #ax[1].axvline(flux_ratio_median, color='tab:red', label='KOFFEE fits median: {:.2f}'.format(flux_ratio_median))
-    #ax[1].axvline(flux_ratio_mean, color='tab:red', ls='--', label='KOFFEE fits mean: {:.2f}'.format(flux_ratio_mean))
+    if plot_fit_parameters == True:
+        ax[1].hist(amp_ratio_unfixed[statistical_results_unfixed>0], alpha=0.5, label='All spaxels S/N > 20', color='tab:blue')
 
-    #ax[1].legend(fontsize='x-small', frameon=False)
-    ax[1].set_ylim(0,90)
-    ax[1].set_xlabel('[OIII] Log($f_{broad}/f_{narrow}$)')
+        ax[1].hist(amp_ratio[statistical_results>0], alpha=0.5, label='KOFFEE fits', color='tab:red')
+
+        ax[1].set_ylim(0,90)
+        ax[1].set_xlabel('[OIII] Log($A_{broad}$/$A_{narrow}$)')
+
+    elif plot_fit_parameters == False:
+        ax[1].hist(flux_ratio_unfixed[statistical_results_unfixed>0], alpha=0.5, label='All spaxels S/N > 20', color='tab:blue')
+
+        ax[1].hist(flux_ratio[statistical_results>0], alpha=0.5, label='KOFFEE fits', color='tab:red')
+
+        ax[1].set_ylim(0,75)
+        ax[1].set_xlabel('[OIII] Log(F$_{broad}$/F$_{narrow}$)')
+
 
     #plot the example of a bad fit
     ax[2].step(lam_OIII[plotting_mask], flux[plotting_mask]/max_value, where='mid', c='k', label='Data')
