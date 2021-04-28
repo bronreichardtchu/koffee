@@ -309,7 +309,7 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
     """
     if min_bin == None:
         min_bin = np.nanmin(x)
-        
+
     if max_bin == None:
         max_bin = np.nanmax(x)
 
@@ -331,12 +331,14 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
     bin_avg = np.zeros(len(logspace)-1)
     upper_quantile = np.zeros(len(logspace)-1)
     lower_quantile = np.zeros(len(logspace)-1)
+    bin_stdev = np.zeros(len(logspace)-1)
 
     for i in range(0, len(logspace)-1):
         left_bound = logspace[i]
         right_bound = logspace[i+1]
         items_in_bin = y[(x>left_bound)&(x<=right_bound)]
         print('Number of items in bin '+str(i)+': '+str(items_in_bin.shape))
+        #calculate the median of the bin
         if weights == None:
             bin_avg[i] = np.nanmedian(items_in_bin)
         else:
@@ -344,6 +346,7 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
             weights_in_bin = 1.0 - weights_in_bin/items_in_bin
             bin_avg[i] = np.average(items_in_bin, weights=weights_in_bin)
 
+        #calculate the quartiles of the bin
         if items_in_bin.shape[0] < 10:
             upper_quantile[i] = np.nanquantile(items_in_bin, 0.80)
             lower_quantile[i] = np.nanquantile(items_in_bin, 0.20)
@@ -351,12 +354,15 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
             upper_quantile[i] = np.nanquantile(items_in_bin, 0.66)
             lower_quantile[i] = np.nanquantile(items_in_bin, 0.33)
 
+        #calculate the standard deviation of the bin
+        bin_stdev[i] = np.nanstd(items_in_bin)
+
     #calculate the bin center for plotting
     bin_center = np.zeros(len(logspace)-1)
     for i in range(0, len(logspace)-1):
         bin_center[i] = np.nanmean([logspace[i],logspace[i+1]])
 
-    return bin_center, bin_avg, lower_quantile, upper_quantile
+    return logspace, bin_center, bin_avg, lower_quantile, upper_quantile, bin_stdev
 
 
 def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_bin=None):
