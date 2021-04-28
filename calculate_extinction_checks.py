@@ -368,7 +368,7 @@ def calc_hbeta_hgamma_amps(lamdas, spectrum, z, cont_subtract=False):
 
 def calc_OIII_doublet_ratio(lamdas, spectrum, z, cont_subtract=False, plot=False):
     """
-    Calculate the OIII 4959/5007 ratio, which should be 2.94
+    Calculate the OIII 4959/5007 ratio, which should be 0.34
 
     Parameters
     ----------
@@ -466,7 +466,7 @@ def calc_OIII_doublet_ratio(lamdas, spectrum, z, cont_subtract=False, plot=False
 
 def plot_ratio_histograms(ratio_arrays, array_labels, xlabel, range=None):
     """
-    Calculate the OIII 4959/5007 ratio, which should be 2.94
+    Plot the OIII 4959/5007 ratio, which should be 0.34 (2.94 is the inverse)
 
     Parameters
     ----------
