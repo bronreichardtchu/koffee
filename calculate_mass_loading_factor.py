@@ -138,7 +138,7 @@ def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error,
     return M_out, M_out_max, M_out_min
 
 
-def calc_mass_loading_factor(OIII_results, OIII_error, hbeta_results, hbeta_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z):
+def calc_mass_loading_factor(OIII_results, OIII_error, hbeta_results, hbeta_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header):
     """
     Calculates the mass loading factor
         eta = M_out/SFR
@@ -173,6 +173,9 @@ def calc_mass_loading_factor(OIII_results, OIII_error, hbeta_results, hbeta_erro
     z : float
         redshift
 
+    header : FITS header object
+        the header from the fits file 
+
     Returns
     -------
     mlf_out : :obj:'~numpy.ndarray'
@@ -189,7 +192,7 @@ def calc_mass_loading_factor(OIII_results, OIII_error, hbeta_results, hbeta_erro
 
     #calculate the SFR (I wrote this to give the answer without units...)
     #(I should probably change that!)
-    sfr, sfr_err, total_sfr, sigma_sfr, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_results, hbeta_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sigma_sfr, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_results, hbeta_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #put the units back onto the sfr (M_sun/yr)
     sfr = sfr * (u.solMass/u.yr)
