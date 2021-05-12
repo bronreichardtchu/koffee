@@ -15,12 +15,13 @@ PURPOSE:
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
 FUNCTIONS INCLUDED:
-    plot_compare_fits               (Figure 1)
-    plot_hist_out_vel_flux          (Figure 2)
-    plot_sfr_vout                   (Figure 3)
-    plot_sfr_mlf_flux               (Figure 4)
-    maps_of_IRAS08                  (Figure 5)
-    plot_mlf_model_rad_singlepanel  (Figure 6)
+    plot_compare_fits                                   (Figure 1)
+    plot_hist_out_vel_flux                              (Figure 2)
+    plot_sfr_vout                                       (Figure 3 + 4)
+    plot_sfr_vout_correlation_with_binning_from_file    (Figure 5)
+    plot_sfr_mlf_flux                                   (Figure 6)
+    maps_of_IRAS08                                      (Figure 7)
+    plot_mlf_model_rad_singlepanel                      (Figure 8)
 
 MODIFICATION HISTORY:
 		v.1.0 - first created October 2020
@@ -38,7 +39,10 @@ from scipy.signal import argrelextrema
 
 from astropy.wcs import WCS
 from astropy import units as u
+from astropy.cosmology import WMAP9 as cosmo
+from astropy.io import fits
 
+from . import prepare_cubes as pc
 from . import plotting_functions as pf
 from . import koffee_fitting_functions as kff
 from . import calculate_outflow_velocity as calc_outvel
@@ -344,7 +348,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
 
 
-#Figure 3
+#Figure 3 and 4
 def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=False, plot_medians=True, plot_data_fits=False, xlim_vals=None):
     """
     Plots the SFR surface density against the outflow velocity, with Sigma_SFR
@@ -454,12 +458,12 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     if weighted_average == False:
         logspace_all, bin_center_all, v_out_bin_medians_all, v_out_bin_lower_q_all, v_out_bin_upper_q_all, v_out_bin_stdev_all = pf.binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
         logspace_physical, bin_center_physical, v_out_bin_medians_physical, v_out_bin_lower_q_physical, v_out_bin_upper_q_physical, v_out_bin_stdev_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], vel_out[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        logspace_strong, bin_center_strong, v_out_bin_medians_strong, v_out_bin_lower_q_strong, v_out_bin_upper_q_strong, v_out_bin_stdev_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff<-50], vel_out[BIC_diff<-50], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_strong, bin_center_strong, v_out_bin_medians_strong, v_out_bin_lower_q_strong, v_out_bin_upper_q_strong, v_out_bin_stdev_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
     elif weighted_average == True:
         logspace_all, bin_center_all, v_out_bin_medians_all, v_out_bin_lower_q_all, v_out_bin_upper_q_all, v_out_bin_stdev_all = pf.binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
         logspace_physical, bin_center_physical, v_out_bin_medians_physical, v_out_bin_lower_q_physical, v_out_bin_upper_q_physical, v_out_bin_stdev_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], vel_out[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        logspace_strong, bin_center_strong, v_out_bin_medians_strong, v_out_bin_lower_q_strong, v_out_bin_upper_q_strong, v_out_bin_stdev_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff<-50], vel_out[BIC_diff<-50], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        logspace_strong, bin_center_strong, v_out_bin_medians_strong, v_out_bin_lower_q_strong, v_out_bin_upper_q_strong, v_out_bin_stdev_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
     #calculate the r value for the median values
     r_vel_out_med_all, p_value_v_out_all = pf.pearson_correlation(bin_center_all, v_out_bin_medians_all)
@@ -469,7 +473,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     #calculate the r value for all the values
     r_vel_out_all, p_value_v_out_all = pf.pearson_correlation(sig_sfr, vel_out)
     r_vel_out_physical, p_value_v_out_physical = pf.pearson_correlation(sig_sfr[physical_mask], vel_out[physical_mask])
-    r_vel_out_strong, p_value_v_out_strong = pf.pearson_correlation(sig_sfr[BIC_diff<-50], vel_out[BIC_diff<-50])
+    r_vel_out_strong, p_value_v_out_strong = pf.pearson_correlation(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong])
 
     #create vectors to plot the literature trends
     if xlim_vals:
@@ -495,12 +499,18 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     #ax[0].plot(sfr_linspace, fitting_function(sfr_linspace, *popt_vout), 'r-', label='Fit: $v_{out}=%5.0f$ $\Sigma_{SFR}^{%5.2f}$' % tuple(popt_vout))
 
+    #calculate the RMS
+    rms_all = np.sqrt(np.mean(vel_out))
+    rms_physical = np.sqrt(np.mean(vel_out[physical_mask]))
+    rms_strong = np.sqrt(np.mean(vel_out[BIC_diff_strong]))
+
     #print average numbers for the different panels
     print('Number of spaxels in the first panel', vel_out.shape)
     print('All spaxels median v_out:', np.nanmedian(vel_out))
     print('All spaxels standard deviation v_out:', np.nanstd(vel_out))
     print('All spaxels median sigma_sfr:', np.nanmedian(sig_sfr))
     print('All spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr))
+    print('All spaxels RMS:', rms_all)
     print('All spaxels bins lower quartiles:', v_out_bin_lower_q_all)
     print('All spaxels bins upper quartiles:', v_out_bin_upper_q_all)
     print('All spaxels logspace:', logspace_all)
@@ -521,6 +531,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     print('Physical spaxels standard deviation v_out:', np.nanstd(vel_out[physical_mask]))
     print('Physical spaxels median sigma_sfr:', np.nanmedian(sig_sfr[physical_mask]))
     print('Physical spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[physical_mask]))
+    print('Physical spaxels RMS:', rms_physical)
     print('')
     print('Physical spaxels best fit coefficients:', popt_vout_physical)
     print('Physical spaxels best fit errors', np.sqrt(np.diag(pcov_vout_physical)))
@@ -533,6 +544,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     print('Clean spaxels standard deviation v_out:', np.nanstd(vel_out[BIC_diff_strong]))
     print('Clean spaxels median sigma_sfr:', np.nanmedian(sig_sfr[BIC_diff_strong]))
     print('Clean spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[BIC_diff_strong]))
+    print('Clean spaxels RMS:', rms_strong)
     print('')
     print('Clean spaxels best fit coefficients:', popt_vout_strong)
     print('Clean spaxels best fit errors', np.sqrt(np.diag(pcov_vout_strong)))
