@@ -1301,6 +1301,26 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
             no_outflow_error2 = no_outflow_error2.reshape(3, data_shape[0], data_shape[1])
             chi_square2 = chi_square2.reshape(2, data_shape[0], data_shape[1])
 
+        try:
+            statistical_results2 = np.loadtxt(output_folder+galaxy_name+'_stat_results_'+emission_line2+'.txt')
+            #reshape
+            statistical_results2 = statistical_results2.reshape(data_shape[0], data_shape[1])
+
+        except:
+            #because stat_res2 was not created in the original koffee
+            statistical_results2 = np.full_like(statistical_results, np.nan, dtype=np.double)
+            #check which spaxels have better BICs
+            BIC_diff2 = chi_square2[1,:,:]-chi_square[0,:,:]
+            statistical_results2[BIC_diff2<-10] = 1
+            #check which spaxels didn't have high enough S/N
+            statistical_results2[statistical_results==-1] = -1
+            #check which spaxels had S/N>20 but no outflow in OIII
+            statistical_results2[statistical_results==0] = 0
+            #the remaining spaxels with nan values are those that had an outflow
+            #in OIII but don't have one resolved in the second emission line
+            statistical_results2[np.isnan(statistical_results2)] = 0
+
+
     #second emission line files = Hbeta
     if OII_doublet == True:
         outflow_results3 = np.loadtxt(output_folder+galaxy_name+'_outflow_results_OII_doublet.txt')
@@ -1319,10 +1339,10 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
         chi_square3 = chi_square3.reshape(2, data_shape[0], data_shape[1])
 
     if OII_doublet==False and emission_line2:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, chi_square2
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, chi_square2
 
     if OII_doublet==True and emission_line2:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, chi_square2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, chi_square3
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, chi_square2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, chi_square3
 
     else:
         return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square
