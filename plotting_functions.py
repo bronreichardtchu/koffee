@@ -474,7 +474,7 @@ def pearson_correlation(x, y):
     return r, p_value
 
 
-def read_in_create_wcs(fits_file, index=0):
+def read_in_create_wcs(fits_file, index=0, shift=None):
     """
     Reads in the fits file and creates the wcs
 
@@ -486,6 +486,10 @@ def read_in_create_wcs(fits_file, index=0):
     index : int
         the index of the extension to be loaded (default is 0)
 
+    shift : list or None
+        how to alter the header if the wcs is going to be wrong.
+        e.g. ['CRPIX2', 32.0] will change the header value of CRPIX2 to 32.0
+
     Returns
     -------
     fits_data : :obj:'~numpy.ndarray'
@@ -494,12 +498,19 @@ def read_in_create_wcs(fits_file, index=0):
     fits_wcs : astropy WCS object
         the world coordinate system for the fits file
     """
+    #read the data in from fits
     with fits.open(fits_file) as hdu:
         hdu.info()
         fits_data = hdu[index].data
         fits_header = hdu[index].header
-        fits_wcs = WCS(fits_header)
     hdu.close()
+
+    #shift the header
+    if shift:
+        fits_header[shift[0]] = shift[1]
+
+    #create the WCS
+    fits_wcs = WCS(fits_header)
 
     return fits_data, fits_header, fits_wcs
 
