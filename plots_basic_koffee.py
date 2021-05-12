@@ -18,6 +18,7 @@ FUNCTIONS INCLUDED:
     plot_compare_fits
     map_of_outflows
     map_of_outflows2
+    create_map_basic
     sn_cut_plot
     proposal_plot
     plot_sfr_vout
@@ -351,6 +352,30 @@ def map_of_outflows2(outflow_results, statistical_results, lamdas, xx, yy, data,
     plt.ylabel('Arcseconds')
     plt.show()
 
+
+def create_map_basic(results_file):
+    """
+    Maps the results from the fits file
+    """
+    #read in the fits file
+    with fits.open(results_file) as hdu:
+        data = hdu[0].data
+        header = hdu[0].header
+    hdu.close()
+
+    #create the world coordinate system
+    data_wcs = WCS(header)
+
+    #create the figure
+    plt.figure()
+
+    #add a subplot with the projection
+    ax = plt.subplot(projection=data_wcs, slices=('y', 'x'))
+    data_im = ax.imshow(np.log10(data.T), origin='lower', aspect=header['CD2_1']/header['CD1_2'])
+    ax.invert_xaxis()
+    cbar = plt.colorbar(data_im, ax=ax)
+
+    plt.show()
 
 
 def sn_cut_plot(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn):
