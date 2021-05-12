@@ -1033,14 +1033,13 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     -------
     A six panel graph of the mass loading factor and Hbeta flux ratio against
     the SFR surface density
-
     """
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
     sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #calculate the mass loading factor
-    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
 
     #calculate the flux for systematic and flow gaussians
     systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_sfr.calc_flux_from_koffee(hbeta_outflow_results, hbeta_outflow_error, statistical_results, z, outflow=True)
@@ -1049,7 +1048,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
 
     #create the flow mask
-    flow_mask = (statistical_results>0) & (np.isnan(hbeta_outflow_results[3,:,:])==False)
+    flow_mask = (statistical_results>0) #& (np.isnan(hbeta_outflow_results[3,:,:])==False)
 
 
     #flatten all the arrays and get rid of extra spaxels
@@ -1110,23 +1109,23 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_log(sig_sfr, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_log(sig_sfr, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
-        bin_center_all, flux_bin_medians_all, flux_bin_lower_q_all, flux_bin_upper_q_all = pf.binned_median_quantile_log(sig_sfr, flux_ratio, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, flux_bin_medians_physical, flux_bin_lower_q_physical, flux_bin_upper_q_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], flux_ratio[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, flux_bin_medians_strong, flux_bin_lower_q_strong, flux_bin_upper_q_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], flux_ratio[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_all, bin_center_all, flux_bin_medians_all, flux_bin_lower_q_all, flux_bin_upper_q_all, flux_bin_stdev_all = pf.binned_median_quantile_log(sig_sfr, flux_ratio, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_physical, bin_center_physical, flux_bin_medians_physical, flux_bin_lower_q_physical, flux_bin_upper_q_physical, flux_bin_stdev_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], flux_ratio[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_strong, bin_center_strong, flux_bin_medians_strong, flux_bin_lower_q_strong, flux_bin_upper_q_strong, flux_bin_stdev_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], flux_ratio[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
 
     elif weighted_average == True:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_log(sig_sfr, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        logspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_log(sig_sfr, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        logspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        logspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
-        bin_center_all, flux_bin_medians_all, flux_bin_lower_q_all, flux_bin_upper_q_all = pf.binned_median_quantile_log(sig_sfr, flux_ratio, num_bins=num_bins, weights=[flux_error], min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, flux_bin_medians_physical, flux_bin_lower_q_physical, flux_bin_upper_q_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], flux_ratio[physical_mask], num_bins=num_bins, weights=[flux_error], min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, flux_bin_medians_strong, flux_bin_lower_q_strong, flux_bin_upper_q_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], flux_ratio[BIC_diff_strong], num_bins=num_bins, weights=[flux_error], min_bin=min_bin, max_bin=max_bin)
+        logspace_all, bin_center_all, flux_bin_medians_all, flux_bin_lower_q_all, flux_bin_upper_q_all, flux_bin_stdev_all = pf.binned_median_quantile_log(sig_sfr, flux_ratio, num_bins=num_bins, weights=[flux_error], min_bin=min_bin, max_bin=max_bin)
+        logspace_physical, bin_center_physical, flux_bin_medians_physical, flux_bin_lower_q_physical, flux_bin_upper_q_physical, flux_bin_stdev_physical = pf.binned_median_quantile_log(sig_sfr[physical_mask], flux_ratio[physical_mask], num_bins=num_bins, weights=[flux_error], min_bin=min_bin, max_bin=max_bin)
+        logspace_strong, bin_center_strong, flux_bin_medians_strong, flux_bin_lower_q_strong, flux_bin_upper_q_strong, flux_bin_stdev_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], flux_ratio[BIC_diff_strong], num_bins=num_bins, weights=[flux_error], min_bin=min_bin, max_bin=max_bin)
 
 
     #calculate the r value for the median values
@@ -1145,19 +1144,38 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     r_flux_med_strong, p_value_flux_strong = pf.pearson_correlation(bin_center_strong, flux_bin_medians_strong)
 
     #calculate the r value for all the values
-    r_flux_all, p_value_flux_all = pf.pearson_correlation(sig_sfr, flux_ratio)
-    r_flux_physical, p_value_flux_physical = pf.pearson_correlation(sig_sfr[physical_mask], flux_ratio[physical_mask])
-    r_flux_strong, p_value_flux_strong = pf.pearson_correlation(sig_sfr[BIC_diff_strong], flux_ratio[BIC_diff_strong])
+    r_flux_all, p_value_flux_all = pf.pearson_correlation(sig_sfr[~np.isnan(flux_ratio)], flux_ratio[~np.isnan(flux_ratio)])
+    r_flux_physical, p_value_flux_physical = pf.pearson_correlation(sig_sfr[~np.isnan(flux_ratio) & physical_mask], flux_ratio[~np.isnan(flux_ratio) & physical_mask])
+    r_flux_strong, p_value_flux_strong = pf.pearson_correlation(sig_sfr[~np.isnan(flux_ratio) & BIC_diff_strong], flux_ratio[~np.isnan(flux_ratio) & BIC_diff_strong])
 
 
     #calculate Kim et al. trend
-    sfr_surface_density_kim, mlf_Kim = pf.kim_et_al_2020(sig_sfr.min(), sig_sfr.max(), scale_factor=0.06)#(10**mlf_bin_medians_all[0])/(bin_center_all[0]**-0.44))#0.06)
+    if xlim_vals:
+        sfr_surface_density_kim, mlf_Kim = pf.kim_et_al_2020(xlim_vals[0], xlim_vals[1], scale_factor=(10**mlf_bin_medians_all[0])/(bin_center_all[0]**-0.44))#0.06)
+    else:
+        sfr_surface_density_kim, mlf_Kim = pf.kim_et_al_2020(sig_sfr.min(), sig_sfr.max(), scale_factor=(10**mlf_bin_medians_all[0])/(bin_center_all[0]**-0.44))#0.06)
+
+
+    #fit our own trends
+    if plot_data_fits == True:
+        popt_mlf_all_medians, pcov_mlf_all_medians = curve_fit(pf.fitting_function, bin_center_all, 10**mlf_bin_medians_all)
+        popt_mlf_physical_medians, pcov_mlf_physical_medians = curve_fit(pf.fitting_function, bin_center_physical, 10**mlf_bin_medians_physical)
+        popt_mlf_strong_medians, pcov_mlf_strong_medians = curve_fit(pf.fitting_function, bin_center_strong, 10**mlf_bin_medians_strong)
+
+        popt_mlf_all, pcov_mlf_all = curve_fit(pf.fitting_function, sig_sfr[~np.isnan(mlf)], 10**mlf[~np.isnan(mlf)])
+        popt_mlf_physical, pcov_mlf_physical = curve_fit(pf.fitting_function, sig_sfr[~np.isnan(mlf) & physical_mask], 10**mlf[~np.isnan(mlf) & physical_mask])
+        popt_mlf_strong, pcov_mlf_strong = curve_fit(pf.fitting_function, sig_sfr[~np.isnan(mlf) & BIC_diff_strong], 10**mlf[~np.isnan(mlf) & BIC_diff_strong])
+
+        sfr_linspace = np.linspace(sig_sfr.min(), sig_sfr.max()+4, num=1000)
+
+
 
 
     #print average numbers for the different panels
     print('Number of spaxels in the first panel', mlf.shape)
-    print('All spaxels median mlf:', np.nanmedian(mlf))
-    print('All spaxels standard deviation mlf:', np.nanstd(mlf))
+    print('All spaxels median mlf:', np.nanmedian(10**mlf))
+    print('All spaxels standard deviation mlf:', np.nanstd(10**mlf))
+    print('All spaxels rms mlf:', np.sqrt(np.nanmean(10**mlf)))
     print('')
 
     print('All spaxels median flux_ratio:', np.nanmedian(flux_ratio))
@@ -1171,8 +1189,9 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     print('Number of spaxels in the middle panel:', mlf[physical_mask].shape)
     print('')
 
-    print('Physical spaxels median mlf:', np.nanmedian(mlf[physical_mask]))
-    print('Physical spaxels standard deviation mlf:', np.nanstd(mlf[physical_mask]))
+    print('Physical spaxels median mlf:', np.nanmedian(10**mlf[physical_mask]))
+    print('Physical spaxels standard deviation mlf:', np.nanstd(10**mlf[physical_mask]))
+    print('Physical spaxels rms mlf:', np.sqrt(np.nanmean(10**mlf[physical_mask])))
     print('')
 
     print('Physical spaxels median flux_ratio:', np.nanmedian(flux_ratio[physical_mask]))
@@ -1182,8 +1201,9 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     print('Number of spaxels with strong BIC differences:', mlf[BIC_diff_strong].shape)
     print('')
 
-    print('Clean spaxels median mlf:', np.nanmedian(mlf[BIC_diff_strong]))
-    print('Clean spaxels standard deviation mlf:', np.nanstd(mlf[BIC_diff_strong]))
+    print('Clean spaxels median mlf:', np.nanmedian(10**mlf[BIC_diff_strong]))
+    print('Clean spaxels standard deviation mlf:', np.nanstd(10**mlf[BIC_diff_strong]))
+    print('Clean spaxels rms mlf:', np.sqrt(np.nanmean(10**mlf[BIC_diff_strong])))
     print('')
 
     print('Clean spaxels median flux_ratio:', np.nanmedian(flux_ratio[BIC_diff_strong]))
@@ -1194,111 +1214,174 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     #plot it
     #-------
     plt.rcParams.update(pf.get_rc_params())
-    fig, ax = plt.subplots(nrows=2, ncols=3, sharex=True, sharey='row', figsize=(10,7), constrained_layout=True)
+    fig, ax = plt.subplots(nrows=2, ncols=3, sharex=True, sharey=True, figsize=(10,7), constrained_layout=True)
 
     #get colours from cmasher
     colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
 
     #plot all points
-    #ax[0].errorbar(sig_sfr, mlf, xerr=sig_sfr_err, yerr=[mlf_err_min, mlf_err_max], fmt='o', ms=3, color=colours[0], alpha=0.6, label='All KOFFEE fits; R={:.2f}'.format(r_mlf_all))
-    ax[1,0].fill_between(bin_center_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, color=colours[0], alpha=0.3)
-    ax[1,0].scatter(sig_sfr, mlf, marker='o', s=10, label='All KOFFEE fits; R={:.2f}'.format(r_mlf_all), color=colours[0], alpha=0.8)
-    ax[1,0].plot(bin_center_all, mlf_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
+    #if plot_medians == True:
+        #ax[1,0].fill_between(bin_center_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, color=colours[0], alpha=0.3)
+
+    ax[1,0].scatter(sig_sfr[vel_disp>51], mlf[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_mlf_all), color=colours[0], alpha=0.7)
+    ax[1,0].scatter(sig_sfr[vel_disp<=51], mlf[vel_disp<=51], marker='v', s=30, color=colours[0], alpha=0.7)
+
+    if plot_medians == True:
+        #ax[1,0].plot(bin_center_all, mlf_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
+        #plot the medians as error bars
+        ax[1,0].errorbar(bin_center_all, mlf_bin_medians_all, yerr=mlf_bin_stdev_all, capsize=3.0, lw=3, ms=5, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
+
 
     ax[1,0].plot(sfr_surface_density_kim, np.log10(mlf_Kim), ':k', label='Kim+20, $\eta \propto \Sigma_{SFR}^{-0.44}$')
 
-    ax[1,0].errorbar(0.03, np.nanmin(mlf)+1.5, xerr=np.nanmedian(sig_sfr_err), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
+    if plot_data_fits == True:
+        #fit for all
+        ax[1,0].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_all)), 'r-', label='Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_mlf_all[0], np.sqrt(np.diag(pcov_mlf_all))[0], popt_mlf_all[1], np.sqrt(np.diag(pcov_mlf_all))[1]))
+        #fit for medians
+        ax[1,0].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_all_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_all_medians[0], np.sqrt(np.diag(pcov_mlf_all_medians))[0], popt_mlf_all_medians[1], np.sqrt(np.diag(pcov_mlf_all_medians))[1]))
 
-    ax[1,0].set_ylim(np.nanmin(mlf)-0.1, np.nanmax(mlf)+0.5)
+    ax[1,0].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
+
+
+    #ax[1,0].set_ylim(np.nanmin(mlf)-0.1, np.nanmax(mlf)+0.5)
     ax[1,0].set_xscale('log')
-    ax[1,0].set_xlim(np.nanmin(sig_sfr)-0.001, np.nanmax(sig_sfr+1))
-    lgnd = ax[1,0].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
-    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    if xlim_vals:
+        ax[1,0].set_xlim(xlim_vals[0], xlim_vals[1])
+    else:
+        ax[1,0].set_xlim(np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr+2.0))
+        #save the xlim values for the comparison figure
+        xlim_vals = [np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr)+2.0]
+
+    lgnd = ax[1,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
+    #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1,0].set_ylabel(r'Log($\eta$)')
     ax[1,0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
 
+
     #plot points within 90% radius
-    ax[1,1].fill_between(bin_center_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, color=colours[1], alpha=0.3)
-    ax[1,1].scatter(sig_sfr[radius>6.1], mlf[radius>6.1], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
-    ax[1,1].scatter(sig_sfr[vel_disp<=51], mlf[vel_disp<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
-    ax[1,1].scatter(sig_sfr[physical_mask], mlf[physical_mask], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_mlf_physical), color=colours[1], alpha=0.8)
-    ax[1,1].plot(bin_center_physical, mlf_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_physical), color=colours[1])
+    #if plot_medians == True:
+        #ax[1,1].fill_between(bin_center_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, color=colours[1], alpha=0.3)
+
+    #ax[1,1].scatter(sig_sfr[radius>6.1], mlf[radius>6.1], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
+    #ax[1,1].scatter(sig_sfr[vel_disp<=51], mlf[vel_disp<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
+    ax[1,1].scatter(sig_sfr[physical_mask], mlf[physical_mask], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_mlf_physical), color=colours[1], alpha=0.7)
+
+    if plot_medians == True:
+        #ax[1,1].plot(bin_center_physical, mlf_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_physical), color=colours[1])
+        ax[1,1].errorbar(bin_center_physical, mlf_bin_medians_physical, yerr=mlf_bin_stdev_physical, lw=3, capsize=3.0, ms=5, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_physical), color=colours[1])
 
     ax[1,1].plot(sfr_surface_density_kim, np.log10(mlf_Kim), ':k')
 
-    ax[1,1].errorbar(0.03, np.nanmin(mlf)+1.5, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
+    if plot_data_fits == True:
+        #fit for all
+        ax[1,1].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_physical)), 'r-', label='Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_mlf_physical[0], np.sqrt(np.diag(pcov_mlf_physical))[0], popt_mlf_physical[1], np.sqrt(np.diag(pcov_mlf_physical))[1]))
+        #fit for medians
+        ax[1,1].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_physical_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_physical_medians[0], np.sqrt(np.diag(pcov_mlf_physical_medians))[0], popt_mlf_physical_medians[1], np.sqrt(np.diag(pcov_mlf_physical_medians))[1]))
+
+    ax[1,1].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
 
     #ax[0,1].set_xscale('log')
-    lgnd = ax[1,1].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
-    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    lgnd = ax[1,1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
+    #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1,1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
 
+
     #plot points with strong BIC values
-    ax[1,2].fill_between(bin_center_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, color=colours[2], alpha=0.3)
-    ax[1,2].scatter(sig_sfr[~BIC_diff_strong], mlf[~BIC_diff_strong], marker='o', s=10, label='All KOFFEE fits', color=colours[0], alpha=0.3, facecolors='none')
-    ax[1,2].scatter(sig_sfr[BIC_diff_strong], mlf[BIC_diff_strong], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_mlf_strong), color=colours[2], alpha=1.0)
-    ax[1,2].plot(bin_center_strong, mlf_bin_medians_strong, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_strong), color=colours[2])
+    #if plot_medians == True:
+        #ax[1,2].fill_between(bin_center_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, color=colours[2], alpha=0.3)
+
+    #ax[1,2].scatter(sig_sfr[~BIC_diff_strong], mlf[~BIC_diff_strong], marker='o', s=10, label='All KOFFEE fits', color=colours[0], alpha=0.3, facecolors='none')
+    ax[1,2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], mlf[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_mlf_strong), color=colours[2], alpha=0.8)
+    ax[1,2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], mlf[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=30, color=colours[2], alpha=0.8)
+
+    if plot_medians == True:
+        #ax[1,2].plot(bin_center_strong, mlf_bin_medians_strong, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_strong), color=colours[2])
+        ax[1,2].errorbar(bin_center_strong, mlf_bin_medians_strong, yerr=mlf_bin_stdev_strong, ms=5, lw=3, capsize=3.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_strong), color=colours[2])
 
     ax[1,2].plot(sfr_surface_density_kim, np.log10(mlf_Kim), ':k')
 
-    ax[1,2].errorbar(0.03, np.nanmin(mlf)+1.5, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
+    if plot_data_fits == True:
+        #fit for all
+        ax[1,2].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_strong)), 'r-', label='Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_mlf_strong[0], np.sqrt(np.diag(pcov_mlf_strong))[0], popt_mlf_strong[1], np.sqrt(np.diag(pcov_mlf_strong))[1]))
+        #fit for medians
+        ax[1,2].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_strong_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_strong_medians[0], np.sqrt(np.diag(pcov_mlf_strong_medians))[0], popt_mlf_strong_medians[1], np.sqrt(np.diag(pcov_mlf_strong_medians))[1]))
+
+    ax[1,2].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
 
     #ax[0,1].set_xscale('log')
-    lgnd = ax[1,2].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
-    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    lgnd = ax[1,2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
+    #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1,2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
 
 
 
     #plot all points
-    ax[0,0].fill_between(bin_center_all, flux_bin_lower_q_all, flux_bin_upper_q_all, color=colours[0], alpha=0.3)
-    ax[0,0].scatter(sig_sfr, flux_ratio, marker='o', s=10, label='All KOFFEE fits; R={:.2f}'.format(r_flux_all), color=colours[0], alpha=0.8)
-    ax[0,0].plot(bin_center_all, flux_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_flux_med_all), color=colours[0])
+    #if plot_medians == True:
+        #ax[0,0].fill_between(bin_center_all, flux_bin_lower_q_all, flux_bin_upper_q_all, color=colours[0], alpha=0.3)
 
-    ax[0,0].errorbar(0.03, np.nanmin(flux_ratio)+1.0, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(flux_error), c='k')
+    ax[0,0].scatter(sig_sfr[vel_disp>51], flux_ratio[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_flux_all), color=colours[0], alpha=0.7)
+    ax[0,0].scatter(sig_sfr[vel_disp<=51], flux_ratio[vel_disp<=51], marker='v', s=30, color=colours[0], alpha=0.7)
+
+    if plot_medians == True:
+        #ax[0,0].plot(bin_center_all, flux_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_flux_med_all), color=colours[0])
+        ax[0,0].errorbar(bin_center_all, flux_bin_medians_all, yerr=flux_bin_stdev_all, ms=5, lw=3, capsize=3.0, label='Median all KOFFEE fits; R={:.2f}'.format(r_flux_med_all), color=colours[0])
+
+    ax[0,0].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(flux_error), c='k')
 
     ax[0,0].set_ylim((np.nanmin(flux_ratio)+np.nanmedian(flux_error)-0.1), np.nanmax(flux_ratio)+0.6)
-    lgnd = ax[0,0].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5, edgecolor=None)
-    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    lgnd = ax[0,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
+    #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,0].set_ylabel(r'H$\beta$ Log(F$_{broad}$/F$_{narrow}$)')
     ax[0,0].set_title('S/N > 20 and $\delta_{BIC}$<-10')
 
 
 
     #plot points within 90% radius
-    ax[0,1].fill_between(bin_center_physical, flux_bin_lower_q_physical, flux_bin_upper_q_physical, color=colours[1], alpha=0.3)
-    ax[0,1].scatter(sig_sfr[radius>6.1], flux_ratio[radius>6.1], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
-    ax[0,1].scatter(sig_sfr[vel_disp<=51], flux_ratio[vel_disp<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
-    ax[0,1].scatter(sig_sfr[physical_mask], flux_ratio[physical_mask], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_flux_physical), color=colours[1], alpha=0.8)
-    ax[0,1].plot(bin_center_physical, flux_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_physical), color=colours[1])
+    #if plot_medians == True:
+        #ax[0,1].fill_between(bin_center_physical, flux_bin_lower_q_physical, flux_bin_upper_q_physical, color=colours[1], alpha=0.3)
 
-    ax[0,1].errorbar(0.03, np.nanmin(flux_ratio)+1.0, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(flux_error[physical_mask]), c='k')
+    #ax[0,1].scatter(sig_sfr[radius>6.1], flux_ratio[radius>6.1], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
+    #ax[0,1].scatter(sig_sfr[vel_disp<=51], flux_ratio[vel_disp<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
+    ax[0,1].scatter(sig_sfr[physical_mask], flux_ratio[physical_mask], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_flux_physical), color=colours[1], alpha=0.7)
 
-    lgnd = ax[0,1].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5, edgecolor=None)
-    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    if plot_medians == True:
+        #ax[0,1].plot(bin_center_physical, flux_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_physical), color=colours[1])
+        ax[0,1].errorbar(bin_center_physical, flux_bin_medians_physical, yerr=flux_bin_stdev_physical, ms=5, lw=3, capsize=3.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_physical), color=colours[1])
+
+    ax[0,1].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(flux_error[physical_mask]), c='k')
+
+    lgnd = ax[0,1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
+    #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,1].set_title(r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
 
 
     #plot points with strong BIC values
-    ax[0,2].fill_between(bin_center_strong, flux_bin_lower_q_strong, flux_bin_upper_q_strong, color=colours[2], alpha=0.3)
-    ax[0,2].scatter(sig_sfr[~BIC_diff_strong], flux_ratio[~BIC_diff_strong], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
-    ax[0,2].scatter(sig_sfr[BIC_diff_strong], flux_ratio[BIC_diff_strong], marker='o', s=10, label='Selected KOFFEE fits; R={:.2f}'.format(r_flux_strong), color=colours[2], alpha=1.0)
-    ax[0,2].plot(bin_center_strong, flux_bin_medians_strong, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_strong), color=colours[2])
+    #if plot_medians == True:
+        #ax[0,2].fill_between(bin_center_strong, flux_bin_lower_q_strong, flux_bin_upper_q_strong, color=colours[2], alpha=0.3)
 
-    ax[0,2].errorbar(0.03, np.nanmin(flux_ratio)+1.0, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(flux_error[BIC_diff_strong]), c='k')
+    #ax[0,2].scatter(sig_sfr[~BIC_diff_strong], flux_ratio[~BIC_diff_strong], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
+    ax[0,2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], flux_ratio[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_flux_strong), color=colours[2], alpha=0.7)
+    ax[0,2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], flux_ratio[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=30, color=colours[2], alpha=0.7)
 
-    lgnd = ax[0,2].legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5, edgecolor=None)
-    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    if plot_medians == True:
+        #ax[0,2].plot(bin_center_strong, flux_bin_medians_strong, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_strong), color=colours[2])
+        ax[0,2].errorbar(bin_center_strong, flux_bin_medians_strong, yerr=flux_bin_stdev_strong, ms=5, lw=3, capsize=5.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_strong), color=colours[2])
+
+    ax[0,2].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(flux_error[BIC_diff_strong]), c='k')
+
+    lgnd = ax[0,2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
+    #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,2].set_title('strongly likely BIC $\delta_{BIC}$<-50')
 
     plt.subplots_adjust(left=0.06, right=0.99, top=0.96, bottom=0.07, wspace=0.04, hspace=0.04)
 
     plt.show()
 
+    return xlim_vals
 
 #Figure 5
 def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_velocity_fits_file, flux_ratio_fits_file, flux_broad_fits_file, flux_narrow_fits_file, m_out_fits_file, mlf_fits_file, xx_flat, yy_flat, radius, statistical_results):#, header, z, OIII_outflow_results, OIII_outflow_error, statistical_results):
