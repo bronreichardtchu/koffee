@@ -1924,7 +1924,7 @@ def plot_sfr_vout_data_model_comparison(OIII_outflow_results, OIII_outflow_error
     for i in np.arange(vel_out.shape[0]):
         #calculate the expected velocity at each sigma_sfr
         sigma_sfr_chen, vel_out_expected_chen = pf.chen_et_al_2010(sig_sfr[i], sig_sfr[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**0.1))
-        sigma_sfr_murray, vel_out_expected_murray = pf.chen_et_al_2010(sig_sfr[i], sig_sfr[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
+        sigma_sfr_murray, vel_out_expected_murray = pf.murray_et_al_2011(sig_sfr[i], sig_sfr[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
 
         vel_out_expected_chen = vel_out_expected_chen[0]
         vel_out_expected_murray = vel_out_expected_murray[0]
@@ -1951,21 +1951,21 @@ def plot_sfr_vout_data_model_comparison(OIII_outflow_results, OIII_outflow_error
     for i in np.arange(v_out_bin_medians_all.shape[0]):
         #calculate the expected velocity at each sigma_sfr
         sigma_sfr_chen, vel_out_expected_chen_all = pf.chen_et_al_2010(bin_center_all[i], bin_center_all[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**0.1))
-        sigma_sfr_murray, vel_out_expected_murray_all = pf.chen_et_al_2010(bin_center_all[i], bin_center_all[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
+        sigma_sfr_murray, vel_out_expected_murray_all = pf.murray_et_al_2011(bin_center_all[i], bin_center_all[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
 
         vel_out_expected_chen_all = vel_out_expected_chen_all[0]
         vel_out_expected_murray_all = vel_out_expected_murray_all[0]
 
         #calculate the expected velocity at each sigma_sfr
         sigma_sfr_chen, vel_out_expected_chen_physical = pf.chen_et_al_2010(bin_center_physical[i], bin_center_physical[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**0.1))
-        sigma_sfr_murray, vel_out_expected_murray_physical = pf.chen_et_al_2010(bin_center_physical[i], bin_center_physical[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
+        sigma_sfr_murray, vel_out_expected_murray_physical = pf.murray_et_al_2011(bin_center_physical[i], bin_center_physical[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
 
         vel_out_expected_chen_physical = vel_out_expected_chen_physical[0]
         vel_out_expected_murray_physical = vel_out_expected_murray_physical[0]
 
         #calculate the expected velocity at each sigma_sfr
         sigma_sfr_chen, vel_out_expected_chen_strong = pf.chen_et_al_2010(bin_center_strong[i], bin_center_strong[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**0.1))
-        sigma_sfr_murray, vel_out_expected_murray_strong = pf.chen_et_al_2010(bin_center_strong[i], bin_center_strong[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
+        sigma_sfr_murray, vel_out_expected_murray_strong = pf.murray_et_al_2011(bin_center_strong[i], bin_center_strong[i], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
 
         vel_out_expected_chen_strong = vel_out_expected_chen_strong[0]
         vel_out_expected_murray_strong = vel_out_expected_murray_strong[0]
