@@ -1383,9 +1383,11 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     return xlim_vals
 
-#Figure 5
-def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_velocity_fits_file, flux_ratio_fits_file, flux_broad_fits_file, flux_narrow_fits_file, m_out_fits_file, mlf_fits_file, xx_flat, yy_flat, radius, statistical_results):#, header, z, OIII_outflow_results, OIII_outflow_error, statistical_results):
-    """
+
+
+#Figure 7
+def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_velocity_fits_file, flux_ratio_fits_file, flux_broad_fits_file, flux_narrow_fits_file, m_out_fits_file, mlf_fits_file, radius):
+    """"
     Maps the results for IRAS08 and some flux distributions from fits files
 
     Parameters
@@ -1423,18 +1425,8 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
         location of the fits file with the mass loading factor measured with KOFFEE
         (must be same shape as statistical_results)
 
-    xx_flat : :obj:'~numpy.ndarray'
-        x-coordinates of the data cube used in KOFFEE
-
-    yy_flat : :obj:'~numpy.ndarray'
-        y-coordinates of the data cube used in KOFFEE (must be same shape as xx_flat)
-
     radius : :obj:'~numpy.ndarray'
-        array of galaxy radius values (must be same shape as statistical_results)
-
-    statistical_results : :obj:'~numpy.ndarray'
-        array of statistical results from KOFFEE
-
+        array of galaxy radius values
 
     Returns
     -------
@@ -1442,15 +1434,16 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     continuum areas, and maps of the results from KOFFEE
     """
     #read in fits files
+    #need to shift the IRAS08 KCWI data to match the WCS with the HST data
     halpha_data, halpha_header, halpha_wcs = pf.read_in_create_wcs(halpha_fits_file)
     fuv_data, fuv_header, fuv_wcs = pf.read_in_create_wcs(fuv_fits_file)
     f550_data, f550_header, f550_wcs = pf.read_in_create_wcs(f550m_fits_file, index=1)
-    vel_out, vel_out_header, vel_out_wcs = pf.read_in_create_wcs(outflow_velocity_fits_file)
-    flux_ratio, flux_ratio_header, flux_ratio_wcs = pf.read_in_create_wcs(flux_ratio_fits_file)
-    flux_broad, flux_broad_header, flux_broad_wcs = pf.read_in_create_wcs(flux_broad_fits_file)
-    flux_narrow, flux_narrow_header, flux_narrow_wcs = pf.read_in_create_wcs(flux_narrow_fits_file)
-    mlf, mlf_header, mlf_wcs = pf.read_in_create_wcs(mlf_fits_file)
-    m_out, m_out_header, m_out_wcs = pf.read_in_create_wcs(m_out_fits_file)
+    vel_out, vel_out_header, vel_out_wcs = pf.read_in_create_wcs(outflow_velocity_fits_file, shift=['CRPIX2', 32.0])
+    flux_ratio, flux_ratio_header, flux_ratio_wcs = pf.read_in_create_wcs(flux_ratio_fits_file, shift=['CRPIX2', 32.0])
+    flux_broad, flux_broad_header, flux_broad_wcs = pf.read_in_create_wcs(flux_broad_fits_file, shift=['CRPIX2', 32.0])
+    flux_narrow, flux_narrow_header, flux_narrow_wcs = pf.read_in_create_wcs(flux_narrow_fits_file, shift=['CRPIX2', 32.0])
+    mlf, mlf_header, mlf_wcs = pf.read_in_create_wcs(mlf_fits_file, shift=['CRPIX2', 32.0])
+    m_out, m_out_header, m_out_wcs = pf.read_in_create_wcs(m_out_fits_file, shift=['CRPIX2', 32.0])
 
     #take the log of the velocity and the flux ratio
     vel_out = np.log10(vel_out)
@@ -1461,12 +1454,9 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     m_out = np.log10(m_out)
 
     #creating the x and y limits
-    #xlim = [0, 23]
-    #ylim = [0, 66]
     xlim = [4, 16]
     ylim = [2, 58]
-    low_lim_rad = [xx_flat.reshape(67,24).transpose()[xlim[0], ylim[0]], yy_flat.reshape(67, 24).transpose()[xlim[0], ylim[0]]]
-    high_lim_rad = [xx_flat.reshape(67,24).transpose()[xlim[1], ylim[1]], yy_flat.reshape(67, 24).transpose()[xlim[1], ylim[1]]]
+
     kcwi_low_lim = vel_out_wcs.all_pix2world(xlim[0], ylim[0], 0)
     kcwi_high_lim = vel_out_wcs.all_pix2world(xlim[1], ylim[1], 0)
     print('Limits')
@@ -1566,23 +1556,8 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
 
 
-
-
-    #create outflow mask
-    flow_mask = (statistical_results>0)
-
-    xx_flat_out = xx_flat[flow_mask.reshape(-1)]
-    yy_flat_out = yy_flat[flow_mask.reshape(-1)]
-    flux_ratio = flux_ratio[flow_mask]
-    vel_out = vel_out[flow_mask]
-    flux_broad = flux_broad[flow_mask]
-    flux_narrow = flux_narrow[flow_mask]
-    mlf = mlf[flow_mask]
-    m_out = m_out[flow_mask]
-
     #calculate the beginning and end of 5 arcsec
     halpha_10arcsec_pixel_length = abs(5/(halpha_header['CD1_1']*60*60))
-    #koffee_10arcsec_pixel_length = abs(10/(xx_flat.reshape(67,24)[1,0]-xx_flat.reshape(67,24)[0,0]))
 
     halpha_start_10_arcsec_xpixel = kcwi_high_lim_halpha[0]+20
     halpha_start_10_arcsec_ypixel = kcwi_low_lim_halpha[1]+20
@@ -1596,13 +1571,6 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
     f550_start_10_arcsec_pixel = f550_wcs.all_world2pix(halpha_start_10_arcsec_world[0], halpha_start_10_arcsec_world[1], 0)
     f550_end_10_arcsec_pixel = f550_wcs.all_world2pix(halpha_end_10_arcsec_world[0], halpha_end_10_arcsec_world[1], 0)
-
-
-    koffee_start_10_arcsec_pixel = vel_out_wcs.all_world2pix(halpha_start_10_arcsec_world[0], halpha_start_10_arcsec_world[1], 0)
-    koffee_end_10_arcsec_pixel = vel_out_wcs.all_world2pix(halpha_end_10_arcsec_world[0], halpha_end_10_arcsec_world[1], 0)
-    koffee_start_10_arcsec_rad = [xx_flat.reshape(67, 24)[int(koffee_start_10_arcsec_pixel[1]), int(koffee_start_10_arcsec_pixel[0])], yy_flat.reshape(67, 24)[int(koffee_start_10_arcsec_pixel[1]), int(koffee_start_10_arcsec_pixel[0])]]
-    koffee_end_10_arcsec_rad = [xx_flat.reshape(67, 24)[int(koffee_end_10_arcsec_pixel[1]), int(koffee_end_10_arcsec_pixel[0])], yy_flat.reshape(67, 24)[int(koffee_end_10_arcsec_pixel[1]), int(koffee_end_10_arcsec_pixel[0])]]
-
 
 
 
@@ -1622,7 +1590,8 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     #ax1.scatter(out_vel_peak_halpha_pixel[0], out_vel_peak_halpha_pixel[1], c='grey', marker='x', s=20)
     #ax1.scatter(out_vel_local_max_halpha_pixel[0], out_vel_local_max_halpha_pixel[1], c='grey', marker='o', s=20)
     #ax1.scatter(mlf_peak_halpha_pixel[0], mlf_peak_halpha_pixel[1], c='white', marker='x', s=20)
-    #ax1.arrow(m_out_peak_halpha_pixel[0]-55, m_out_peak_halpha_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
+    ax1.arrow(m_out_peak_halpha_pixel[0]-55, m_out_peak_halpha_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
+    #ax1.arrow(m_out_peak_world[0]-5, m_out_peak_world[1]-5, 5, 5, width=5, color='white', transform=ax1.get_transform('world'))
     lon1 = ax1.coords[0]
     lat1 = ax1.coords[1]
     lon1.set_ticks_visible(False)
@@ -1639,34 +1608,26 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     #cbar = plt.colorbar(halpha_map, ax=ax1, shrink=0.8)
 
     ax3 = plt.subplot(336, projection=flux_ratio_wcs, slices=('y', 'x'))
-    #flux_ratio_spax = bdpk.display_pixels(xx_flat.reshape(67, 24).transpose(), yy_flat.reshape(67, 24).transpose(), flux_ratio.transpose(), axes=ax3, cmap=cmr.gem, vmin=-1.5, vmax=0.0, angle=360, snap=True)
-    #OIII limits
-    #flux_ratio_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, flux_ratio, axes=ax3, cmap=cmr.gem, vmin=-1.5, vmax=0.0, angle=360, snap=True)
-    #Hbeta limits
-    flux_ratio_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, flux_ratio, axes=ax3, cmap=cmr.gem, vmin=-1.5, vmax=0.1, angle=360, snap=True)
+    flux_ratio_spax = ax3.imshow(flux_ratio.T, origin='lower', aspect=flux_ratio_header['CD2_1']/flux_ratio_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=0.1)
     #ax3.hlines(ymin+0.75, xmin+4, xmin+4+koffee_10arcsec_pixel_length, colors='black')
     #ax3.hlines(koffee_start_10_arcsec_pixel[1], koffee_start_10_arcsec_pixel[0], koffee_end_10_arcsec_pixel[0], colors='black')
     #ax3.text(low_lim_rad[0]-5, high_lim_rad[1]-5, '[OIII]', c='black')
     ax3.grid(False)
-    #ax3.get_xaxis().set_visible(False)
-    #ax3.get_yaxis().set_visible(False)
+    ax3.coords.grid(False)
     lon3 = ax3.coords[0]
     lat3 = ax3.coords[1]
     lon3.set_ticks_visible(False)
     lon3.set_ticklabel_visible(False)
     lat3.set_ticks_visible(False)
     lat3.set_ticklabel_visible(False)
-    #ax3.set_xlim(np.nanmin(xx_flat), np.nanmax(xx_flat))
-    #ax3.set_ylim(np.nanmin(yy_flat), np.nanmax(yy_flat))
-    ax3.set_xlim(low_lim_rad[0], high_lim_rad[0])
-    ax3.set_ylim(low_lim_rad[1], high_lim_rad[1])
+
+    ax3.set_xlim(ylim[0], ylim[1])
+    ax3.set_ylim(xlim[0], xlim[1])
     ax3.invert_xaxis()
-    #ax3.set_ylabel('Arcseconds')
-    #ax3.set_xlabel('Arcseconds')
-    #ax3.set_title(r'Log([OIII] F$_{broad}$/F$_{narrow}$)')
+
     ax3.set_title(r'Log(H$\beta$ F$_{broad}$/F$_{narrow}$)')
     cbar = plt.colorbar(flux_ratio_spax, ax=ax3, shrink=0.8)
-    #cbar.set_label(r'Log([OIII] F$_{broad}$/F$_{narrow}$)')
+
 
     ax2 = plt.subplot(334, projection=fuv_wcs)
     ax2.set_facecolor('black')
@@ -1680,6 +1641,7 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     #ax2.scatter(out_vel_local_max_fuv_pixel[0], out_vel_local_max_fuv_pixel[1], c='grey', marker='o', s=20)
     #ax2.scatter(mlf_peak_fuv_pixel[0], mlf_peak_fuv_pixel[1], c='white', marker='x', s=20)
     #ax2.arrow(m_out_peak_fuv_pixel[0]-55, m_out_peak_fuv_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
+    #ax2.arrow(m_out_peak_fuv_pixel[0]-50, m_out_peak_fuv_pixel[1]-50, 50, 50, width=5, length_includes_head=True, color='white')
     lon2 = ax2.coords[0]
     lat2 = ax2.coords[1]
     lon2.set_ticks_visible(False)
@@ -1695,10 +1657,12 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
 
     ax4 = plt.subplot(335, projection=vel_out_wcs, slices=('y', 'x'))
-    #outvel_spax = bdpk.display_pixels(xx_flat.reshape(67, 24).transpose(), yy_flat.reshape(67, 24).transpose(), vel_out.transpose(), angle=360, axes=ax4, cmap=cmr.gem, vmin=2.2, vmax=2.6)
-    outvel_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, vel_out, angle=360, axes=ax4, cmap=cmr.gem, vmin=2.2, vmax=2.6)
+    #outvel_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, vel_out, angle=360, axes=ax4, cmap=cmr.gem, vmin=2.2, vmax=2.65)
+    outvel_spax = ax4.imshow(vel_out.T, origin='lower', aspect=vel_out_header['CD2_1']/vel_out_header['CD1_2'], cmap=cmr.gem, vmin=2.2, vmax=2.65)
     #ax4.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
+    #ax4.arrow(out_vel_peak_[0], out_vel_peak_world[1], 5, 5, color='k')
     ax4.grid(False)
+    ax4.coords.grid(False)
     #ax4.get_xaxis().set_visible(False)
     #ax4.get_yaxis().set_visible(False)
     lon4 = ax4.coords[0]
@@ -1707,25 +1671,20 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     lon4.set_ticklabel_visible(False)
     lat4.set_ticks_visible(False)
     lat4.set_ticklabel_visible(False)
-    #ax4.set_ylabel('Arcseconds')
-    #ax4.set_xlabel('Arcseconds')
-    #ax4.set_xlim(np.nanmin(xx_flat), np.nanmax(xx_flat))
-    #ax4.set_ylim(np.nanmin(yy_flat), np.nanmax(yy_flat))
-    ax4.set_xlim(low_lim_rad[0], high_lim_rad[0])
-    ax4.set_ylim(low_lim_rad[1], high_lim_rad[1])
+
+    ax4.set_xlim(ylim[0], ylim[1])
+    ax4.set_ylim(xlim[0], xlim[1])
     ax4.invert_xaxis()
     ax4.set_title(r'Log($v_{out}$)')
     cbar = plt.colorbar(outvel_spax, ax=ax4, shrink=0.8)
     cbar.set_label('Log(km s$^{-1}$)')
 
     ax5 = plt.subplot(333, projection=flux_broad_wcs, slices=('y', 'x'))
-    #outvel_spax = bdpk.display_pixels(xx_flat.reshape(67, 24).transpose(), yy_flat.reshape(67, 24).transpose(), flux_broad.transpose(), angle=360, axes=ax5, cmap=cmr.gem, vmin=2.2, vmax=2.6)
-    #OIII limits
-    #flux_broad_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, flux_broad, angle=360, axes=ax5, cmap=cmr.gem, vmin=-0.5, vmax=2.0)
-    #Hbeta limits
-    flux_broad_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, flux_broad, angle=360, axes=ax5, cmap=cmr.gem, vmin=-1.5, vmax=1.7)
+    #flux_broad_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, flux_broad, angle=360, axes=ax5, cmap=cmr.gem, vmin=-1.5, vmax=1.7)
+    flux_broad_spax = ax5.imshow(flux_broad.T, origin='lower', aspect=flux_broad_header['CD2_1']/flux_broad_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=1.7)
     #ax5.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
     ax5.grid(False)
+    ax5.coords.grid(False)
     #ax5.get_xaxis().set_visible(False)
     #ax5.get_yaxis().set_visible(False)
     lon5 = ax5.coords[0]
@@ -1734,36 +1693,30 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     lon5.set_ticklabel_visible(False)
     lat5.set_ticks_visible(False)
     lat5.set_ticklabel_visible(False)
-    #ax5.set_ylabel('Arcseconds')
-    #ax5.set_xlabel('Arcseconds')
-    #ax5.set_xlim(np.nanmin(xx_flat), np.nanmax(xx_flat))
-    #ax5.set_ylim(np.nanmin(yy_flat), np.nanmax(yy_flat))
-    ax5.set_xlim(low_lim_rad[0], high_lim_rad[0])
-    ax5.set_ylim(low_lim_rad[1], high_lim_rad[1])
+
+    ax5.set_xlim(ylim[0], ylim[1])
+    ax5.set_ylim(xlim[0], xlim[1])
     ax5.invert_xaxis()
-    #ax5.set_title(r'Log([OIII] F$_{broad}$)')
     ax5.set_title(r'Log(H$\beta$ F$_{broad}$)')
     cbar = plt.colorbar(flux_broad_spax, ax=ax5, shrink=0.8)
     #10^-16 erg/s/cm^2
     cbar.set_label(r'Log($10^{-16}$ erg s$^{-1}$ cm$^{-2}$)')
 
     ax6 = plt.subplot(332, projection=flux_narrow_wcs, slices=('y', 'x'))
-    #flux_narrow_spax = bdpk.display_pixels(xx_flat.reshape(67, 24).transpose(), yy_flat.reshape(67, 24).transpose(), flux_narrow.transpose(), angle=360, axes=ax6, cmap=cmr.gem, vmin=2.2, vmax=2.6)
-    #OIII limits
-    #flux_narrow_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, flux_narrow, angle=360, axes=ax6, cmap=cmr.gem, vmin=0, vmax=2.0)
-    #Hbeta limits
-    flux_narrow_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, flux_narrow, angle=360, axes=ax6, cmap=cmr.gem, vmin=-0.0, vmax=2.3)
+    #flux_narrow_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, flux_narrow, angle=360, axes=ax6, cmap=cmr.gem, vmin=-0.0, vmax=2.3)
+    flux_narrow_spax = ax6.imshow(flux_narrow.T, origin='lower', aspect=flux_narrow_header['CD2_1']/flux_narrow_header['CD1_2'], cmap=cmr.gem, vmin=0.0, vmax=2.3)
     ax6.grid(False)
+    ax6.coords.grid(False)
     lon6 = ax6.coords[0]
     lat6 = ax6.coords[1]
     lon6.set_ticks_visible(False)
     lon6.set_ticklabel_visible(False)
     lat6.set_ticks_visible(False)
     lat6.set_ticklabel_visible(False)
-    ax6.set_xlim(low_lim_rad[0], high_lim_rad[0])
-    ax6.set_ylim(low_lim_rad[1], high_lim_rad[1])
+
+    ax6.set_xlim(ylim[0], ylim[1])
+    ax6.set_ylim(xlim[0], xlim[1])
     ax6.invert_xaxis()
-    #ax6.set_title(r'Log([OIII] F$_{narrow}$)')
     ax6.set_title(r'Log(H$\beta$ F$_{narrow}$)')
     cbar = plt.colorbar(flux_narrow_spax, ax=ax6, shrink=0.8)
     cbar.set_label(r'Log($10^{-16}$ erg s$^{-1}$ cm$^{-2}$)')
@@ -1774,7 +1727,7 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     f550_map = ax7.imshow(np.log10(f550_data), origin='lower', cmap=cmr.ember, vmin=-1.5, vmax=0.1)
     #ax2.arrow(mlf_peak_fuv_pixel[0]-55, mlf_peak_fuv_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
     ax7.hlines(f550_start_10_arcsec_pixel[1], f550_start_10_arcsec_pixel[0], f550_end_10_arcsec_pixel[0], colors='white')
-    ax7.text(f550_start_10_arcsec_pixel[0]+5, f550_start_10_arcsec_pixel[1]+10, '5" ', c='white')
+    ax7.text(f550_start_10_arcsec_pixel[0]+5, f550_start_10_arcsec_pixel[1]+10, '2 kpc ', c='white')
     lon7 = ax7.coords[0]
     lat7 = ax7.coords[1]
     lon7.set_ticks_visible(False)
@@ -1789,36 +1742,41 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     cax.axis('off')
 
     ax8 = plt.subplot(338, projection=m_out_wcs, slices=('y', 'x'))
-    #m_out_spax = bdpk.display_pixels(xx_flat.reshape(67, 24).transpose(), yy_flat.reshape(67, 24).transpose(), m_out.transpose(), angle=360, axes=ax8, cmap=cmr.gem, vmin=2.2, vmax=2.6)
-    m_out_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, m_out, angle=360, axes=ax8, cmap=cmr.gem)#, vmin=19.5, vmax=24)
+    #m_out_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, m_out, angle=360, axes=ax8, cmap=cmr.gem, vmin=-3.2, vmax=-0.9)
+    m_out_spax = ax8.imshow(m_out.T, origin='lower', aspect=m_out_header['CD2_1']/m_out_header['CD1_2'], cmap=cmr.gem, vmin=-3.2, vmax=-0.9)
     #ax8.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
+    ax8.arrow(m_out_peak_pixel[0][0]+5, m_out_peak_pixel[0][1]-2, -5, 2, width=0.2, length_includes_head=True, color='k')
     ax8.grid(False)
+    ax8.coords.grid(False)
     lon8 = ax8.coords[0]
     lat8 = ax8.coords[1]
     lon8.set_ticks_visible(False)
     lon8.set_ticklabel_visible(False)
     lat8.set_ticks_visible(False)
     lat8.set_ticklabel_visible(False)
-    ax8.set_xlim(low_lim_rad[0], high_lim_rad[0])
-    ax8.set_ylim(low_lim_rad[1], high_lim_rad[1])
+
+    ax8.set_xlim(ylim[0], ylim[1])
+    ax8.set_ylim(xlim[0], xlim[1])
     ax8.invert_xaxis()
     ax8.set_title(r'Log($\dot{M}_{out}$) ')
     cbar = plt.colorbar(m_out_spax, ax=ax8, shrink=0.8)
     cbar.set_label(r'Log(M$_\odot$ yr$^{-1}$)')
 
     ax9 = plt.subplot(339, projection=mlf_wcs, slices=('y', 'x'))
-    #mlf_spax = bdpk.display_pixels(xx_flat.reshape(67, 24).transpose(), yy_flat.reshape(67, 24).transpose(), mlf.transpose(), angle=360, axes=ax9, cmap=cmr.gem, vmin=2.2, vmax=2.6)
-    mlf_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, mlf, angle=360, axes=ax9, cmap=cmr.gem, vmin=-2.0, vmax=-0.5)
+    #mlf_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, mlf, angle=360, axes=ax9, cmap=cmr.gem, vmin=-1.5, vmax=0.3)
+    mlf_spax = ax9.imshow(mlf.T, origin='lower', aspect=mlf_header['CD2_1']/mlf_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=0.3)
     #ax9.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
     ax9.grid(False)
+    ax9.coords.grid(False)
     lon9 = ax9.coords[0]
     lat9 = ax9.coords[1]
     lon9.set_ticks_visible(False)
     lon9.set_ticklabel_visible(False)
     lat9.set_ticks_visible(False)
     lat9.set_ticklabel_visible(False)
-    ax9.set_xlim(low_lim_rad[0], high_lim_rad[0])
-    ax9.set_ylim(low_lim_rad[1], high_lim_rad[1])
+
+    ax9.set_xlim(ylim[0], ylim[1])
+    ax9.set_ylim(xlim[0], xlim[1])
     ax9.invert_xaxis()
     ax9.set_title(r'Log($\eta$) ')
     cbar = plt.colorbar(mlf_spax, ax=ax9, shrink=0.8)
