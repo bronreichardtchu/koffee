@@ -1787,8 +1787,9 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     plt.show()
 
 
-#Figure 6
-def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, compare='divide'):
+
+#Figure 8
+def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, compare='divide', plot_medians=True):
     """
     Plots the mass loading factor values found with KOFFEE either divided by or
     subtracted from the expected values calculated with the model from
@@ -1849,7 +1850,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
     sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #calculate the mass loading factor
-    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
 
     #calculate the velocity dispersion for the masking
     vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
@@ -1885,12 +1886,14 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
     #also mask out the fits which lie on the lower limit of dispersion < 51km/s
     physical_mask = (radius < 6.1) & (vel_disp>51)
 
+    logspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_log(sig_sfr, mlf, num_bins=5, weights=None, min_bin=None, max_bin=None)
+
     #divide the mass loading factor by the model
     mlf_model = np.full_like(mlf, np.nan, dtype=np.double)
 
     for i in np.arange(mlf.shape[0]):
         #calculate the expected mlf at each sigma_sfr
-        sigma_sfr_model, mlf_expected = pf.kim_et_al_2020(sig_sfr[i], sig_sfr[i], scale_factor=0.06) #scale_factor=(10**mlf_bin_medians_all[0])/(bin_center_all[0]**-0.44))
+        sigma_sfr_model, mlf_expected = pf.kim_et_al_2020(sig_sfr[i], sig_sfr[i], scale_factor = (10**mlf_bin_medians_all[0])/(bin_center_all[0]**-0.44)) #0.06
         sigma_sfr_model = sigma_sfr_model[0]
         mlf_expected = mlf_expected[0]
         #divide the mlf by the expected mlf
@@ -1908,7 +1911,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
     min_bin = None #-0.05
     max_bin = None #0.6
 
-    bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(radius, mlf_model, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+    linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(radius, mlf_model, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
     print(bin_center_all, mlf_bin_medians_all)
 
@@ -1926,6 +1929,15 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
 
     #calculate the r value for all the values
     r_mlf_all, p_value_mlf_all = pf.pearson_correlation(radius[~np.isnan(mlf_model)], mlf_model[~np.isnan(mlf_model)])
+
+
+
+    #calculate the proper distance
+    proper_dist = cosmo.kpc_proper_per_arcmin(z).to(u.kpc/u.arcsec)
+
+    #convert radius to kpc
+    radius = radius*proper_dist
+    bin_center_all = bin_center_all*proper_dist
 
 
 
@@ -1951,18 +1963,33 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
     colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
 
     #plot all points
-    ax.fill_between(bin_center_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, color=colours[0], alpha=0.3)
-    ax.scatter(radius, mlf_model, marker='o', s=10, label='All KOFFEE fits; R={:.2f}'.format(r_mlf_all), c=colours[0], alpha=0.8)
-    ax.plot(bin_center_all, mlf_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
+    #if plot_medians == True:
+        #ax.fill_between(bin_center_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, color=colours[0], alpha=0.3
+
+    ax.axhline(0, ls='--', color='k')
+
+    ax.scatter(radius[vel_disp>51], mlf_model[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_mlf_all), c=colours[0], alpha=0.7)
+    ax.scatter(radius[vel_disp<=51], mlf_model[vel_disp<=51], marker='v', s=30, c=colours[0], alpha=0.7)
+
+    #ax.errorbar(radius[vel_disp>51].value, mlf_model[vel_disp>51], yerr=np.array([mlf_max[vel_disp>51], mlf_min[vel_disp>51]]), marker='o', ms=3, ls='none', label='All KOFFEE fits; R={:.2f}'.format(r_mlf_all), c=colours[0], alpha=0.7)
+    #ax.errorbar(radius[vel_disp<=51].value, mlf_model[vel_disp<=51], yerr=np.array([mlf_max[vel_disp<=51], mlf_min[vel_disp<=51]]), marker='v', ms=3, ls='none', c=colours[0], alpha=0.7)
+
+    if plot_medians == True:
+        #ax.plot(bin_center_all, mlf_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
+        ax.errorbar(bin_center_all.value, mlf_bin_medians_all, yerr=mlf_bin_stdev_all, capsize=3.0, ms=5, lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
 
     lgnd = ax.legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
-    lgnd.legendHandles[0]._legmarker.set_markersize(3)
+    #lgnd.legendHandles[0]._legmarker.set_markersize(3)
+
     if compare == 'divide':
         ax.set_ylabel(r'Log($\eta$/model)+$const$')
     elif compare == 'subtract':
         ax.set_ylabel(r'$\eta$-model+$const$')
-    ax.set_xlabel('Radius (Arcseconds)')
-    ax.set_title('all spaxels')
+
+    ax.set_xlabel('Galaxy Radius [kpc]')
+    ax.set_title('S/N > 20 and $\delta_{BIC}$<-10')
+
+    ax.set_ylim(np.nanmin(mlf_model)-0.4, np.nanmax(mlf_model)+0.1)
 
     plt.show()
 
