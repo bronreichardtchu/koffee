@@ -1608,7 +1608,7 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     #cbar = plt.colorbar(halpha_map, ax=ax1, shrink=0.8)
 
     ax3 = plt.subplot(336, projection=flux_ratio_wcs, slices=('y', 'x'))
-    flux_ratio_spax = ax3.imshow(flux_ratio.T, origin='lower', aspect=flux_ratio_header['CD2_1']/flux_ratio_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=0.1)
+    flux_ratio_spax = ax3.imshow(flux_ratio, origin='lower', aspect=flux_ratio_header['CD2_1']/flux_ratio_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=0.1)
     #ax3.hlines(ymin+0.75, xmin+4, xmin+4+koffee_10arcsec_pixel_length, colors='black')
     #ax3.hlines(koffee_start_10_arcsec_pixel[1], koffee_start_10_arcsec_pixel[0], koffee_end_10_arcsec_pixel[0], colors='black')
     #ax3.text(low_lim_rad[0]-5, high_lim_rad[1]-5, '[OIII]', c='black')
