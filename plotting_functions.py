@@ -295,6 +295,9 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
 
     Returns
     -------
+    logspace : :obj:'~numpy.ndarray'
+        the logarithmic array of bin edges in x
+
     bin_center : :obj:'~numpy.ndarray'
         values indicating the centres of the bins in x
 
@@ -306,36 +309,31 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
 
     upper_quantile : :obj:'~numpy.ndarray'
         values for the upper quantile of each bin in y
+
+    bin_stdev : :obj:'~numpy.ndarray'
+        values for the standard deviation of each bin in y
     """
     if min_bin == None:
         min_bin = np.nanmin(x)
+
     if max_bin == None:
         max_bin = np.nanmax(x)
 
     #create the logspace - these are the bin edges
     logspace = np.logspace(np.log10(min_bin), np.log10(max_bin), num=num_bins+1)
 
-    #def lower_quantile(x):
-    #    return np.nanquantile(x, 0.33)
-
-    #def upper_quantile(x):
-    #    return np.nanquantile(x, 0.66)
-
-    #calculate the upper and lower quartiles
-    #upper_quantile, bin_edges, binnumber = stats.binned_statistic(x, y, statistic=upper_quantile, bins=logspace)
-
-    #lower_quantile, bin_edges, binnumber = stats.binned_statistic(x, y, statistic=lower_quantile, bins=logspace)
-
     #calculate the average
     bin_avg = np.zeros(len(logspace)-1)
     upper_quantile = np.zeros(len(logspace)-1)
     lower_quantile = np.zeros(len(logspace)-1)
+    bin_stdev = np.zeros(len(logspace)-1)
 
     for i in range(0, len(logspace)-1):
         left_bound = logspace[i]
         right_bound = logspace[i+1]
         items_in_bin = y[(x>left_bound)&(x<=right_bound)]
         print('Number of items in bin '+str(i)+': '+str(items_in_bin.shape))
+        #calculate the median of the bin
         if weights == None:
             bin_avg[i] = np.nanmedian(items_in_bin)
         else:
@@ -343,6 +341,7 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
             weights_in_bin = 1.0 - weights_in_bin/items_in_bin
             bin_avg[i] = np.average(items_in_bin, weights=weights_in_bin)
 
+        #calculate the quartiles of the bin
         if items_in_bin.shape[0] < 10:
             upper_quantile[i] = np.nanquantile(items_in_bin, 0.80)
             lower_quantile[i] = np.nanquantile(items_in_bin, 0.20)
@@ -350,12 +349,15 @@ def binned_median_quantile_log(x, y, num_bins, weights=None, min_bin=None, max_b
             upper_quantile[i] = np.nanquantile(items_in_bin, 0.66)
             lower_quantile[i] = np.nanquantile(items_in_bin, 0.33)
 
+        #calculate the standard deviation of the bin
+        bin_stdev[i] = np.nanstd(items_in_bin)
+
     #calculate the bin center for plotting
     bin_center = np.zeros(len(logspace)-1)
     for i in range(0, len(logspace)-1):
         bin_center[i] = np.nanmean([logspace[i],logspace[i+1]])
 
-    return bin_center, bin_avg, lower_quantile, upper_quantile
+    return logspace, bin_center, bin_avg, lower_quantile, upper_quantile, bin_stdev
 
 
 def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_bin=None):
@@ -385,6 +387,9 @@ def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_b
 
     Returns
     -------
+    linspace : :obj:'~numpy.ndarray'
+        the array of linear bin edges in x
+
     bin_center : :obj:'~numpy.ndarray'
         values indicating the centres of the bins in x
 
@@ -396,6 +401,9 @@ def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_b
 
     upper_quantile : :obj:'~numpy.ndarray'
         values for the upper quantile of each bin in y
+
+    bin_stdev : :obj:'~numpy.ndarray'
+        values for the standard deviation of each bin in y
     """
     if min_bin == None:
         min_bin = np.nanmin(x)
@@ -403,27 +411,17 @@ def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_b
         max_bin = np.nanmax(x)
 
     #create the logspace - these are the bin edges
-    logspace = np.linspace(min_bin, max_bin, num=num_bins+1)
-
-    #def lower_quantile(x):
-    #    return np.nanquantile(x, 0.33)
-
-    #def upper_quantile(x):
-    #    return np.nanquantile(x, 0.66)
-
-    #calculate the upper and lower quartiles
-    #upper_quantile, bin_edges, binnumber = stats.binned_statistic(x, y, statistic=upper_quantile, bins=logspace)
-
-    #lower_quantile, bin_edges, binnumber = stats.binned_statistic(x, y, statistic=lower_quantile, bins=logspace)
+    linspace = np.linspace(min_bin, max_bin, num=num_bins+1)
 
     #calculate the average
-    bin_avg = np.zeros(len(logspace)-1)
-    upper_quantile = np.zeros(len(logspace)-1)
-    lower_quantile = np.zeros(len(logspace)-1)
+    bin_avg = np.zeros(len(linspace)-1)
+    upper_quantile = np.zeros(len(linspace)-1)
+    lower_quantile = np.zeros(len(linspace)-1)
+    bin_stdev = np.zeros(len(linspace)-1)
 
-    for i in range(0, len(logspace)-1):
-        left_bound = logspace[i]
-        right_bound = logspace[i+1]
+    for i in range(0, len(linspace)-1):
+        left_bound = linspace[i]
+        right_bound = linspace[i+1]
         items_in_bin = y[(x>left_bound)&(x<=right_bound)]
         print('Number of items in bin '+str(i)+': '+str(items_in_bin.shape))
         if weights == None:
@@ -440,12 +438,15 @@ def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_b
             upper_quantile[i] = np.nanquantile(items_in_bin, 0.66)
             lower_quantile[i] = np.nanquantile(items_in_bin, 0.33)
 
-    #calculate the bin center for plotting
-    bin_center = np.zeros(len(logspace)-1)
-    for i in range(0, len(logspace)-1):
-        bin_center[i] = np.nanmean([logspace[i],logspace[i+1]])
+        #calculate the standard deviation of the bin
+        bin_stdev[i] = np.nanstd(items_in_bin)
 
-    return bin_center, bin_avg, lower_quantile, upper_quantile
+    #calculate the bin center for plotting
+    bin_center = np.zeros(len(linspace)-1)
+    for i in range(0, len(linspace)-1):
+        bin_center[i] = np.nanmean([linspace[i],linspace[i+1]])
+
+    return linspace, bin_center, bin_avg, lower_quantile, upper_quantile, bin_stdev
 
 
 def pearson_correlation(x, y):
@@ -473,7 +474,7 @@ def pearson_correlation(x, y):
     return r, p_value
 
 
-def read_in_create_wcs(fits_file, index=0):
+def read_in_create_wcs(fits_file, index=0, shift=None):
     """
     Reads in the fits file and creates the wcs
 
@@ -485,6 +486,10 @@ def read_in_create_wcs(fits_file, index=0):
     index : int
         the index of the extension to be loaded (default is 0)
 
+    shift : list or None
+        how to alter the header if the wcs is going to be wrong.
+        e.g. ['CRPIX2', 32.0] will change the header value of CRPIX2 to 32.0
+
     Returns
     -------
     fits_data : :obj:'~numpy.ndarray'
@@ -493,12 +498,19 @@ def read_in_create_wcs(fits_file, index=0):
     fits_wcs : astropy WCS object
         the world coordinate system for the fits file
     """
+    #read the data in from fits
     with fits.open(fits_file) as hdu:
         hdu.info()
         fits_data = hdu[index].data
         fits_header = hdu[index].header
-        fits_wcs = WCS(fits_header)
     hdu.close()
+
+    #shift the header
+    if shift:
+        fits_header[shift[0]] = shift[1]
+
+    #create the WCS
+    fits_wcs = WCS(fits_header)
 
     return fits_data, fits_header, fits_wcs
 

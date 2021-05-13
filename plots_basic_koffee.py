@@ -18,6 +18,7 @@ FUNCTIONS INCLUDED:
     plot_compare_fits
     map_of_outflows
     map_of_outflows2
+    create_map_basic
     sn_cut_plot
     proposal_plot
     plot_sfr_vout
@@ -351,6 +352,30 @@ def map_of_outflows2(outflow_results, statistical_results, lamdas, xx, yy, data,
     plt.show()
 
 
+def create_map_basic(results_file):
+    """
+    Maps the results from the fits file
+    """
+    #read in the fits file
+    with fits.open(results_file) as hdu:
+        data = hdu[0].data
+        header = hdu[0].header
+    hdu.close()
+
+    #create the world coordinate system
+    data_wcs = WCS(header)
+
+    #create the figure
+    plt.figure()
+
+    #add a subplot with the projection
+    ax = plt.subplot(projection=data_wcs, slices=('y', 'x'))
+    data_im = ax.imshow(np.log10(data.T), origin='lower', aspect=header['CD2_1']/header['CD1_2'])
+    ax.invert_xaxis()
+    cbar = plt.colorbar(data_im, ax=ax)
+
+    plt.show()
+
 
 def sn_cut_plot(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn, spatial_shape):
     """
@@ -475,7 +500,7 @@ def proposal_plot():
 
 
 
-def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, colour_by=None, colour_by_array=None, weighted_average=True):
+def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, colour_by=None, colour_by_array=None, weighted_average=True):
     """
     Plots the SFR surface density against the outflow velocity, with Sigma_SFR
     calculated using only the narrow component.  There is an option to colour
@@ -516,6 +541,9 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     z : float
         redshift
 
+    header : FITS header object
+        the header from the fits file
+
     colour_by : string
         the variable used for colouring the points on the graph, used in the
         plotting labels for the colourbar (Default=None)
@@ -536,7 +564,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #get the sfr for the outflow spaxels
     flow_mask = (statistical_results>0)

@@ -22,6 +22,8 @@ FUNCTIONS INCLUDED:
     air_to_vac
     barycentric_corrections
     milky_way_extinction_correction
+    hbeta_extinction_correction
+    calculate_EBV_from_hbeta_hgamma_ratio
     load_data
     data_cubes_combine_by_pixel
     data_cubes_combine_by_wavelength
@@ -37,6 +39,7 @@ MODIFICATION HISTORY:
 
 """
 import glob
+import math
 import numpy as np
 from datetime import date
 import pickle
@@ -58,10 +61,10 @@ from spectres import spectres
 
 #from .display_pixels import cap_display_pixels as cdp
 from . import brons_display_pixels_kcwi as bdpk
-#import brons_display_pixels_kcwi as bdpk
+from . import calculate_extinction_checks as calc_ext
 
 import importlib
-importlib.reload(bdpk)
+importlib.reload(calc_ext)
 
 #====================================================================================================
 #LOAD DATA
@@ -151,17 +154,23 @@ def read_in_data_pickle(filename):
 #BINNING
 #====================================================================================================
 
-def bin_data(data, bin_size=3):
+def bin_data(lamdas, data, z, bin_size=[3,3]):
     """
     Bins the input data
 
     Parameters
     ----------
+    lamdas : :obj:'~numpy.ndarray'
+        wavelength vector
+
     data : :obj:'~numpy.ndarray'
         the data to be binned
 
+    z : int
+        the redshift
+
     bin_size : int
-        the number of spaxels to bin by (Default is 3, this will bin 3x3)
+        the number of spaxels to bin by (Default is [3,3], this will bin 3x3)
 
     Returns
     -------
@@ -169,38 +178,90 @@ def bin_data(data, bin_size=3):
         the binned data
     """
     #create empty array to put binned data in
-    binned_data = np.empty([data.shape[0], int(data.shape[1]/bin_size), int(data.shape[2]/bin_size)])
+    binned_data = np.empty([data.shape[0], math.ceil(data.shape[1]/bin_size[0]), math.ceil(data.shape[2]/bin_size[1])])
+
+    #create lamda mask for hbeta
+    hbeta_mask = (lamdas>4862.68*(1+z)-2.0) & (lamdas<4862.68*(1+z)+2.0)
 
     #create counter for x direction
     start_xi = 0
-    end_xi = bin_size
+    end_xi = bin_size[0]
 
     #iterate through x direction
-    for x in np.arange(data.shape[1]/bin_size):
+    for x in np.arange(data.shape[1]/bin_size[0]):
         #create counter for y direction
         start_yi = 0
-        end_yi = bin_size
+        end_yi = bin_size[1]
         #iterate through y direction
-        for y in np.arange(data.shape[2]/bin_size):
+        for y in np.arange(data.shape[2]/bin_size[1]):
+            #find the central spaxel of the bin
+            center_x = int((start_xi+end_xi)/2)
+            center_y = int((start_yi+end_yi)/2)
+
+            #find where the peak of the hbeta line is
+            try:
+                hbeta_peak = np.argmax(data[:, center_x, center_y][hbeta_mask])
+            except:
+                hbeta_peak = np.argmax(data[:, start_xi, start_yi][hbeta_mask])
+            #print(data[:, center_x, center_y][hbeta_mask].shape)
+            #print('Hbeta peak for central spaxel:', hbeta_peak)
+
+            #find where the peak of the rest of the spaxels is
+            other_hbeta_peaks = np.argmax(data[:, start_xi:end_xi, start_yi: end_yi][hbeta_mask], axis=0)
+            #print('Other Hbeta peaks', other_hbeta_peaks)
+
+            #find difference between other_hbeta_peaks and hbeta_peak
+            hbeta_peak_diff = other_hbeta_peaks - hbeta_peak
+            #print('Hbeta peak diff', hbeta_peak_diff, '\n\n')
+
+            #iterate through the peak differences
+            for (i,j), diff in np.ndenumerate(hbeta_peak_diff):
+                if diff < 0:
+                    #shift the spectra to the right
+                    data[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
+
+                if diff > 0:
+                    #shift the spectra to the left
+                    data[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
+
+
+            #"""
+            #checks
+            #find where the peak of the hbeta line is
+            try:
+                hbeta_peak = np.argmax(data[:, center_x, center_y][hbeta_mask])
+            except:
+                hbeta_peak = np.argmax(data[:, start_xi, start_yi][hbeta_mask])
+            #print(data[:, center_x, center_y][hbeta_mask].shape)
+            print('Checking Hbeta peak for central spaxel:', hbeta_peak)
+
+            #find where the peak of the rest of the spaxels is
+            other_hbeta_peaks = np.argmax(data[:, start_xi:end_xi, start_yi: end_yi][hbeta_mask], axis=0)
+            print('Checking Other Hbeta peaks', other_hbeta_peaks)
+
+            #find difference between other_hbeta_peaks and hbeta_peak
+            hbeta_peak_diff = other_hbeta_peaks - hbeta_peak
+            print('Checking Hbeta peak diff', hbeta_peak_diff, '\n\n')
+            #"""
+
             #bin the data
             binned_data[:, int(x), int(y)] = np.nansum(data[:, start_xi:end_xi, start_yi:end_yi], axis=(1,2))
 
             #increase y counters
-            start_yi += bin_size
-            end_yi += bin_size
+            start_yi += bin_size[1]
+            end_yi += bin_size[1]
 
         #increase x counters
-        start_xi += bin_size
-        end_xi += bin_size
+        start_xi += bin_size[0]
+        end_xi += bin_size[0]
 
     return binned_data
 
 
-def save_binned_data(data, header, data_folder, gal_name, bin_size=3):
+def save_binned_data(data, header, data_folder, gal_name, bin_size=[3,3]):
     """
     Save the binned data or variance cube to a fits file, with the necessary
     changes to the fits file header.
-
     Parameters
     ----------
     data : :obj:'~numpy.ndarray'
@@ -217,7 +278,7 @@ def save_binned_data(data, header, data_folder, gal_name, bin_size=3):
         E.g. 'cgcg453_red_var' for the red variance cube of cgcg453
 
     bin_size : int
-        the number of spaxels the cube was binned by.  (Default is 3)
+        the number of spaxels the cube was binned by, [x,y].  (Default is [3,3])
 
     Returns
     -------
@@ -227,16 +288,24 @@ def save_binned_data(data, header, data_folder, gal_name, bin_size=3):
 
     #change the cards to match the binned data
     #change the size of the spaxels
-    new_header['CDELT1'] = header['CDELT1']*bin_size
-    new_header['CDELT2'] = header['CDELT2']*bin_size
+    #remember that numpy arrays and fits have different directions
+    #so a numpy array with shape (lam, x, y) is same as (NAXIS3, NAXIS2, NAXIS1)
+    try:
+        new_header['CDELT1'] = header['CDELT1']*bin_size[1]
+        new_header['CDELT2'] = header['CDELT2']*bin_size[0]
+    except:
+        new_header['CD1_1'] = header['CD1_1']*bin_size[1]
+        new_header['CD1_2'] = header['CD1_2']*bin_size[0]
+        new_header['CD2_2'] = header['CD2_2']*bin_size[0]
+        new_header['CD2_1'] = header['CD2_1']*bin_size[1]
 
     #change the number of spaxels
-    new_header['NAXIS1'] = int(header['NAXIS1']/bin_size)
-    new_header['NAXIS2'] = int(header['NAXIS2']/bin_size)
+    new_header['NAXIS1'] = math.ceil(header['NAXIS1']/bin_size[1])
+    new_header['NAXIS2'] = math.ceil(header['NAXIS2']/bin_size[0])
 
     #change the reference pixel to the nearest 0.5
-    new_header['CRPIX1'] = round((header['CRPIX1']/bin_size)*2.0)/2.0
-    new_header['CRPIX2'] = round((header['CRPIX2']/bin_size)*2.0)/2.0
+    new_header['CRPIX1'] = round((header['CRPIX1']/bin_size[1])*2.0)/2.0
+    new_header['CRPIX2'] = round((header['CRPIX2']/bin_size[0])*2.0)/2.0
 
     #create HDU object
     hdu = fits.PrimaryHDU(data, header=new_header)
@@ -245,9 +314,7 @@ def save_binned_data(data, header, data_folder, gal_name, bin_size=3):
     hdul = fits.HDUList([hdu])
 
     #write to file
-    hdul.writeto(data_folder+gal_name+'_binned_by_'+str(bin_size)+'.fits')
-
-
+    hdul.writeto(data_folder+gal_name+'_binned_'+str(bin_size[0])+'_by_'+str(bin_size[1])+'.fits')
 
 #====================================================================================================
 #CORRECTIONS
@@ -338,12 +405,13 @@ def milky_way_extinction_correction(lamdas, data):
     lamdas = lamdas/10000
 
     #define the equations from the paper
-    y = lamdas - 1.82
+    y = lamdas**(-1) - 1.82
     a_x = 1.0 + 0.17699*y - 0.50447*(y**2) - 0.02427*(y**3) + 0.72085*(y**4) + 0.01979*(y**5) - 0.77530*(y**6) + 0.32999*(y**7)
     b_x = 1.41338*y + 2.28305*(y**2) + 1.07233*(y**3) - 5.38434*(y**4) - 0.62251*(y**5) + 5.30260*(y**6) - 2.09002*(y**7)
 
     #define the constants
     Rv = 3.1
+    #Finkel... et al.
     Av = 0.2511
 
     #find A(lambda)
@@ -354,6 +422,110 @@ def milky_way_extinction_correction(lamdas, data):
     data = (10**(0.4*A_lam[:, None, None]))*data
 
     return data
+
+
+def hbeta_extinction_correction(lamdas, data, z):
+    """
+    Corrects for the extinction caused by light travelling through the dust and
+    gas of the galaxy, as described in Cardelli et al. 1989. Uses Hbeta/Hgamma
+    ratio as in Calzetti et al. 2001
+
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        wavelength vector
+
+    data : :obj:'~numpy.ndarray'
+        3D cube of data
+
+    z : float
+        redshift
+
+    Returns
+    -------
+    data : :obj:'~numpy.ndarray'
+        the data corrected for extinction
+    """
+    #use the hbeta/hgamma ratio to calculate EBV
+    ebv = calculate_EBV_from_hbeta_hgamma_ratio(lamdas, data, z)
+
+    #define the constant (using MW expected curve)
+    Rv = 3.1
+
+    #use that to calculate Av
+    Av = ebv * Rv
+
+    #convert lamdas from Angstroms into micrometers
+    lamdas = lamdas/10000
+
+    #define the equations from the paper
+    y = lamdas**(-1) - 1.82
+    a_x = 1.0 + 0.17699*y - 0.50447*(y**2) - 0.02427*(y**3) + 0.72085*(y**4) + 0.01979*(y**5) - 0.77530*(y**6) + 0.32999*(y**7)
+    b_x = 1.41338*y + 2.28305*(y**2) + 1.07233*(y**3) - 5.38434*(y**4) - 0.62251*(y**5) + 5.30260*(y**6) - 2.09002*(y**7)
+
+    #tile a_x and b_x so that they're the right array shape
+    a_x = np.tile(a_x, [data.shape[2], data.shape[1], 1]).T
+    b_x = np.tile(b_x, [data.shape[2], data.shape[1], 1]).T
+
+    print('median a_x:', np.nanmedian(a_x))
+    print('a_x shape:', a_x.shape)
+
+    print('median b_x:', np.nanmedian(b_x))
+    print('b_x shape:', b_x.shape)
+
+    #find A(lambda)
+    A_lam = (a_x + b_x/Rv)*Av
+
+    #apply to the data
+    data = (10**(0.4*A_lam))*data
+
+    return Av, A_lam, data
+
+
+
+def calculate_EBV_from_hbeta_hgamma_ratio(lamdas, data, z):
+    """
+    Uses Hbeta/Hgamma ratio as in Calzetti et al. 2001
+
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        wavelength vector
+
+    data : :obj:'~numpy.ndarray'
+        3D cube of data
+
+    z : float
+        redshift
+
+    Returns
+    -------
+    data : :obj:'~numpy.ndarray'
+        the data corrected for extinction
+    """
+    #calculate the hbeta/hgamma ratio
+    hbeta_flux, hgamma_flux, hbeta_hgamma_obs = calc_ext.calc_hbeta_hgamma_amps(lamdas, data, z, cont_subtract=False)
+
+    #set the expected hbeta/hgamma ratio
+    hbeta_hgamma_actual = 2.15
+
+    #set the expected differential extinction [k(hgamma)-k(hbeta)]=0.465
+    diff_ext = 0.465
+
+    #create an array for the ebv values
+    ebv = np.full_like(hbeta_hgamma_obs, np.nan, dtype=np.double)
+
+    #calculate E(B-V) if hbeta_hgamma_obs >= 2.15
+    for (i,j), hbeta_hgamma_obs_value in np.ndenumerate(hbeta_hgamma_obs):
+        if hbeta_hgamma_obs_value >= 2.15:
+            #calculate ebv
+            ebv[i,j] = (2.5*np.log10(hbeta_hgamma_obs_value/hbeta_hgamma_actual)) / diff_ext
+
+        else:
+            #set ebv to a small value
+            ebv[i,j] = 0.01
+
+    return ebv
 
 
 #====================================================================================================
@@ -388,6 +560,7 @@ def load_data(filename, mw_correction=True):
     """
     #open the file and get the data
     fits_stuff = read_in_data_fits(filename)
+
     if len(fits_stuff) > 3:
         lamdas, data, var, header = fits_stuff
     else:
@@ -401,7 +574,10 @@ def load_data(filename, mw_correction=True):
     lamdas = barycentric_corrections(lamdas, header)
 
     #apply Milky Way extinction correction
-    data = milky_way_extinction_correction(lamdas, data)
+    if mw_correction == True:
+        data = milky_way_extinction_correction(lamdas, data)
+        if len(fits_stuff) > 3:
+            var = milky_way_extinction_correction(lamdas, var)
 
     if len(fits_stuff) > 3:
         return lamdas, data, var, header
@@ -863,7 +1039,7 @@ def sn_cut(lamdas, xx_flat, yy_flat, rad_flat, data_flat, z, sn=3):
 #====================================================================================================
 #COMBINE RED AND BLUE CUBES
 #====================================================================================================
-def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noise, z):
+def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noise, z, header, cube_shape, results_folder):
     """
     Combines the red and blue cubes into one cube
 
@@ -957,6 +1133,16 @@ def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noi
     #combined_cube = combined_cube[120:-100,:]
     #lam_all = lam_all[120:-100]
     #combined_noise = combined_noise[120:-100,:]
+
+    #update the fits header
+    header['NAXIS3'] = lam_all.shape[0]
+    header['CRVAL3'] = lam_all[0]
+
+    #save into a fits file
+    hdu_data = fits.PrimaryHDU(combined_cube.reshape(lam_all.shape[0], cube_shape[0], cube_shape[1]), header=header)
+    hdu_var = fits.ImageHDU(combined_noise.reshape(lam_all.shape[0], cube_shape[0], cube_shape[1]), header=header)
+    hdul = fits.HDUList([hdu_data, hdu_var])
+    hdul.writeto(results_folder+'combined_cube.fits')
 
     return lam_all, combined_cube, combined_noise
 
@@ -1061,7 +1247,7 @@ def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour,
     f.close()
 
 
-def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder, data_corrections=True, data_crop=False, var_filepath=None, var_crop=False, var_corrections=True, lamda_crop=False):
+def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder, data_crop=False, var_filepath=None, var_crop=False, lamda_crop=False, mw_correction=False):
     """
     Runs all the previously defined functions when there is only one cube to read
     in and nothing to combine.
@@ -1083,10 +1269,6 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
     results_folder : str
         where to save the results
 
-    data_corrections : boolean
-        whether to apply the air_to_vac and barycentric corrections.  Default is
-        True.
-
     data_crop : boolean
         whether to crop the cube spatially - used to make the blue cube match the
         spatial extent of the red IRAS08 metacube.  Default is False.
@@ -1098,13 +1280,12 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
         whether to crop the variance cube spatially - used to make the blue cube
         match the spatial extent of the red IRAS08 metacube.  Default is False.
 
-    var_corrections : boolean
-        whether to apply the air_to_vac and barycentric corrections to the variance
-        cube.  Default is True.
-
     lamda_crop : boolean
         whether or not to crop off the dodgy edges in the wavelength direction.
         Default is False.
+
+    mw_correction : boolean
+        whether to apply the milky way extinction correction. Default is False.
 
     Returns
     -------
@@ -1147,28 +1328,17 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
     header : FITS header object
         the header from the data fits file
     """
-    #read in the data from the fits file
-    fits_stuff = read_in_data_fits(data_filepath)
+    #read in the data from the fits file, with all corrections
+    fits_stuff = load_data(data_filepath, mw_correction=mw_correction)
 
     if len(fits_stuff) > 3:
         lamdas, data, var, header = fits_stuff
     else:
         lamdas, data, header = fits_stuff
 
-    #apply wavelength corrections
-    if data_corrections == True:
-        lamdas = air_to_vac(lamdas)
-        lamdas = barycentric_corrections(lamdas, header)
-
-    #if there is a variance cube, read in the data from the fits file
+    #if there is a seperate variance cube, read in the data from the fits file
     if var_filepath:
-        var_lamdas, var, var_header = read_in_data_fits(var_filepath)
-
-        #apply wavelength corrections
-        if var_corrections == True:
-            var_lamdas = air_to_vac(var_lamdas)
-            #use same header info as data
-            var_lamdas = barycentric_corrections(var_lamdas, header)
+        var_lamdas, var, var_header = load_data(var_filepath, mw_correction=mw_correction)
 
         #need to make variance cube the same size as the metacube
         if var_crop == True:
@@ -1186,9 +1356,6 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
             if np.any(var==0.0):
                 print('Replacing 0.0 with 0.00000001 in variance')
                 var[np.where(var==0.0)] = 0.00000001
-
-    #apply Milky Way extinction correction
-    data = milky_way_extinction_correction(lamdas, data)
 
     #create data coordinates
     xx, yy, rad = data_coords(lamdas, data, header, z, cube_colour=cube_colour, shiftx=None, shifty=None)
