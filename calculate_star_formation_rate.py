@@ -22,6 +22,7 @@ FUNCTIONS INCLUDED:
     calc_hgamma_luminosity
     calc_sfr_integrate
     calc_sfr_koffee
+    calc_save_as_fits
 
 MODIFICATION HISTORY:
 		v.1.0 - first created January 2020
@@ -34,13 +35,19 @@ from astropy.cosmology import WMAP9 as cosmo
 from astropy.constants import c
 from astropy import units
 
+from astropy.io import fits
+
 
 #-------------------------------------------------------------------------------
 # EXTINCTION CALCULATIONS
 #-------------------------------------------------------------------------------
 def calc_hbeta_extinction(lamdas, z):
     """
-    Calculates the H_beta extinction - corrects for the extinction caused by light travelling through the dust and gas of the original galaxy, using the Cardelli et al. 1989 curves and Av = E(B-V)*Rv.  The value for Av ~ 2.11 x C(Hbeta) where C(Hbeta) = 0.24 from Lopez-Sanchez et al. 2006 A&A 449.
+    Calculates the H_beta extinction - corrects for the extinction caused by light
+    travelling through the dust and gas of the original galaxy, using the
+    Cardelli et al. 1989 curves and Av = E(B-V)*Rv.
+    The value for Av ~ 2.11 x C(Hbeta) where C(Hbeta) = 0.24 from
+    Lopez-Sanchez et al. 2006 A&A 449.
 
     Parameters
     ----------
@@ -348,9 +355,9 @@ def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
         plotted to check the whole line is included in the integral.
     """
     #create bounds to integrate over
-    #Hbeta is at 4861.33A, allowing 5.5A on either side
-    left_limit = 4855.83*(1+z)
-    right_limit = 4866.83*(1+z)
+    #Hbeta is at 4862.68A, allowing 5.5A on either side
+    left_limit = 4857.18*(1+z)
+    right_limit = 4868.18*(1+z)
 
     #use the wavelengths to find the values in the spectrum to integrate over
     h_beta_spec = spectrum[(lamdas>=left_limit)&(lamdas<=right_limit),]
@@ -374,7 +381,7 @@ def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
 
     if plot == True:
         plt.figure()
-        plt.step(h_beta_lam, h_beta_spec)
+        plt.step(h_beta_lam, h_beta_spec.reshape([h_beta_lam.shape[0],-1]), where='mid')
         plt.show()
 
     #integrate along the spectrum
@@ -394,9 +401,9 @@ def calc_hbeta_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
     print(h_beta_flux)
 
     if cont_subtract == True:
-        return h_beta_flux.value, s_n_mask, h_beta_spec
+        return h_beta_integral, h_beta_flux.value, s_n_mask, h_beta_spec
     else:
-        return h_beta_flux.value, h_beta_spec
+        return h_beta_integral, h_beta_flux.value, h_beta_spec
 
 
 def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False):
@@ -441,9 +448,9 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
         plotted to check the whole line is included in the integral.
     """
     #create bounds to integrate over
-    #Hgamma is at 4340.47A, allowing 1.5A on either side
-    left_limit = 4334.97*(1+z)
-    right_limit = 4345.97*(1+z)
+    #Hgamma is at 4341.68A, allowing 1.5A on either side
+    left_limit = 4338.18*(1+z)
+    right_limit = 4345.18*(1+z)
 
     #use the wavelengths to find the values in the spectrum to integrate over
     h_gamma_spec = spectrum[(lamdas>=left_limit)&(lamdas<=right_limit),]
@@ -456,7 +463,7 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
     #also use the continuum to find the S/N and mask things
     #s_n = []
     if cont_subtract == True:
-        cont = spectrum[(lamdas>=4850.0*(1+z))&(lamdas<=4855.0*(1+z)),]
+        cont = spectrum[(lamdas>=4315.0*(1+z))&(lamdas<=4320.0*(1+z)),]
         cont_median = np.nanmedian(cont, axis=0)
         h_gamma_spec = h_gamma_spec - cont_median
         #find the standard deviation of the continuum section
@@ -467,7 +474,7 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
 
     if plot == True:
         plt.figure()
-        plt.step(h_gamma_lam, h_gamma_spec)
+        plt.step(h_gamma_lam, h_gamma_spec.reshape([h_gamma_lam.shape[0], -1]), where='mid')
         plt.show()
 
     #integrate along the spectrum
@@ -487,16 +494,16 @@ def calc_hgamma_luminosity(lamdas, spectrum, z, cont_subtract=False, plot=False)
     print(h_gamma_flux)
 
     if cont_subtract == True:
-        return h_gamma_flux.value, s_n_mask, h_gamma_spec
+        return h_gamma_integral, h_gamma_flux.value, s_n_mask, h_gamma_spec
     else:
-        return h_gamma_flux.value, h_gamma_spec
+        return h_gamma_integral, h_gamma_flux.value, h_gamma_spec
 
 
 #-------------------------------------------------------------------------------
 # SFR CALCULATIONS
 #-------------------------------------------------------------------------------
 
-def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinction=True):
+def calc_sfr_integrate(lamdas, spectrum, z, header, cont_subtract=False, include_extinction=True):
     """
     Calculates the star formation rate by integrating over Hbeta
     SFR = C_Halpha (L_Halpha / L_Hbeta)_0 x 10^{-0.4A_Hbeta} x L_Hbeta[erg/s]
@@ -512,6 +519,9 @@ def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinct
 
     z : float
         redshift of the galaxy
+
+    header : FITS header object
+        the header from the fits file
 
     cont_subtract : boolean
         if True, assumes continuum has not already been subtracted.  Uses the
@@ -565,7 +575,11 @@ def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinct
 
     total_sfr = np.sum(sfr)
 
-    sfr_surface_density = sfr/((0.7*1.35)*(0.388**2))
+    #get the proper distance per arcsecond
+    proper_dist = cosmo.kpc_proper_per_arcmin(z).to(units.kpc/units.arcsec)
+
+    #sfr_surface_density = sfr/((0.7*1.35)*(proper_dist**2))
+    sfr_surface_density = sfr/((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2))
 
     if cont_subtract == True:
         return sfr, total_sfr, sfr_surface_density, s_n_mask, h_beta_spec
@@ -573,16 +587,11 @@ def calc_sfr_integrate(lamdas, spectrum, z, cont_subtract=False, include_extinct
         return sfr, total_sfr, sfr_surface_density, h_beta_spec
 
 
-def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, z, include_extinction=True, include_outflow=False):
+def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, z, header, include_extinction=True, include_outflow=False):
     """
     Calculates the star formation rate using Hbeta
     SFR = C_Halpha (L_Halpha / L_Hbeta)_0 x 10^{-0.4A_Hbeta} x L_Hbeta[erg/s]
     The Hbeta flux is calculated using the results from the KOFFEE fits.
-
-    Inputs:
-        lamdas: array of wavelength
-        spectrum: vector or array of spectra (shape: [npix, nspec])
-        z: (float) redshift
 
     Parameters
     ----------
@@ -627,6 +636,9 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     z : float
         redshift
 
+    header : FITS header object
+        the header from the fits file
+
     include_extinction : boolean
         if True, calculates the extinction at halpha and includes this in the
         SFR calculation.  Default is True.
@@ -665,11 +677,11 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     #and one gaussian fits where there are no outflows
     #if not including outflow
     if include_outflow == False:
-        results = np.full((3, 67, 24), np.nan, dtype=np.double)
-        error = np.full((3, 67, 24), np.nan, dtype=np.double)
+        results = np.full((3, outflow_results.shape[1], outflow_results.shape[2]), np.nan, dtype=np.double)
+        error = np.full((3, outflow_results.shape[1], outflow_results.shape[2]), np.nan, dtype=np.double)
     elif include_outflow == True:
-        results = np.full((6, 67, 24), np.nan, dtype=np.double)
-        error = np.full((6, 67, 24), np.nan, dtype=np.double)
+        results = np.full((6, outflow_results.shape[1], outflow_results.shape[2]), np.nan, dtype=np.double)
+        error = np.full((6, outflow_results.shape[1], outflow_results.shape[2]), np.nan, dtype=np.double)
 
     #create the mask of where outflows are
     flow_mask = (statistical_results>0)
@@ -684,11 +696,11 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
 
     elif include_outflow == True:
         results[:3,~flow_mask] = no_outflow_results[:3, ~flow_mask]
-        results[3:,~flow_mask] = np.zeros((3, 67, 24))[:,~flow_mask]
+        results[3:,~flow_mask] = np.zeros((3, outflow_results.shape[1], outflow_results.shape[2]))[:,~flow_mask]
         results[:,flow_mask] = outflow_results[:6, flow_mask]
 
         error[:3,~flow_mask] = no_outflow_error[:3, ~flow_mask]
-        error[3:,~flow_mask] = np.zeros((3, 67, 24))[:,~flow_mask]
+        error[3:,~flow_mask] = np.zeros((3, outflow_results.shape[1], outflow_results.shape[2]))[:,~flow_mask]
         error[:,flow_mask] = outflow_error[:6, flow_mask]
 
     #make the flux calculation
@@ -728,9 +740,125 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
 
     total_sfr = np.nansum(sfr)
 
-    sfr_surface_density = sfr/((0.7*1.35)*(0.388**2))
-    sfr_surface_density_err = sfr_err/((0.7*1.35)*(0.388**2))
+    #get the proper distance per arcsecond
+    proper_dist = cosmo.kpc_proper_per_arcmin(z).to(units.kpc/units.arcsec)
+
+    #sfr_surface_density = sfr/((0.7*1.35)*(proper_dist**2))
+    #sfr_surface_density_err = sfr_err/((0.7*1.35)*(proper_dist**2))
+
+    sfr_surface_density = sfr/((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2))
+    sfr_surface_density_err = sfr_err/((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2))
 
     print(sfr.unit)
 
     return sfr.value, sfr_err.value, total_sfr.value, sfr_surface_density.value, sfr_surface_density_err.value
+
+
+def calc_save_as_fits(outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, z, header, gal_name, output_folder, include_extinction=True, include_outflow=False):
+    """
+    Calculates the outflow velocity and saves the results into a fits file.
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray'
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    outflow_error : :obj:'~numpy.ndarray'
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    no_outflow_results : :obj:'~numpy.ndarray'
+        array of single gaussian results from KOFFEE for Hbeta line. This will
+        have either shape [3, i, j] or [4, i, j] depending on whether a constant
+        was included in the koffee fit. Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+
+    no_outflow_err : :obj:'~numpy.ndarray'
+        array of the single gaussian result errors from KOFFEE for Hbeta line.
+        This will have either shape [3, i, j] or [4, i, j] depending on whether
+        a constant was included in the koffee fit. Either way, the flow and galaxy
+        parameters are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, continuum_const], i, j]
+
+    statistical_results : :obj:'~numpy.ndarray'
+        Array containing the statistical results from koffee.  This has 0 if no
+        flow was found, 1 if a flow was found, 2 if an outflow was found using a
+        forced second fit due to the blue chi square test.
+
+    z : float
+        The redshift of the galaxy
+
+    header : FITS file object
+        The header of the data fits file, to be used in the new fits file
+
+    gal_name : str
+        the name of the galaxy, and whatever descriptor to be used in the saving
+        (e.g. IRAS08_binned_2_by_1)
+
+    output_folder : str
+        where to save the fits file
+
+    include_extinction : boolean
+        if True, calculates the extinction at halpha and includes this in the
+        SFR calculation.  Default is True.
+
+    include_outflow : boolean
+        if True, includes the broad outflow component in the flux calculation.
+        If false, uses only the narrow component to calculate flux.  Default is
+        False.
+
+    Returns
+    -------
+    A saved fits file
+    """
+    #calculate the SFR
+    sfr, sfr_err, total_sfr, sig_sfr, sig_sfr_err = calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, z, header, include_extinction=include_extinction, include_outflow=include_outflow)
+
+    #copy the header and change the keywords so it's just 2 axes
+    new_header = header.copy()
+
+    new_header['NAXIS'] = 2
+
+    del new_header['NAXIS3']
+    del new_header['CNAME3']
+    del new_header['CRPIX3']
+    del new_header['CRVAL3']
+    del new_header['CTYPE3']
+    del new_header['CUNIT3']
+
+    try:
+        del new_header['CD3_3']
+    except:
+        del new_header['CDELT3']
+
+    #create HDU object for star formation rate
+    hdu = fits.PrimaryHDU(sfr, header=new_header)
+    hdu_error = fits.ImageHDU(sfr_err, name='Error')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_star_formation_rate.fits')
+
+    #create HDU object for star formation rate surface density
+    hdu = fits.PrimaryHDU(sig_sfr, header=new_header)
+    hdu_error = fits.ImageHDU(sig_sfr_err, name='Error')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_star_formation_rate_surface_density.fits')
