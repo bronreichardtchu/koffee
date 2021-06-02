@@ -491,7 +491,7 @@ def gaussian2_const(wavelength, flux, amplitude_guess=None, mean_guess=None, sig
     #no negative gaussians
     pars['Flow_amp'].set(min=0.01)
     #we also want the galaxy amplitude to be greater than the flow amplitude, so we define a new parameter
-    #amp_diff = Galaxy_amplitude-Flow_amplitude, where amp_diff > 0.05
+    #where amp_diff = Galaxy_amplitude-Flow_amplitude, where amp_diff > 0.05
     pars.add('amp_diff', value=0.1, min=0.05, vary=True)
     pars['Galaxy_amp'].set(expr='amp_diff+Flow_amp')
 

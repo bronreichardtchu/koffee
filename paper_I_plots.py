@@ -67,7 +67,7 @@ importlib.reload(pf)
 def plot_compare_fits(lamdas, data, spaxels, z):
     """
     Plots the normalised single and double gaussian fits for the OIII 5007 line
-    using a list of spaxels.  (Used spaxels [[19, 7], [26, 8], [35, 10]] for the
+    using a list of spaxels.  (Used spaxels [[19, 7], [26, 8], [36, 10]] for the
     paper.)
 
     Parameters
@@ -122,14 +122,14 @@ def plot_compare_fits(lamdas, data, spaxels, z):
         bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, verbose=False)
 
         #find the significance level using the BIC difference
-        BIC_diff = bestfit2.bic - bestfit1.bic
+        BIC_diff = bestfit1.bic - bestfit2.bic
         print(BIC_diff)
-        if -10 > BIC_diff >= -30:
-            significance_level = 'weakly likely\n -10 > $\delta_{BIC}$ > -30'
-        elif -30 > BIC_diff >= -50:
-            significance_level = 'moderately likely\n -30 > $\delta_{BIC}$ > -50'
-        elif -50 > BIC_diff:
-            significance_level = 'strongly likely\n -50 > $\delta_{BIC}$'
+        if 10 < BIC_diff <= 30:
+            significance_level = 'weakly likely\n10 < $\delta_{BIC}$ < 30'
+        elif 30 < BIC_diff <= 50:
+            significance_level = 'moderately likely\n30 < $\delta_{BIC}$ < 50'
+        elif 50 < BIC_diff:
+            significance_level = 'strongly likely\n$\delta_{BIC}$ > 50'
         else:
             significance_level = str(BIC_diff)
 
@@ -597,7 +597,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
     ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[0].set_title('S/N > 20 and $\delta_{BIC}$<-10')
+    ax[0].set_title('S/N > 20 and $\delta_{BIC}$>10')
 
     #plot points within 90% radius
     #if plot_medians == True:
@@ -627,7 +627,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[1].set_title(r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
     #plot points with strong BIC values
     #if plot_medians == True:
@@ -658,7 +658,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[2].set_title('strongly likely BIC $\delta_{BIC}$<-50')
+    ax[2].set_title('strongly likely BIC $\delta_{BIC}$>50')
 
     plt.show()
 

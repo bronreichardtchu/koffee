@@ -104,7 +104,7 @@ def read_in_data_fits(filename):
     #create the wavelength vector
     try:
         lamdas = np.arange(header['CRVAL3'], header['CRVAL3']+(header['NAXIS3']*header['CD3_3']), header['CD3_3'])
-    except:
+    except KeyError:
         lamdas = np.arange(header['CRVAL3'], header['CRVAL3']+(header['NAXIS3']*header['CDELT3']), header['CDELT3'])
 
     if 'var' in locals():
@@ -154,7 +154,7 @@ def read_in_data_pickle(filename):
 #BINNING
 #====================================================================================================
 
-def bin_data(lamdas, data, z, bin_size=[3,3]):
+def bin_data(lamdas, data, z, other_cubes=None, bin_size=[3,3]):
     """
     Bins the input data
 
@@ -169,6 +169,10 @@ def bin_data(lamdas, data, z, bin_size=[3,3]):
     z : int
         the redshift
 
+    other_cubes : list of :obj:'~numpy.ndarray'
+        any other cubes (e.g. the variance) which need to be binned in the
+        exact same way as the data, with the same shifts.
+
     bin_size : int
         the number of spaxels to bin by (Default is [3,3], this will bin 3x3)
 
@@ -179,6 +183,14 @@ def bin_data(lamdas, data, z, bin_size=[3,3]):
     """
     #create empty array to put binned data in
     binned_data = np.empty([data.shape[0], math.ceil(data.shape[1]/bin_size[0]), math.ceil(data.shape[2]/bin_size[1])])
+
+    #if there are other cubes, create empty arrays to put binned data in
+    if other_cubes:
+        binned_other_cubes = []
+        for cube in other_cubes:
+            binned_cube = np.empty([cube.shape[0], math.ceil(cube.shape[1]/bin_size[0]), math.ceil(cube.shape[2]/bin_size[1])])
+            #append the empty cube to the array
+            binned_other_cubes.append(binned_cube)
 
     #create lamda mask for hbeta
     hbeta_mask = (lamdas>4862.68*(1+z)-2.0) & (lamdas<4862.68*(1+z)+2.0)
@@ -224,8 +236,20 @@ def bin_data(lamdas, data, z, bin_size=[3,3]):
                     #shift the spectra to the left
                     data[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
 
+            #if there are other cubes, iterate through and shift them
+            if other_cubes:
+                for cube in other_cubes:
+                    for (i,j), diff in np.ndenumerate(hbeta_peak_diff):
+                        if diff < 0:
+                            #shift the spectra to the right
+                            cube[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = cube[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
 
-            #"""
+                        if diff > 0:
+                            #shift the spectra to the left
+                            cube[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = cube[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
+
+
+            """
             #checks
             #find where the peak of the hbeta line is
             try:
@@ -247,6 +271,11 @@ def bin_data(lamdas, data, z, bin_size=[3,3]):
             #bin the data
             binned_data[:, int(x), int(y)] = np.nansum(data[:, start_xi:end_xi, start_yi:end_yi], axis=(1,2))
 
+            #bin the other cubes
+            if other_cubes:
+                for cube_num, cube in enumerate(other_cubes):
+                    binned_other_cubes[cube_num][:, int(x), int(y)] = np.nansum(cube[:, start_xi:end_xi, start_yi:end_yi], axis=(1,2))
+
             #increase y counters
             start_yi += bin_size[1]
             end_yi += bin_size[1]
@@ -255,7 +284,11 @@ def bin_data(lamdas, data, z, bin_size=[3,3]):
         start_xi += bin_size[0]
         end_xi += bin_size[0]
 
-    return binned_data
+    if other_cubes:
+        return binned_data, binned_other_cubes
+
+    else:
+        return binned_data
 
 
 def save_binned_data(data, header, data_folder, gal_name, bin_size=[3,3]):
