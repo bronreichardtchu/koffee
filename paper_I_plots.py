@@ -55,7 +55,7 @@ from . import koffee
 
 import importlib
 importlib.reload(pf)
-#importlib.reload(calc_mlf)
+importlib.reload(calc_mlf)
 #importlib.reload(bdpk)
 
 
@@ -122,14 +122,14 @@ def plot_compare_fits(lamdas, data, spaxels, z):
         bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, verbose=False)
 
         #find the significance level using the BIC difference
-        BIC_diff = bestfit2.bic - bestfit1.bic
+        BIC_diff = bestfit1.bic - bestfit2.bic
         print(BIC_diff)
-        if -10 > BIC_diff >= -30:
-            significance_level = 'weakly likely\n -10 > $\delta_{BIC}$ > -30'
-        elif -30 > BIC_diff >= -50:
-            significance_level = 'moderately likely\n -30 > $\delta_{BIC}$ > -50'
-        elif -50 > BIC_diff:
-            significance_level = 'strongly likely\n -50 > $\delta_{BIC}$'
+        if 10 < BIC_diff <= 30:
+            significance_level = 'weakly likely\n10 < $\delta_{BIC}$ < 30'
+        elif 30 < BIC_diff <= 50:
+            significance_level = 'moderately likely\n30 < $\delta_{BIC}$ < 50'
+        elif 50 < BIC_diff:
+            significance_level = 'strongly likely\n$\delta_{BIC}$ < 50'
         else:
             significance_level = str(BIC_diff)
 
@@ -197,7 +197,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     spaxel : list
         the spaxel of the emission line which will be fit for the third panel,
         this is usually chosen to be one of the spaxels for which not doing
-        KOFFEE's checks means the fit is an unlikely one.
+        KOFFEE's checks means the fit is an unlikely one. e.g. [33, 5]
 
     z : float
         redshift
@@ -285,6 +285,15 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     plotting_mask = (lam_OIII>lam_OIII[30]) & (lam_OIII<lam_OIII[-25])
     plotting_mask2 = (fine_sampling>lam_OIII[30]) & (fine_sampling<lam_OIII[-25])
 
+    #create the bins for the histograms
+    if plot_fit_parameters == True:
+        bins_panel1 = np.linspace(np.nanmin(np.concatenate((vel_diff_unfixed[statistical_results_unfixed>0], vel_diff[statistical_results>0]))), np.nanmax(np.concatenate((vel_diff_unfixed[statistical_results_unfixed>0], vel_diff[statistical_results>0]))), 20)
+        bins_panel2 = np.linspace(np.nanmin(np.concatenate((amp_ratio_unfixed[statistical_results_unfixed>0], amp_ratio[statistical_results>0]))), np.nanmax(np.concatenate((amp_ratio_unfixed[statistical_results_unfixed>0], amp_ratio[statistical_results>0]))), 20)
+
+    elif plot_fit_parameters == False:
+        bins_panel1 = np.linspace(np.nanmin(np.concatenate((vel_out_unfixed[statistical_results_unfixed>0], vel_out[statistical_results>0]))), np.nanmax(np.concatenate((vel_out_unfixed[statistical_results_unfixed>0], vel_out[statistical_results>0]))), 20)
+        bins_panel2 = np.linspace(np.nanmin(np.concatenate((flux_ratio_unfixed[statistical_results_unfixed>0], flux_ratio[statistical_results>0]))), np.nanmax(np.concatenate((flux_ratio_unfixed[statistical_results_unfixed>0], flux_ratio[statistical_results>0]))), 20)
+
     #plot the histograms
     plt.rcParams.update(pf.get_rc_params())
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(10,4), constrained_layout=True)
@@ -293,19 +302,19 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
 
     if plot_fit_parameters == True:
-        ax[0].hist(vel_diff_unfixed[statistical_results_unfixed>0], alpha=0.5, color='tab:blue', label='All spaxels S/N > 20')
+        ax[0].hist(vel_diff_unfixed[statistical_results_unfixed>0], bins=bins_panel1, alpha=0.5, color='tab:blue', edgecolor='tab:blue', label='All spaxels S/N > 20\nNo quality tests')
 
-        ax[0].hist(vel_diff[statistical_results>0], alpha=0.5, color='tab:red', label='KOFFEE fits')
+        ax[0].hist(vel_diff[statistical_results>0], bins=bins_panel1, alpha=0.5, color='tab:red', edgecolor='tab:red', label='KOFFEE fits')
 
-        ax[0].set_ylim(0,90)
+        ax[0].set_ylim(0,50)
         ax[0].set_xlabel('Velocity Difference $v_{narrow}-v_{broad}$ [km s$^{-1}$]')
 
     elif plot_fit_parameters == False:
-        ax[0].hist(vel_out_unfixed[statistical_results_unfixed>0], alpha=0.5, color='tab:blue', label='All spaxels S/N > 20')
+        ax[0].hist(vel_out_unfixed[statistical_results_unfixed>0], bins=bins_panel1, alpha=0.5, color='tab:blue', edgecolor='tab:blue', label='All spaxels S/N > 20\nNo quality tests')
 
-        ax[0].hist(vel_out[statistical_results>0], alpha=0.5, color='tab:red', label='KOFFEE fits')
+        ax[0].hist(vel_out[statistical_results>0], bins=bins_panel1, alpha=0.5, color='tab:red', edgecolor='tab:red', label='KOFFEE fits')
 
-        ax[0].set_ylim(0,75)
+        ax[0].set_ylim(0,40)
         ax[0].set_xlabel('Maximum Outflow Velocity [km s$^{-1}$]')
 
     ax[0].legend(fontsize='x-small', frameon=False)
@@ -313,19 +322,19 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
 
     if plot_fit_parameters == True:
-        ax[1].hist(amp_ratio_unfixed[statistical_results_unfixed>0], alpha=0.5, label='All spaxels S/N > 20', color='tab:blue')
+        ax[1].hist(amp_ratio_unfixed[statistical_results_unfixed>0], bins=bins_panel2, alpha=0.5, label='All spaxels S/N > 20', color='tab:blue', edgecolor='tab:blue')
 
-        ax[1].hist(amp_ratio[statistical_results>0], alpha=0.5, label='KOFFEE fits', color='tab:red')
+        ax[1].hist(amp_ratio[statistical_results>0], bins=bins_panel2, alpha=0.5, label='KOFFEE fits', color='tab:red', edgecolor='tab:red')
 
-        ax[1].set_ylim(0,90)
+        ax[1].set_ylim(0,50)
         ax[1].set_xlabel('[OIII] Log($A_{broad}$/$A_{narrow}$)')
 
     elif plot_fit_parameters == False:
-        ax[1].hist(flux_ratio_unfixed[statistical_results_unfixed>0], alpha=0.5, label='All spaxels S/N > 20', color='tab:blue')
+        ax[1].hist(flux_ratio_unfixed[statistical_results_unfixed>0], bins=bins_panel2, alpha=0.5, label='All spaxels S/N > 20', color='tab:blue', edgecolor='tab:blue')
 
-        ax[1].hist(flux_ratio[statistical_results>0], alpha=0.5, label='KOFFEE fits', color='tab:red')
+        ax[1].hist(flux_ratio[statistical_results>0], bins=bins_panel2, alpha=0.5, label='KOFFEE fits', color='tab:red', edgecolor='tab:red')
 
-        ax[1].set_ylim(0,75)
+        ax[1].set_ylim(0,50)
         ax[1].set_xlabel('[OIII] Log(F$_{broad}$/F$_{narrow}$)')
 
 
@@ -403,6 +412,9 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     plot_data_fits : boolean
         whether to plot the fit to the data points, and the fit to the data
         medians in red on top of the plot (default is False)
+
+    xlim_vals : list of floats
+        the xlimits for the plotted data e.g. [0.005, 13]
 
     Returns
     -------
@@ -597,7 +609,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
     ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[0].set_title('S/N > 20 and $\delta_{BIC}$<-10')
+    ax[0].set_title('S/N > 20 and $\delta_{BIC}$>10')
 
     #plot points within 90% radius
     #if plot_medians == True:
@@ -627,7 +639,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[1].set_title(r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
     #plot points with strong BIC values
     #if plot_medians == True:
@@ -658,7 +670,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[2].set_title('strongly likely BIC $\delta_{BIC}$<-50')
+    ax[2].set_title('strongly likely BIC $\delta_{BIC}$>50')
 
     plt.show()
 
@@ -966,9 +978,9 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
     #-------
     #plot it
     #-------
-    ax.plot(circularised_radius*2, corr_coeff_all, marker='o', label='S/N>20 and $\delta_{BIC}$<-10', color=colours[0])
-    ax.plot(circularised_radius*2, corr_coeff_physical, marker='o', label=r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
-    ax.plot(circularised_radius*2, corr_coeff_strong, marker='o', label='strongly likely BIC $\delta_{BIC}$<-50', color=colours[2])
+    ax.plot(circularised_radius*2, corr_coeff_all, marker='o', label='S/N>20 and $\delta_{BIC}$>10', color=colours[0])
+    ax.plot(circularised_radius*2, corr_coeff_physical, marker='o', label=r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
+    ax.plot(circularised_radius*2, corr_coeff_strong, marker='o', label='strongly likely BIC $\delta_{BIC}$>50', color=colours[2])
 
 
     lgnd = ax.legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
@@ -1254,7 +1266,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     lgnd = ax[1,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[1,0].set_ylabel(r'Log($\eta$)')
+    ax[1,0].set_ylabel(r'Log($\eta (\frac{1 kpc}{R_{out}})$)')
     ax[1,0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
 
@@ -1335,7 +1347,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     lgnd = ax[0,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,0].set_ylabel(r'H$\beta$ Log(F$_{broad}$/F$_{narrow}$)')
-    ax[0,0].set_title('S/N > 20 and $\delta_{BIC}$<-10')
+    ax[0,0].set_title('S/N > 20 and $\delta_{BIC}$>10')
 
 
 
@@ -1355,7 +1367,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     lgnd = ax[0,1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[0,1].set_title(r'$\delta_{BIC}$<-10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[0,1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
 
 
@@ -1375,7 +1387,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     lgnd = ax[0,2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[0,2].set_title('strongly likely BIC $\delta_{BIC}$<-50')
+    ax[0,2].set_title('strongly likely BIC $\delta_{BIC}$>50')
 
     plt.subplots_adjust(left=0.06, right=0.99, top=0.96, bottom=0.07, wspace=0.04, hspace=0.04)
 
@@ -1987,7 +1999,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
         ax.set_ylabel(r'$\eta$-model+$const$')
 
     ax.set_xlabel('Galaxy Radius [kpc]')
-    ax.set_title('S/N > 20 and $\delta_{BIC}$<-10')
+    ax.set_title('S/N > 20 and $\delta_{BIC}$ > 10')
 
     ax.set_ylim(np.nanmin(mlf_model)-0.4, np.nanmax(mlf_model)+0.1)
 
