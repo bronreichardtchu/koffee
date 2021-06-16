@@ -110,8 +110,8 @@ def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error,
     #then use the average as R_out
     #R_out = (R_max + R_min)/2
 
-    #use 1kpc as the R_out - then we can say M_out/R_out=1kpc
-    R_out = 1000 * u.parsec
+    #use 500pc as the R_out 
+    R_out = 500 * u.parsec
 
     #L_Hbeta is the luminosity of the broad line of Hbeta (we want the outflow flux)
     systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_sfr.calc_flux_from_koffee(hbeta_results, hbeta_error, statistical_results, z, outflow=True)
