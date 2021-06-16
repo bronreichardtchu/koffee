@@ -478,14 +478,14 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
         logspace_strong, bin_center_strong, v_out_bin_medians_strong, v_out_bin_lower_q_strong, v_out_bin_upper_q_strong, v_out_bin_stdev_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
     #calculate the r value for the median values
-    r_vel_out_med_all, p_value_v_out_all = pf.pearson_correlation(bin_center_all, v_out_bin_medians_all)
-    r_vel_out_med_physical, p_value_v_out_physical = pf.pearson_correlation(bin_center_physical, v_out_bin_medians_physical)
-    r_vel_out_med_strong, p_value_v_out_strong = pf.pearson_correlation(bin_center_strong, v_out_bin_medians_strong)
+    r_vel_out_med_all, p_value_v_out_med_all = pf.pearson_correlation(np.log10(bin_center_all), np.log10(v_out_bin_medians_all))
+    r_vel_out_med_physical, p_value_v_out_med_physical = pf.pearson_correlation(np.log10(bin_center_physical), np.log10(v_out_bin_medians_physical))
+    r_vel_out_med_strong, p_value_v_out_med_strong = pf.pearson_correlation(np.log10(bin_center_strong), np.log10(v_out_bin_medians_strong))
 
     #calculate the r value for all the values
-    r_vel_out_all, p_value_v_out_all = pf.pearson_correlation(sig_sfr, vel_out)
-    r_vel_out_physical, p_value_v_out_physical = pf.pearson_correlation(sig_sfr[physical_mask], vel_out[physical_mask])
-    r_vel_out_strong, p_value_v_out_strong = pf.pearson_correlation(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong])
+    r_vel_out_all, p_value_v_out_all = pf.pearson_correlation(np.log10(sig_sfr), np.log10(vel_out))
+    r_vel_out_physical, p_value_v_out_physical = pf.pearson_correlation(np.log10(sig_sfr[physical_mask]), np.log10(vel_out[physical_mask]))
+    r_vel_out_strong, p_value_v_out_strong = pf.pearson_correlation(np.log10(sig_sfr[BIC_diff_strong]), np.log10(vel_out[BIC_diff_strong]))
 
     #create vectors to plot the literature trends
     if xlim_vals:
@@ -525,6 +525,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     print('All spaxels RMS:', rms_all)
     print('All spaxels bins lower quartiles:', v_out_bin_lower_q_all)
     print('All spaxels bins upper quartiles:', v_out_bin_upper_q_all)
+    print('All spaxels p-value:', p_value_v_out_all)
+    print('All spaxels medians p-value:', p_value_v_out_med_all)
     print('All spaxels logspace:', logspace_all)
     print('')
 
@@ -544,6 +546,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     print('Physical spaxels median sigma_sfr:', np.nanmedian(sig_sfr[physical_mask]))
     print('Physical spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[physical_mask]))
     print('Physical spaxels RMS:', rms_physical)
+    print('Physical spaxels p-value:', p_value_v_out_physical)
+    print('Physical spaxels medians p-value:', p_value_v_out_med_physical)
     print('')
     print('Physical spaxels best fit coefficients:', popt_vout_physical)
     print('Physical spaxels best fit errors', np.sqrt(np.diag(pcov_vout_physical)))
@@ -557,6 +561,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     print('Clean spaxels median sigma_sfr:', np.nanmedian(sig_sfr[BIC_diff_strong]))
     print('Clean spaxels standard deviation sigma_sfr:', np.nanstd(sig_sfr[BIC_diff_strong]))
     print('Clean spaxels RMS:', rms_strong)
+    print('Clean spaxels p-value:', p_value_v_out_strong)
+    print('Clean spaxels medians p-value:', p_value_v_out_med_strong)
     print('')
     print('Clean spaxels best fit coefficients:', popt_vout_strong)
     print('Clean spaxels best fit errors', np.sqrt(np.diag(pcov_vout_strong)))
@@ -772,63 +778,39 @@ data_descriptor = ['1x1', '2x1', '3x1', '4x1', '5x1', '3x2', '4x2', '3x3', '5x2'
 
 def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files, outflow_dispersion_fits_files, sig_sfr_fits_files, chi_square_text_files, statistical_results_text_files, z, data_fits_files, data_descriptor):
     """
-    Plots the SFR surface density against the outflow velocity, with Sigma_SFR
-    calculated using only the narrow component.
+    Plots the Pearson Correlation Coefficient for Sigma_SFR-v_out for each bin
+    size against circularised bin diameter.
 
     Parameters
     ----------
-    OIII_outflow_results : :obj:'~numpy.ndarray'
-        array of outflow results from KOFFEE for OIII line.  Used to calculate
-        the outflow velocity.  Should be (7, statistical_results.shape)
+    outflow_velocity_fits_file : list of strings
+        list of fits files containing the outflow velocity results
 
-    OIII_outflow_err : :obj:'~numpy.ndarray'
-        array of the outflow result errors from KOFFEE for OIII line
+    outflow_dispersion_fits_files : list of strings
+        list of fits files containing the outflow dispersion results
 
-    hbeta_outflow_results : :obj:'~numpy.ndarray'
-        array of outflow results from KOFFEE for Hbeta line.  Used to calculate
-        the Sigma SFR. Should be (7, statistical_results.shape)
+    sig_sfr_fits_files : list of strings
+        list of fits files containing the SFR surface density results
 
-    hbeta_outflow_err : :obj:'~numpy.ndarray'
-        array of the outflow result errors from KOFFEE for Hbeta line
+    chi_square_text_files : list of strings
+        list of text files containing the chi square values for each fit
 
-    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
-        array of single gaussian results from KOFFEE for Hbeta line.  Used to
-        calculate the Sigma SFR.  Should be (4, statistical_results.shape)
-
-    hbeta_no_outflow_err : :obj:'~numpy.ndarray'
-        array of the single gaussian result errors from KOFFEE for Hbeta line
-
-    BIC_outflow : :obj:'~numpy.ndarray'
-        array of BIC values from the double gaussian fits, this is usually
-        chi_square[1,:,:] returned from koffee
-
-    BIC_no_outflow : :obj:'~numpy.ndarray'
-        array of BIC values from the single gaussian fits, this is usually
-        chi_square[0,:,:] returned from koffee
-
-    statistical_results : :obj:'~numpy.ndarray'
-        array of statistical results from KOFFEE.
+    statistical_results_text_files : list of strings
+        list of text files containing the statistical results
 
     z : float
         redshift
 
-    radius : :obj:'~numpy.ndarray'
-        array of galaxy radius values
+    data_fits_files : list of strings
+        list of fits files containing the data
 
-    header : FITS header object
-        the header from the fits file
-
-    weighted_average : boolean
-        whether or not to take a weighted average using the errors (Default=True)
-
-    plot_data_fits : boolean
-        whether to plot the fit to the data points, and the fit to the data
-        medians in red on top of the plot (default is False)
+    data_descriptor : list of strings
+        list of descriptors for each data set e.g. '1x1'
 
     Returns
     -------
-    A graph of outflow velocity against the SFR surface density in three panels
-    with different data selections
+    A single panel of the correlation coefficient for Sigma_SFR against
+    outflow velocity, plotted against the circularised bin diameter.
 
     """
     #create figure
@@ -926,9 +908,9 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
         vel_out_err[np.where(np.isnan(vel_out_err)==True)] = np.nanmedian(vel_out_err)
 
         #calculate the r value for all the values
-        r_vel_out_all, p_value_v_out_all = pf.pearson_correlation(sig_sfr, vel_out)
-        r_vel_out_physical, p_value_v_out_physical = pf.pearson_correlation(sig_sfr[physical_mask], vel_out[physical_mask])
-        r_vel_out_clean, p_value_v_out_clean = pf.pearson_correlation(sig_sfr[BIC_diff_strong], vel_out[BIC_diff_strong])
+        r_vel_out_all, p_value_v_out_all = pf.pearson_correlation(np.log10(sig_sfr), np.log10(vel_out))
+        r_vel_out_physical, p_value_v_out_physical = pf.pearson_correlation(np.log10(sig_sfr[physical_mask]), np.log10(vel_out[physical_mask]))
+        r_vel_out_clean, p_value_v_out_clean = pf.pearson_correlation(np.log10(sig_sfr[BIC_diff_strong]), np.log10(vel_out[BIC_diff_strong]))
 
         #save results to arrays
         spaxel_area[i] = ((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2)).value
@@ -978,14 +960,17 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
     #-------
     #plot it
     #-------
-    ax.plot(circularised_radius*2, corr_coeff_all, marker='o', label='S/N>20 and $\delta_{BIC}$>10', color=colours[0])
-    ax.plot(circularised_radius*2, corr_coeff_physical, marker='o', label=r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
-    ax.plot(circularised_radius*2, corr_coeff_strong, marker='o', label='strongly likely BIC $\delta_{BIC}$>50', color=colours[2])
+    ax.plot(circularised_radius*2, corr_coeff_all**2, marker='o', label='S/N>20 and $\delta_{BIC}$>10', color=colours[0])
+    ax.plot(circularised_radius*2, corr_coeff_physical**2, marker='o', label=r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
+    ax.plot(circularised_radius*2, corr_coeff_strong**2, marker='o', label='strongly likely BIC $\delta_{BIC}$>50', color=colours[2])
 
 
     lgnd = ax.legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
-    ax.set_ylabel('Pearson Correlation Coefficient')
+    ax.set_ylabel('Correlation Coefficient $R^2$')
+    #ax.set_ylabel('Correlation Coefficient $R^2$')
     ax.set_xlabel('Circularised Bin Diameter [kpc]')
+
+    ax.set_ylim(np.nanmin(np.array([corr_coeff_all, corr_coeff_physical, corr_coeff_strong])**2)-0.04, np.nanmax(np.array([corr_coeff_all, corr_coeff_physical, corr_coeff_strong])**2)+0.05)
 
     plt.show()
 
@@ -1141,24 +1126,26 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
 
     #calculate the r value for the median values
-    r_mlf_med_all, p_value_mlf_all = pf.pearson_correlation(bin_center_all, mlf_bin_medians_all)
-    r_mlf_med_physical, p_value_mlf_physical = pf.pearson_correlation(bin_center_physical, mlf_bin_medians_physical)
-    r_mlf_med_strong, p_value_mlf_strong = pf.pearson_correlation(bin_center_strong, mlf_bin_medians_strong)
+    #mlf is already logged
+    r_mlf_med_all, p_value_mlf_all = pf.pearson_correlation(np.log10(bin_center_all), mlf_bin_medians_all)
+    r_mlf_med_physical, p_value_mlf_physical = pf.pearson_correlation(np.log10(bin_center_physical), mlf_bin_medians_physical)
+    r_mlf_med_strong, p_value_mlf_strong = pf.pearson_correlation(np.log10(bin_center_strong), mlf_bin_medians_strong)
 
     #calculate the r value for all the values
-    r_mlf_all, p_value_mlf_all = pf.pearson_correlation(sig_sfr[~np.isnan(mlf)], mlf[~np.isnan(mlf)])
-    r_mlf_physical, p_value_mlf_physical = pf.pearson_correlation(sig_sfr[~np.isnan(mlf)&physical_mask], mlf[~np.isnan(mlf)&physical_mask])
-    r_mlf_strong, p_value_mlf_strong = pf.pearson_correlation(sig_sfr[~np.isnan(mlf)&BIC_diff_strong], mlf[~np.isnan(mlf)&BIC_diff_strong])
+    r_mlf_all, p_value_mlf_all = pf.pearson_correlation(np.log10(sig_sfr[~np.isnan(mlf)]), mlf[~np.isnan(mlf)])
+    r_mlf_physical, p_value_mlf_physical = pf.pearson_correlation(np.log10(sig_sfr[~np.isnan(mlf)&physical_mask]), mlf[~np.isnan(mlf)&physical_mask])
+    r_mlf_strong, p_value_mlf_strong = pf.pearson_correlation(np.log10(sig_sfr[~np.isnan(mlf)&BIC_diff_strong]), mlf[~np.isnan(mlf)&BIC_diff_strong])
 
     #calculate the r value for the median values
-    r_flux_med_all, p_value_flux_all = pf.pearson_correlation(bin_center_all, flux_bin_medians_all)
-    r_flux_med_physical, p_value_flux_physical = pf.pearson_correlation(bin_center_physical, flux_bin_medians_physical)
-    r_flux_med_strong, p_value_flux_strong = pf.pearson_correlation(bin_center_strong, flux_bin_medians_strong)
+    #flux is already logged
+    r_flux_med_all, p_value_flux_all = pf.pearson_correlation(np.log10(bin_center_all), flux_bin_medians_all)
+    r_flux_med_physical, p_value_flux_physical = pf.pearson_correlation(np.log10(bin_center_physical), flux_bin_medians_physical)
+    r_flux_med_strong, p_value_flux_strong = pf.pearson_correlation(np.log10(bin_center_strong), flux_bin_medians_strong)
 
     #calculate the r value for all the values
-    r_flux_all, p_value_flux_all = pf.pearson_correlation(sig_sfr[~np.isnan(flux_ratio)], flux_ratio[~np.isnan(flux_ratio)])
-    r_flux_physical, p_value_flux_physical = pf.pearson_correlation(sig_sfr[~np.isnan(flux_ratio) & physical_mask], flux_ratio[~np.isnan(flux_ratio) & physical_mask])
-    r_flux_strong, p_value_flux_strong = pf.pearson_correlation(sig_sfr[~np.isnan(flux_ratio) & BIC_diff_strong], flux_ratio[~np.isnan(flux_ratio) & BIC_diff_strong])
+    r_flux_all, p_value_flux_all = pf.pearson_correlation(np.log10(sig_sfr[~np.isnan(flux_ratio)]), flux_ratio[~np.isnan(flux_ratio)])
+    r_flux_physical, p_value_flux_physical = pf.pearson_correlation(np.log10(sig_sfr[~np.isnan(flux_ratio) & physical_mask]), flux_ratio[~np.isnan(flux_ratio) & physical_mask])
+    r_flux_strong, p_value_flux_strong = pf.pearson_correlation(np.log10(sig_sfr[~np.isnan(flux_ratio) & BIC_diff_strong]), flux_ratio[~np.isnan(flux_ratio) & BIC_diff_strong])
 
 
     #calculate Kim et al. trend
@@ -1226,7 +1213,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     #plot it
     #-------
     plt.rcParams.update(pf.get_rc_params())
-    fig, ax = plt.subplots(nrows=2, ncols=3, sharex=True, sharey=True, figsize=(10,7), constrained_layout=True)
+    fig, ax = plt.subplots(nrows=2, ncols=3, sharex=True, sharey='row', figsize=(10,7), constrained_layout=True)
 
     #get colours from cmasher
     colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
@@ -1252,7 +1239,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         #fit for medians
         ax[1,0].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_all_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_all_medians[0], np.sqrt(np.diag(pcov_mlf_all_medians))[0], popt_mlf_all_medians[1], np.sqrt(np.diag(pcov_mlf_all_medians))[1]))
 
-    ax[1,0].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
+    ax[1,0].errorbar(0.05, np.nanmin(mlf), xerr=np.nanmedian(sig_sfr_err), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
 
 
     #ax[1,0].set_ylim(np.nanmin(mlf)-0.1, np.nanmax(mlf)+0.5)
@@ -1264,9 +1251,10 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         #save the xlim values for the comparison figure
         xlim_vals = [np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr)+2.0]
 
+    ax[1,0].set_ylim((np.nanmin(mlf)+np.nanmedian(mlf_err_max)-0.1), np.nanmax(mlf)+0.8)
     lgnd = ax[1,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[1,0].set_ylabel(r'Log($\eta (\frac{1 kpc}{R_{out}})$)')
+    ax[1,0].set_ylabel(r'Log($\eta (\frac{500~\rm pc}{R_{\rm out}})$)')
     ax[1,0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
 
@@ -1291,7 +1279,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         #fit for medians
         ax[1,1].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_physical_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_physical_medians[0], np.sqrt(np.diag(pcov_mlf_physical_medians))[0], popt_mlf_physical_medians[1], np.sqrt(np.diag(pcov_mlf_physical_medians))[1]))
 
-    ax[1,1].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
+    ax[1,1].errorbar(0.05, np.nanmin(mlf), xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
 
     #ax[0,1].set_xscale('log')
     lgnd = ax[1,1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
@@ -1320,7 +1308,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         #fit for medians
         ax[1,2].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_strong_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_strong_medians[0], np.sqrt(np.diag(pcov_mlf_strong_medians))[0], popt_mlf_strong_medians[1], np.sqrt(np.diag(pcov_mlf_strong_medians))[1]))
 
-    ax[1,2].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
+    ax[1,2].errorbar(0.05, np.nanmin(mlf), xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
 
     #ax[0,1].set_xscale('log')
     lgnd = ax[1,2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
@@ -1346,7 +1334,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     ax[0,0].set_ylim((np.nanmin(flux_ratio)+np.nanmedian(flux_error)-0.1), np.nanmax(flux_ratio)+0.6)
     lgnd = ax[0,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[0,0].set_ylabel(r'H$\beta$ Log(F$_{broad}$/F$_{narrow}$)')
+    ax[0,0].set_ylabel(r'H$\beta$ Log(F$_{\rm broad}$/F$_{\rm narrow}$)')
     ax[0,0].set_title('S/N > 20 and $\delta_{BIC}$>10')
 
 
@@ -1389,7 +1377,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,2].set_title('strongly likely BIC $\delta_{BIC}$>50')
 
-    plt.subplots_adjust(left=0.06, right=0.99, top=0.96, bottom=0.07, wspace=0.04, hspace=0.04)
+    plt.subplots_adjust(left=0.07, right=0.99, top=0.96, bottom=0.07, wspace=0.04, hspace=0.04)
 
     plt.show()
 
@@ -1602,8 +1590,10 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     #ax1.scatter(out_vel_peak_halpha_pixel[0], out_vel_peak_halpha_pixel[1], c='grey', marker='x', s=20)
     #ax1.scatter(out_vel_local_max_halpha_pixel[0], out_vel_local_max_halpha_pixel[1], c='grey', marker='o', s=20)
     #ax1.scatter(mlf_peak_halpha_pixel[0], mlf_peak_halpha_pixel[1], c='white', marker='x', s=20)
-    ax1.arrow(m_out_peak_halpha_pixel[0]-55, m_out_peak_halpha_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
-    #ax1.arrow(m_out_peak_world[0]-5, m_out_peak_world[1]-5, 5, 5, width=5, color='white', transform=ax1.get_transform('world'))
+
+    #this arrow works!
+    #ax1.arrow(m_out_peak_halpha_pixel[0]-55, m_out_peak_halpha_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
+
     lon1 = ax1.coords[0]
     lat1 = ax1.coords[1]
     lon1.set_ticks_visible(False)
@@ -1620,7 +1610,7 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     #cbar = plt.colorbar(halpha_map, ax=ax1, shrink=0.8)
 
     ax3 = plt.subplot(336, projection=flux_ratio_wcs, slices=('y', 'x'))
-    flux_ratio_spax = ax3.imshow(flux_ratio, origin='lower', aspect=flux_ratio_header['CD2_1']/flux_ratio_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=0.1)
+    flux_ratio_spax = ax3.imshow(flux_ratio.T, origin='lower', aspect=flux_ratio_header['CD2_1']/flux_ratio_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=0.1)
     #ax3.hlines(ymin+0.75, xmin+4, xmin+4+koffee_10arcsec_pixel_length, colors='black')
     #ax3.hlines(koffee_start_10_arcsec_pixel[1], koffee_start_10_arcsec_pixel[0], koffee_end_10_arcsec_pixel[0], colors='black')
     #ax3.text(low_lim_rad[0]-5, high_lim_rad[1]-5, '[OIII]', c='black')
@@ -1693,7 +1683,7 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
     ax5 = plt.subplot(333, projection=flux_broad_wcs, slices=('y', 'x'))
     #flux_broad_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, flux_broad, angle=360, axes=ax5, cmap=cmr.gem, vmin=-1.5, vmax=1.7)
-    flux_broad_spax = ax5.imshow(flux_broad.T, origin='lower', aspect=flux_broad_header['CD2_1']/flux_broad_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=1.7)
+    flux_broad_spax = ax5.imshow(flux_broad.T, origin='lower', aspect=flux_broad_header['CD2_1']/flux_broad_header['CD1_2'], cmap=cmr.gem, vmin=-0.5, vmax=1.7)
     #ax5.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
     ax5.grid(False)
     ax5.coords.grid(False)
@@ -1755,9 +1745,9 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
     ax8 = plt.subplot(338, projection=m_out_wcs, slices=('y', 'x'))
     #m_out_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, m_out, angle=360, axes=ax8, cmap=cmr.gem, vmin=-3.2, vmax=-0.9)
-    m_out_spax = ax8.imshow(m_out.T, origin='lower', aspect=m_out_header['CD2_1']/m_out_header['CD1_2'], cmap=cmr.gem, vmin=-3.2, vmax=-0.9)
+    m_out_spax = ax8.imshow(m_out.T, origin='lower', aspect=m_out_header['CD2_1']/m_out_header['CD1_2'], cmap=cmr.gem, vmin=-2.8, vmax=-0.5)
     #ax8.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
-    ax8.arrow(m_out_peak_pixel[0][0]+5, m_out_peak_pixel[0][1]-2, -5, 2, width=0.2, length_includes_head=True, color='k')
+    #ax8.arrow(m_out_peak_pixel[0][0]+5, m_out_peak_pixel[0][1]-2, -5, 2, width=0.2, length_includes_head=True, color='k')
     ax8.grid(False)
     ax8.coords.grid(False)
     lon8 = ax8.coords[0]
@@ -1776,7 +1766,7 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
     ax9 = plt.subplot(339, projection=mlf_wcs, slices=('y', 'x'))
     #mlf_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, mlf, angle=360, axes=ax9, cmap=cmr.gem, vmin=-1.5, vmax=0.3)
-    mlf_spax = ax9.imshow(mlf.T, origin='lower', aspect=mlf_header['CD2_1']/mlf_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=0.3)
+    mlf_spax = ax9.imshow(mlf.T, origin='lower', aspect=mlf_header['CD2_1']/mlf_header['CD1_2'], cmap=cmr.gem, vmin=-1.1, vmax=0.7)
     #ax9.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
     ax9.grid(False)
     ax9.coords.grid(False)
@@ -1936,6 +1926,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
 
 
     #calculate the r value for the median values
+    #model is already logged
     r_mlf_med_all, p_value_mlf_all = pf.pearson_correlation(bin_center_all, mlf_bin_medians_all)
     #r_mlf_med_all, p_value_mlf_all = pearson_correlation(bin_center_all, mlf_model_medians)
 
