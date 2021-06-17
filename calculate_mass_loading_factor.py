@@ -108,7 +108,10 @@ def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error,
     #use the resolution of the spaxels as the minimum radial extent - this is ~350pc
     R_min = 350 * u.parsec
     #then use the average as R_out
-    R_out = (R_max + R_min)/2
+    #R_out = (R_max + R_min)/2
+
+    #use 500pc as the R_out 
+    R_out = 500 * u.parsec
 
     #L_Hbeta is the luminosity of the broad line of Hbeta (we want the outflow flux)
     systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_sfr.calc_flux_from_koffee(hbeta_results, hbeta_error, statistical_results, z, outflow=True)
@@ -174,7 +177,7 @@ def calc_mass_loading_factor(OIII_results, OIII_error, hbeta_results, hbeta_erro
         redshift
 
     header : FITS header object
-        the header from the fits file 
+        the header from the fits file
 
     Returns
     -------
