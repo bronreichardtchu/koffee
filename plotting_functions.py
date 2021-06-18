@@ -64,16 +64,16 @@ def get_rc_params():
         "legend.frameon": False,
         #"legend.markerscale": 1.0,
 
-        #"axes.labelsize": 18,
+        "axes.labelsize": 'large',
 
         "xtick.direction": 'in',
-        #"xtick.labelsize": 14,
+        "xtick.labelsize": 'medium',
         "xtick.minor.visible": True,
         "xtick.top": True,
         "xtick.major.width": 1,
 
         "ytick.direction": 'in',
-        #"ytick.labelsize": 14,
+        "ytick.labelsize": 'medium',
         "ytick.minor.visible": True,
         "ytick.right": True,
         "ytick.major.width": 1,
