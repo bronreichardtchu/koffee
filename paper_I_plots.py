@@ -55,7 +55,7 @@ from . import koffee
 
 import importlib
 importlib.reload(pf)
-importlib.reload(calc_mlf)
+#importlib.reload(calc_mlf)
 #importlib.reload(bdpk)
 
 
@@ -1377,7 +1377,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,2].set_title('strongly likely BIC $\delta_{BIC}$>50')
 
-    plt.subplots_adjust(left=0.07, right=0.99, top=0.96, bottom=0.07, wspace=0.04, hspace=0.04)
+    plt.subplots_adjust(left=0.08, right=0.99, top=0.96, bottom=0.07, wspace=0.04, hspace=0.04)
 
     plt.show()
 
