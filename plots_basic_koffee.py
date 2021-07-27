@@ -47,6 +47,7 @@ from . import plotting_functions as pf
 from . import brons_display_pixels_kcwi as bdpk
 from . import prepare_cubes as pc
 from . import koffee
+from . import koffee_fitting_functions as kff
 from . import calculate_outflow_velocity as calc_outvel
 from . import calculate_mass_loading_factor as calc_mlf
 from . import calculate_star_formation_rate as calc_sfr
@@ -589,10 +590,10 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     if weighted_average == False:
         #bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = pf.binned_median_quantile_log(sig_sfr[BIC_mask], vel_out[BIC_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = pf.binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace, bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q, v_out_bin_stdev = pf.binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
     elif weighted_average == True:
-        bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q = pf.binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        logspace, bin_center, v_out_bin_medians, v_out_bin_lower_q, v_out_bin_upper_q, v_out_bin_stdev = pf.binned_median_quantile_log(sig_sfr, vel_out, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
 
     print(bin_center)
@@ -633,21 +634,92 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
         plt.errorbar(5, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
 
-
-    plt.fill_between(bin_center, v_out_bin_lower_q, v_out_bin_upper_q, color='tab:blue', alpha=0.3)
-    plt.plot(bin_center, v_out_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_out_med))
+    plt.errorbar(bin_center, v_out_bin_medians, yerr=v_out_bin_stdev, color='tab:blue', capsize=3.0, lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_vel_out_med))
+    #plt.fill_between(bin_center, v_out_bin_lower_q, v_out_bin_upper_q, color='tab:blue', alpha=0.3)
+    #plt.plot(bin_center, v_out_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_out_med))
     plt.plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     plt.plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
     #plt.ylim(100, 500)
-    #plt.ylim(-50, 550)
+    plt.ylim(np.nanmin(vel_out)-50, np.nanmax(vel_out)+50)
+    plt.xlim(np.nanmin(sig_sfr)-0.001, np.nanmax(sig_sfr)+1)
     plt.xscale('log')
-    lgnd = plt.legend(frameon=False, fontsize='x-small', loc='lower left')
+    lgnd = plt.legend(frameon=False, fontsize='x-small', loc='lower right')
     lgnd.legendHandles[0]._legmarker.set_markersize(4)
     plt.ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
     plt.xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
     plt.tight_layout()
     plt.show()
+
+
+def plot_compare_all_fits_one_panel(outflow_results, statistical_results, z, emission_line):
+    """
+    Plots the Gaussian fits for all of the spaxels with outflows on top of each
+    other, normalised for comparison.
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for an emission line.
+        Should be (7, statistical_results.shape)
+
+    statistical_results : :obj:'~numpy.ndarray'
+        array of statistical results from KOFFEE.
+
+    z : float
+        redshift
+
+    emission_line : str
+        The emission line that the results are for - used in the plot title.
+
+    Returns
+    -------
+    A single panel plot of the normalised Gaussian fits.
+    """
+    #mask for the spaxels with outflows
+    sigma_gal = outflow_results[0,:,:][statistical_results>0]
+    mean_gal = outflow_results[1,:,:][statistical_results>0]
+    amp_gal = outflow_results[2,:,:][statistical_results>0]
+
+    sigma_flow = outflow_results[3,:,:][statistical_results>0]
+    mean_flow = outflow_results[4,:,:][statistical_results>0]
+    amp_flow = outflow_results[5,:,:][statistical_results>0]
+
+    #make a wavelength range
+    emline = koffee.all_the_lines[emission_line]*(z+1)
+
+    lamdas = np.linspace(emline-10.0, emline+10.0, 1000)
+
+    #find the amount that the galaxy means are different from the median value
+    mean_gal_shift = mean_gal - np.nanmedian(mean_gal)
+
+    #shift the galaxy means to have the same value
+    mean_gal = mean_gal - mean_gal_shift
+
+    #shift the flow means as well
+    mean_flow = mean_flow - mean_gal_shift
+
+    #make the figure
+    plt.rcParams.update(pf.get_rc_params())
+    plt.figure(figsize=(7,4))
+
+    for i in np.arange(sigma_gal.shape[0]):
+        #make the galaxy Gaussian
+        gauss_gal = kff.gaussian_func(lamdas, amp_gal[i], mean_gal[i], sigma_gal[i])
+        gauss_flow = kff.gaussian_func(lamdas, amp_flow[i], mean_flow[i], sigma_flow[i])
+
+        #normalisation factor
+        normaliser = np.nanmax(gauss_gal)
+
+        #plot the gaussians
+        plt.step(lamdas, gauss_gal/normaliser, alpha=0.7, lw=0.5, c='tab:blue')
+        plt.step(lamdas, gauss_flow/normaliser, alpha=0.7, lw=0.5, c='tab:orange')
+
+    plt.title('Normalised '+emission_line+' KOFFEE outflow fits')
+    plt.xlabel('Shifted wavelength')
+
+    plt.show()
+
 
 
 
