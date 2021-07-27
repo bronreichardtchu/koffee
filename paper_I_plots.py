@@ -55,7 +55,7 @@ from . import koffee
 
 import importlib
 importlib.reload(pf)
-#importlib.reload(calc_mlf)
+importlib.reload(calc_sfr)
 #importlib.reload(bdpk)
 
 
