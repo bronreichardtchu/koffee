@@ -746,8 +746,16 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     #sfr_surface_density = sfr/((0.7*1.35)*(proper_dist**2))
     #sfr_surface_density_err = sfr_err/((0.7*1.35)*(proper_dist**2))
 
-    sfr_surface_density = sfr/((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2))
-    sfr_surface_density_err = sfr_err/((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2))
+    try:
+        x = header['CD1_2']*60*60
+        y = header['CD2_1']*60*60
+
+    except:
+        x = (-header['CDELT2']*np.sin(header['CROTA2'])) *60*60
+        y = (header['CDELT1']*np.sin(header['CROTA2'])) *60*60
+
+    sfr_surface_density = sfr/((x*y)*(proper_dist**2))
+    sfr_surface_density_err = sfr_err/((x*y)*(proper_dist**2))
 
     print(sfr.unit)
 
