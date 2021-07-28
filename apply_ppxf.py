@@ -2214,8 +2214,8 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
 
 if __name__ == '__main__':
 
-    from koffee import prepare_cubes
-    #import prepare_cubes
+    #from koffee import prepare_cubes
+    import prepare_cubes
     from mpi4py import MPI
 
 
@@ -2254,7 +2254,7 @@ if __name__ == '__main__':
     lamdas, var_lamdas, xx, yy, rad, data, var, xx_flat, yy_flat, rad_flat, data_flat, var_flat, data_header = prepare_cubes.prepare_single_cube(data_filepath=data_filepath, gal_name=gal_name, z=z, cube_colour='red', results_folder=results_folder, data_corrections=True, data_crop=False, var_filepath=var_filepath, var_crop=False, var_corrections=True, lamda_crop=True)
     """
 
-
+    """
     #J164905 red cube read-in
     data_filepath = '/Users/breichardtchu/Documents/data/J164905/J164905_red_binned_3_by_3.fits'
     var_filepath = '/Users/breichardtchu/Documents/data/J164905/J164905_red_var_binned_3_by_3.fits'
@@ -2265,6 +2265,7 @@ if __name__ == '__main__':
 
 
     lamdas, var_lamdas, xx, yy, rad, data, var, xx_flat, yy_flat, rad_flat, data_flat, var_flat, data_header = prepare_cubes.prepare_single_cube(data_filepath=data_filepath, gal_name=gal_name, z=z, cube_colour='red', results_folder=results_folder, data_crop=False, var_filepath=var_filepath, var_crop=False, lamda_crop=False, mw_correction=True)
+    """
 
 
     """
@@ -2279,6 +2280,17 @@ if __name__ == '__main__':
 
     lamdas, var_lamdas, xx, yy, rad, data, var, xx_flat, yy_flat, rad_flat, data_flat, var_flat, data_header = prepare_cubes.prepare_single_cube(data_filepath=data_filepath, gal_name=gal_name, z=z, cube_colour='blue', results_folder=results_folder, data_crop=False, var_filepath=var_filepath, var_crop=False, lamda_crop=False, mw_correction=True)
     """
+
+    #J155636 red cube read-in
+    data_filepath = '/Users/breichardtchu/Documents/data/J155636/J155636_red_binned_3_by_3.fits'
+    var_filepath = '/Users/breichardtchu/Documents/data/J155636/J155636_red_var_binned_3_by_3.fits'
+    gal_name = 'J155636_red'
+    z = 0.035
+    ssp_filepath = '/Users/breichardtchu/Documents/models/p_walcher09/*'
+    results_folder = '/Users/breichardtchu/Documents/code_outputs/ppxf_J155636/J155636_red_ppxf_26July2021_walcher09_deg6/'
+
+
+    lamdas, var_lamdas, xx, yy, rad, data, var, xx_flat, yy_flat, rad_flat, data_flat, var_flat, data_header = prepare_cubes.prepare_single_cube(data_filepath=data_filepath, gal_name=gal_name, z=z, cube_colour='red', results_folder=results_folder, data_crop=False, var_filepath=var_filepath, var_crop=False, lamda_crop=False, mw_correction=True)
 
 
 
@@ -2313,10 +2325,11 @@ if __name__ == '__main__':
     #header_file = '/Users/breichardtchu/Documents/data/IRAS08_red_cubes/IRAS08339_metacube.fits'
     #header_file = '/Users/breichardtchu/Documents/data/IRAS08_blue_cubes/IRAS08_blue_combined.fits'
     #header_file = '/Users/breichardtchu/Documents/data/cgcg453_red_mosaic_binned_by_3.fits'
-    header_file = '/Users/breichardtchu/Documents/data/J164905/J164905_red_binned_3_by_3.fits'
+    #header_file = '/Users/breichardtchu/Documents/data/J164905/J164905_red_binned_3_by_3.fits'
     #header_file = '/Users/breichardtchu/Documents/data/J164905/J164905_blue_binned_3_by_3.fits'
+    header_file = '/Users/breichardtchu/Documents/data/J155636/J155636_red_binned_3_by_3.fits'
 
     #shape=[1756, 67, 24] for red cubes, [2220, 67, 24] for blue cubes for IRAS08
     #[1756, 23, 35] for J164905
     #shape=[1755, 23, 36] for red cubes for CGCG453
-    combine_results(lamdas=lamdas, data_flat=data_flat, final_shape=[lamdas.shape[0], 23, 35], results_folder=results_folder, galaxy_name=gal_name, header_file=header_file, unnormalised=True)
+    combine_results(lamdas=lamdas, data_flat=data_flat, final_shape=[lamdas.shape[0], 23, 36], results_folder=results_folder, galaxy_name=gal_name, header_file=header_file, unnormalised=True)
