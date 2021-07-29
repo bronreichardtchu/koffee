@@ -21,7 +21,7 @@ class Galaxy:
     """
     Contains all the attributes of the galaxy we need to run stuff on
     """
-    def __init__(self, data_filepath, var_filepath, gal_name, z, ssp_filepath, results_folder):
+    def __init__(self, data_filepath, var_filepath, gal_name, z, cube_colour, ssp_filepath, results_folder, data_crop=False, var_crop=False, lamda_crop=False, mw_correction=True):
         """
         Creates the basic galaxy class
 
@@ -39,30 +39,72 @@ class Galaxy:
         z : float
             redshift
 
+        cube_colour : str
+            'red' or 'blue' cube to use in creating the coordinate arrays
+
         ssp_filepath : str
             the general filepath to the SSP models
 
         results_folder : str
             where to save the results
+
+        data_crop : boolean
+            whether to crop the cube spatially - used to make the blue cube match the
+            spatial extent of the red IRAS08 metacube.  Default is False.
+
+        var_crop : boolean
+            whether to crop the variance cube spatially - used to make the blue cube
+            match the spatial extent of the red IRAS08 metacube.  Default is False.
+
+        lamda_crop : boolean
+            whether or not to crop off the dodgy edges in the wavelength direction.
+            Default is False.
+
+        mw_correction : boolean
+            whether to apply the milky way extinction correction. Default is True.
         """
-        self.data_filepath = data_filepath
-        self.var_filepath = var_filepath
         self.gal_name = gal_name
         self.redshift = z
+        self.cube_colour = cube_colour
+
+        self.data_filepath = data_filepath
+        self.var_filepath = var_filepath
         self.ssp_filepath = ssp_filepath
         self.results_folder = results_folder
 
+        self.data_crop = data_crop
+        self.var_crop = var_crop
+        self.lamda_crop = lamda_crop
+        self.mw_correction = mw_correction
+
+
+    def prepare_cube(self):
+        """
+        Runs the prepare_single_cube function for the galaxy
+        """
+        lamdas, var_lamdas, xx, yy, rad, data, var, xx_flat, yy_flat, rad_flat, data_flat, var_flat, data_header = prepare_cubes.prepare_single_cube(data_filepath=self.data_filepath, gal_name=self.gal_name, z=self.redshift, cube_colour=self.cube_colour, results_folder=self.results_folder, data_crop=self.data_crop, var_filepath=self.var_filepath, var_crop=self.var_crop, lamda_crop=self.lamda_crop, mw_correction=self.mw_correction)
+
+        self.lamdas = lamdas
+        self.var_lamdas = var_lamdas
+        self.xx = xx
+        self.yy = yy
+        self.radius = rad
+        self.data = data
+        self.variance = var
+        self.xx_flat = xx_flat
+        self.yy_flat = yy_flat
+        self.radius_flat = rad_flat
+        self.data_flat = data_flat
+        self.variance_flat = var_flat
+        self.header = data_header
+
     #ppxf variables
-    def set_ppxf_variables(self, cube_colour, fwhm_gal, fwhm_temp, cdelt_temp, em_lines, fwhm_emlines, gas_reddening, reddening, degree, mdegree, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True):
+    def set_ppxf_variables(self, fwhm_gal, fwhm_temp, cdelt_temp, em_lines, fwhm_emlines, gas_reddening, reddening, degree, mdegree, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True):
         """
         Sets the variables you need to run the ppxf continuum subtraction
 
         Parameters
         ----------
-        cube_colour : str
-            'red' or 'blue' - which cube is being fit; to use in creating the
-            coordinate arrays, etc.
-
         fwhm_gal : float
             the FWHM of the galaxy data
 
@@ -129,30 +171,21 @@ class Galaxy:
         quiet : bool
             Whether to print the results of ppxf fitting or not (Default=False)
         """
-        self.cube_colour = cube_colour
         self.fwhm_gal = fwhm_gal
         self.fwhm_temp = fwhm_temp
         self.cdelt_temp = cdelt_temp
+
         self.em_lines = em_lines
         self.fwhm_emlines = fwhm_emlines
+
         self.gas_reddening = gas_reddening
         self.reddening = reddening
+
         self.degree = degree
         self.mdegree = mdegree
+
         self.vacuum = vacuum
         self.extra_em_lines = extra_em_lines
         self.tie_balmer = tie_balmer
         self.plot = plot
         self.quiet = quiet
-
-
-
-
-
-
-#IRAS08
-
-
-
-
-#J164905
