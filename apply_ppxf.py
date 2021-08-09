@@ -2015,12 +2015,15 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
         cont_mask = (lamdas>4600*(1+z))&(lamdas<4800*(1+z))
     elif cube_colour == 'blue':
         cont_mask = (lamdas>3600*(1+z))&(lamdas<3700*(1+z))
+        #get S/N array for [OII] doublet - 10A mask around 3727A
+        OII_mask = (lamdas>3722*(1+z))&(lamdas<3732*(1+z))
+        OII_sn_array = abs(np.nanmedian(data_flat[OII_mask,:]/noise_flat[OII_mask,:], axis=0))
 
     sn_array = abs(np.nanmedian(data_flat[cont_mask,:]/noise_flat[cont_mask,:], axis=0))
 
 
     #if the data FWHM is less than the template FWHM, we can choose to smooth the
-    #galaxy data (this is not necessarily a good thing though)
+    #galaxy data (this is not a good thing though)
     if fwhm_gal < fwhm_temp:
         print('WARNING:     SMOOTHING DATA TO LOWER RESOLUTION')
         data_flat = smoothing(fwhm_temp, fwhm_gal, data_flat, cdelt=0.5)
@@ -2089,10 +2092,22 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
         print('Fit '+str(i+1)+' of '+str(gal_velscale.shape[0]))
 
         if em_lines == True:
-            pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+            if cube_colour == 'blue':
+                #run normally if S/N of [OII] doublet is > 3
+                if OII_sn_array[i] >= 3:
+                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
 
-            #get the flux ratio if fitting the red cube
-            if cube_colour == 'red':
+                #otherwise only run with the stellar templates, no gas templates
+                #using gas_component as a mask, since it is True for all gas templates
+                elif OII_sn_array[i] < 3:
+                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates[:,~gas_component], ssp_lamrange, dv, z, em_lines=False, component=False, gas_component=False, gas_names=False, gas_reddening=None, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+
+
+            elif cube_colour == 'red':
+                #fit the cube
+                pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+
+                #get the flux ratio if fitting the red cube
                 cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z)
                 print('original ratio: ', gal_flux_ratio[i], 'cont subtracted ratio: ', cont_subt_flux_ratio)
                 if abs(cont_subt_flux_ratio-gal_flux_ratio[i]) > 0.5:
