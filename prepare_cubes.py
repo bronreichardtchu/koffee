@@ -61,7 +61,7 @@ from spectres import spectres
 
 #from .display_pixels import cap_display_pixels as cdp
 import brons_display_pixels_kcwi as bdpk
-import calculate_extinction_checks as calc_ext
+from calculations import calculate_extinction_checks as calc_ext
 
 import importlib
 importlib.reload(calc_ext)
