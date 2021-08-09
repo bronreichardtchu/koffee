@@ -19,7 +19,7 @@ PURPOSE:
 J164905_red = {
     'data_filepath' : '/Users/breichardtchu/Documents/data/J164905/J164905_red_binned_3_by_3.fits',
     'var_filepath' : '/Users/breichardtchu/Documents/data/J164905/J164905_red_var_binned_3_by_3.fits',
-    gal_name : 'J164905_red',
+    'gal_name' : 'J164905_red',
     'z' : 0.03205,
     'cube_colour' : 'red',
     'ssp_filepath' : '/Users/breichardtchu/Documents/models/p_walcher09/*',
@@ -41,7 +41,8 @@ J164905_red = {
     'extra_em_lines' : False,
     'tie_balmer' : True,
     'plot' : False,
-    'quiet' : True
+    'quiet' : True,
+    'unnormalised' : True
 }
 
 J164905_blue = {
@@ -69,5 +70,6 @@ J164905_blue = {
     'extra_em_lines' : False,
     'tie_balmer' : True,
     'plot' : False,
-    'quiet' : True
+    'quiet' : True,
+    'unnormalised' : True
 }

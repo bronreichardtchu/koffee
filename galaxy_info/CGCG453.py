@@ -11,12 +11,12 @@ EMAIL:
 	<breichardtchu@swin.edu.au>
 
 PURPOSE:
-	Keeps the info for J155636
+	Keeps the info for CGCG453
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
 """
 
-J155636_red = {
+cgcg453_red = {
     'data_filepath' : '/Users/breichardtchu/Documents/data/cgcg453/cgcg453_red_binned_3_by_3.fits',
     'var_filepath' : '/Users/breichardtchu/Documents/data/cgcg453/cgcg453_red_var_binned_3_by_3.fits',
     'gal_name' : 'cgcg453_red',
@@ -41,10 +41,11 @@ J155636_red = {
     'extra_em_lines' : False,
     'tie_balmer' : True,
     'plot' : False,
-    'quiet' : True
+    'quiet' : True,
+    'unnormalised' : True
 }
 
-J155636_blue = {
+cgcg453_blue = {
     'data_filepath' : '/Users/breichardtchu/Documents/data/cgcg453/cgcg453_blue_binned_3_by_3.fits',
     'var_filepath' : '/Users/breichardtchu/Documents/data/cgcg453/cgcg453_blue_var_binned_3_by_3.fits',
     'gal_name' : 'cgcg453_blue',
@@ -69,5 +70,6 @@ J155636_blue = {
     'extra_em_lines' : False,
     'tie_balmer' : True,
     'plot' : False,
-    'quiet' : True
+    'quiet' : True,
+    'unnormalised' : True
 }

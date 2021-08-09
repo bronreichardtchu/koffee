@@ -41,7 +41,8 @@ J155636_red = {
     'extra_em_lines' : False,
     'tie_balmer' : True,
     'plot' : False,
-    'quiet' : True
+    'quiet' : True,
+    'unnormalised' : True
 }
 
 J155636_blue = {
@@ -69,5 +70,6 @@ J155636_blue = {
     'extra_em_lines' : False,
     'tie_balmer' : True,
     'plot' : False,
-    'quiet' : True
+    'quiet' : True,
+    'unnormalised' : True
 }
