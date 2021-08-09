@@ -33,6 +33,7 @@ import gzip
 import pathlib
 import pickle
 import datetime
+from mpi4py import MPI
 
 from time import perf_counter
 
@@ -349,7 +350,8 @@ def get_bc03_library(filepath, gal_lamrange):
 
 def wavelength_masking(ssp_lamrange, gal_lamdas, gal_lin, gal_noise):
     """
-    Mask the data so that the wavelengths aren't longer than those for the template spectrum.
+    Mask the data so that the wavelengths aren't longer than those for the
+    template spectrum.
 
     Parameters
     ----------
@@ -1388,7 +1390,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         #Hgamma has wavelength 4340.471A
         ax1.set_xlim(429*(1+z), 439*(1+z))
         ax1.set_ylim(-1.0, 2.5)
-        ax1.set_title('Hgamma')
+        ax1.set_title(r'H$\gamma$')
         ax1.set_xlabel('')
         ax1.set_ylabel("Relative Flux")
 
@@ -1397,7 +1399,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         #Hbeta has wavelength 4861.333A
         ax2.set_xlim(481*(1+z), 491*(1+z))
         ax2.set_ylim(-1.0, 2.5)
-        ax2.set_title('Hbeta')
+        ax2.set_title(r'H$\beta$')
         ax2.set_xlabel('')
         ax2.set_ylabel('')
 
@@ -1443,7 +1445,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         #Hgamma has wavelength 4340.471A
         ax3.set_xlim(429*(1+z), 439*(1+z))
         ax3.set_ylim(-1.0, 2.0)
-        ax3.set_title('Hgamma')
+        ax3.set_title(r'H$\gamma$')
         ax3.set_xlabel(r"Wavelength [$\AA$]")
         ax3.set_ylabel("Relative Flux")
 
@@ -1452,7 +1454,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         #Hdelta has wavelength 4101.76A
         ax4.set_xlim(405*(1+z), 415*(1+z))
         ax4.set_ylim(-1.0, 2.0)
-        ax4.set_title('Hdelta')
+        ax4.set_title(r'H$\delta$')
         ax4.set_xlabel(r"Wavelength [$\AA$]")
         ax4.set_ylabel('')
 
@@ -1518,7 +1520,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
         ax1.set_ylim(-1.0, 2.5)
         ax1.set_xlabel('')
         ax1.set_ylabel("Relative Flux")
-        ax1.set_title('Hgamma')
+        ax1.set_title(r'H$\gamma$')
 
         ax2 = plt.subplot(222)
         try:
@@ -1530,7 +1532,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
         ax2.set_ylim(-1.0, 2.5)
         ax2.set_xlabel('')
         ax2.set_ylabel('')
-        ax2.set_title('Hbeta')
+        ax2.set_title(r'H$\beta$')
 
         ax3 = plt.subplot(223)
         try:
@@ -1555,7 +1557,6 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
         ax4.set_title('[O III]')
         ax4.set_xlabel(r"Wavelength [$\AA$]")
         ax4.set_ylabel('')
-        ax4.set_title('[O III]')
 
     elif pp.lam[0] < 4300:
         ax1 = plt.subplot(221)
@@ -1580,7 +1581,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
         ax2.set_ylim(-1.0, 2.5)
         ax2.set_xlabel('')
         ax2.set_ylabel('')
-        ax2.set_title('[Ne III]')
+        ax2.set_title('[NeIII]')
 
         ax3 = plt.subplot(223)
         try:
@@ -1592,7 +1593,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
         ax3.set_ylim(-1.0, 2.5)
         ax3.set_xlabel(r"Wavelength [$\AA$]")
         ax3.set_ylabel("Relative Flux")
-        ax3.set_title('Hgamma')
+        ax3.set_title(r'H$\gamma$')
 
         ax4 = plt.subplot(224)
         try:
@@ -1604,7 +1605,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
         ax4.set_ylim(-1.0, 2.5)
         ax4.set_xlabel(r"Wavelength [$\AA$]")
         ax4.set_ylabel('')
-        ax4.set_title('Hbeta')
+        ax4.set_title(r'H$\delta$')
 
 
     plt.suptitle(galaxy_name+' pPXF fit for pixel {} ({:.2f}, {:.2f})'.format(i, xx, yy))
