@@ -15,6 +15,7 @@ PURPOSE:
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
 """
+import prepare_cubes as pc
 
 #define the galaxy class
 class Galaxy:
@@ -63,7 +64,7 @@ class Galaxy:
         mw_correction : boolean
             whether to apply the milky way extinction correction. Default is True.
         """
-        self.gal_name = gal_name
+        self.galaxy_name = gal_name
         self.redshift = z
         self.cube_colour = cube_colour
 
@@ -82,7 +83,7 @@ class Galaxy:
         """
         Runs the prepare_single_cube function for the galaxy
         """
-        lamdas, var_lamdas, xx, yy, rad, data, var, xx_flat, yy_flat, rad_flat, data_flat, var_flat, data_header = prepare_cubes.prepare_single_cube(data_filepath=self.data_filepath, gal_name=self.gal_name, z=self.redshift, cube_colour=self.cube_colour, results_folder=self.results_folder, data_crop=self.data_crop, var_filepath=self.var_filepath, var_crop=self.var_crop, lamda_crop=self.lamda_crop, mw_correction=self.mw_correction)
+        lamdas, var_lamdas, xx, yy, rad, data, var, xx_flat, yy_flat, rad_flat, data_flat, var_flat, data_header = pc.prepare_single_cube(data_filepath=self.data_filepath, gal_name=self.galaxy_name, z=self.redshift, cube_colour=self.cube_colour, results_folder=self.results_folder, data_crop=self.data_crop, var_filepath=self.var_filepath, var_crop=self.var_crop, lamda_crop=self.lamda_crop, mw_correction=self.mw_correction)
 
         self.lamdas = lamdas
         self.var_lamdas = var_lamdas
@@ -99,7 +100,7 @@ class Galaxy:
         self.header = data_header
 
     #ppxf variables
-    def set_ppxf_variables(self, fwhm_gal, fwhm_temp, cdelt_temp, em_lines, fwhm_emlines, gas_reddening, reddening, degree, mdegree, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True):
+    def set_ppxf_variables(self, fwhm_gal, fwhm_temp, cdelt_temp, em_lines, fwhm_emlines, gas_reddening, reddening, degree, mdegree, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True, unnormalised=True):
         """
         Sets the variables you need to run the ppxf continuum subtraction
 
@@ -189,3 +190,4 @@ class Galaxy:
         self.tie_balmer = tie_balmer
         self.plot = plot
         self.quiet = quiet
+        self.unnormalised = unnormalised
