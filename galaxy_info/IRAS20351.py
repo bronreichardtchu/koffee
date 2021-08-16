@@ -52,7 +52,7 @@ IRAS20351_blue = {
     'z' : 0.03370,
     'cube_colour' : 'blue',
     'ssp_filepath' : '/Users/breichardtchu/Documents/models/bc03/templates/ssp_*',
-    'results_folder' : '/Users/breichardtchu/Documents/code_outputs/ppxf_IRAS20351/IRAS20351_blue_ppxf_14May2021/',
+    'results_folder' : '/Users/breichardtchu/Documents/code_outputs/ppxf_IRAS20351/IRAS20351_blue_ppxf_10Aug2021/',
     'data_crop' : False,
     'var_crop' : False,
     'lamda_crop' : False,

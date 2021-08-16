@@ -52,7 +52,7 @@ J152527_blue = {
     'z' : 0.03575,
     'cube_colour' : 'blue',
     'ssp_filepath' : '/Users/breichardtchu/Documents/models/bc03/templates/ssp_*',
-    'results_folder' : '/Users/breichardtchu/Documents/code_outputs/ppxf_J152527/J152527_blue_ppxf_6August2021_walcher09_deg-1/',
+    'results_folder' : '/Users/breichardtchu/Documents/code_outputs/ppxf_J152527/J152527_blue_ppxf_9August2021_walcher09_deg6_OIIsn/',
     'data_crop' : False,
     'var_crop' : False,
     'lamda_crop' : False,

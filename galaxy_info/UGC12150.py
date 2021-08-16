@@ -52,7 +52,7 @@ ugc12150_blue = {
     'z' : 0.02139,
     'cube_colour' : 'blue',
     'ssp_filepath' : '/Users/breichardtchu/Documents/models/bc03/templates/ssp_*',
-    'results_folder' : '/Users/breichardtchu/Documents/code_outputs/ppxf_ugc12150/ugc12150_blue_ppxf_26July2021_walcher09_deg6/',
+    'results_folder' : '/Users/breichardtchu/Documents/code_outputs/ppxf_ugc12150/ugc12150_blue_ppxf_10Aug2021_walcher09_deg6/',
     'data_crop' : False,
     'var_crop' : False,
     'lamda_crop' : False,
