@@ -21,7 +21,7 @@ MODIFICATION HISTORY:
 
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy import ndimage
 from hoki import load
@@ -1274,6 +1274,27 @@ def combine_results(lamdas, data_flat, final_shape, results_folder, galaxy_name,
                 continuum = np.interp(lamdas, lam, continuum)
                 #save the continuum subtracted spectrum to the array
                 cont_subtracted[:,i] = data_flat[:,i] - continuum
+
+            except TypeError:
+                #print('TypeError for spectrum '+str(i))
+
+                #open all the saved files for the spectrum
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'rb') as f:
+                    lam, gal, cont_subtracted_spec = pickle.load(f)
+                f.close()
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_bestfit'.format(i), 'rb') as f:
+                    bestfit = pickle.load(f)
+                f.close()
+
+                #create the continuum
+                continuum = bestfit
+                #print(continuum)
+                #interpolate the continuum
+                continuum = np.interp(lamdas, lam, continuum)
+                #print(continuum)
+                #save the continuum subtracted spectrum to the array
+                cont_subtracted[:,i] = data_flat[:,i] - continuum
+
             except IOError:
                 print('Could not open file for spectrum '+str(i))
 
@@ -1296,6 +1317,26 @@ def combine_results(lamdas, data_flat, final_shape, results_folder, galaxy_name,
                 continuum = np.interp(lamdas, lam, continuum)
                 #save the continuum subtracted spectrum to the array
                 cont_subtracted[:,i] = data_flat[:,i] - continuum
+
+            except TypeError:
+                #print('TypeError for spectrum '+str(i))
+                #open all the saved files for the spectrum
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'rb') as f:
+                    lam, gal, cont_subtracted_spec = pickle.load(f)
+                f.close()
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_bestfit'.format(i), 'rb') as f:
+                    bestfit = pickle.load(f)
+                f.close()
+
+                #create the continuum
+                continuum = bestfit
+                #print(continuum)
+                #interpolate the continuum
+                continuum = np.interp(lamdas, lam, continuum)
+                #print(continuum)
+                #save the continuum subtracted spectrum to the array
+                cont_subtracted[:,i] = data_flat[:,i] - continuum
+
             except IOError:
                 print('Could not open file for spectrum '+str(i))
 
@@ -1329,6 +1370,7 @@ def combine_results(lamdas, data_flat, final_shape, results_folder, galaxy_name,
             fits_header['NAXIS3'] = lam.shape[0]
             fits_header['CRVAL3'] = fits_header['CRVAL3']+150
         else:
+            print("Using wavelength corrected lamda vector to set CRVAL3")
             fits_header['NAXIS3'] = lam.shape[0]
             fits_header['CRVAL3'] = lam[0]
 
@@ -2094,13 +2136,31 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
         if em_lines == True:
             if cube_colour == 'blue':
                 #run normally if S/N of [OII] doublet is > 3
-                if OII_sn_array[i] >= 3:
-                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+                #if OII_sn_array[i] >= 3:
+                pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
+                    pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-(pp.bestfit-pp.gas_bestfit))], f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
+                    pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-(pp.bestfit-pp.gas_bestfit))*gal_norm[i]], f)
+                f.close()
 
                 #otherwise only run with the stellar templates, no gas templates
                 #using gas_component as a mask, since it is True for all gas templates
+                """
                 elif OII_sn_array[i] < 3:
                     pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates[:,~gas_component], ssp_lamrange, dv, z, em_lines=False, component=False, gas_component=False, gas_names=False, gas_reddening=None, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+
+                    with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
+                        pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-pp.bestfit)], f)
+                    f.close()
+
+                    with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
+                        pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-pp.bestfit)*gal_norm[i]], f)
+                    f.close()
+                """
 
 
             elif cube_colour == 'red':
@@ -2117,6 +2177,14 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
 
                 with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_flux_ratio'.format(i), 'wb') as f:
                     pickle.dump([gal_flux_ratio[i], cont_subt_flux_ratio, cont_subt_flux_ratio-gal_flux_ratio[i]], f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
+                    pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-(pp.bestfit-pp.gas_bestfit))], f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
+                	pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-(pp.bestfit-pp.gas_bestfit))*gal_norm[i]], f)
                 f.close()
 
             #save the results
@@ -2148,13 +2216,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                 pickle.dump(pp.reddening, f)
             f.close()
 
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
-                pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-(pp.bestfit-pp.gas_bestfit))], f)
-            f.close()
 
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
-            	pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-(pp.bestfit-pp.gas_bestfit))*gal_norm[i]], f)
-            f.close()
 
             #save the figures
             plot_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
