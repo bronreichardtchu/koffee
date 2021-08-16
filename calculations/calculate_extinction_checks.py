@@ -41,8 +41,8 @@ from astropy.constants import c
 from astropy.constants import m_p
 from astropy import units as u
 
-from koffee.calculations import calculate_star_formation_rate as calc_sfr
-from koffee.plotting_scripts import plotting_functions as pf
+from calculations import calculate_star_formation_rate as calc_sfr
+from plotting_scripts import plotting_functions as pf
 #import calculate_star_formation_rate as calc_sfr
 #import plotting_functions as pf
 
