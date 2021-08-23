@@ -332,7 +332,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
         ax[0].hist(vel_out[statistical_results>0], bins=bins_panel1, alpha=0.5, color='tab:red', edgecolor='tab:red', label='KOFFEE fits')
 
-        ax[0].set_ylim(0,40)
+        ax[0].set_ylim(0,50)
         ax[0].set_xlabel('Maximum Outflow Velocity [km s$^{-1}$]')
 
     ax[0].legend(fontsize='x-small', frameon=False)
@@ -352,7 +352,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
         ax[1].hist(flux_ratio[statistical_results>0], bins=bins_panel2, alpha=0.5, label='KOFFEE fits', color='tab:red', edgecolor='tab:red')
 
-        ax[1].set_ylim(0,50)
+        ax[1].set_ylim(0,80)
         ax[1].set_xlabel('[OIII] Log(F$_{broad}$/F$_{narrow}$)')
 
 
@@ -620,7 +620,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     ax[0].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
 
-    ax[0].set_ylim(100, 700)
+    ax[0].set_ylim(np.nanmin(vel_out)-100, np.nanmax(vel_out)+200)
     ax[0].set_xscale('log')
     if xlim_vals:
         ax[0].set_xlim(xlim_vals[0], xlim_vals[1])
@@ -629,7 +629,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
         #save the xlim values for the comparison figure
         xlim_vals = [np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr)+2.0]
 
-    lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
     ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
@@ -660,7 +660,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     ax[1].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(vel_out_err[physical_mask]), c='k')
 
     #ax[1].set_xscale('log')
-    lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
     ax[1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
@@ -691,7 +691,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     ax[2].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(vel_out_err[BIC_diff_strong]), c='k')
 
     #ax[1].set_xscale('log')
-    lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
     ax[2].set_title('strongly likely BIC $\delta_{BIC}$>50')
