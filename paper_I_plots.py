@@ -277,7 +277,11 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
         print('KOFFEE fits flux_ratio median:', flux_ratio_unfixed_median)
 
     #make a mask for the emission line
-    OIII_mask = (lamdas>5008.24*(1+z)-20.0) & (lamdas<5008.24*(1+z)+20.0)
+    if (spaxel[0], spaxel[1]) in koffee.dodgy_spaxels[galaxy_name]:
+        OIII_mask = (lamdas > 4960.295*(1+z)-20.) & (lamdas < 4960.295*(1+z)+20.)
+        print('Using [OIII] 4960 for spaxel '+str(spaxel[0])+','+str(spaxel[1]))
+    else:
+        OIII_mask = (lamdas>5008.24*(1+z)-20.0) & (lamdas<5008.24*(1+z)+20.0)
 
     #mask the wavelength
     lam_OIII = lamdas[OIII_mask]
