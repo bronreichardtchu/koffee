@@ -42,13 +42,13 @@ from scipy.optimize import curve_fit
 
 from astropy import units as u
 
-from . import plotting_functions as pf
-from . import calculate_outflow_velocity as calc_outvel
-from . import calculate_star_formation_rate as calc_sfr
-from . import calculate_mass_loading_factor as calc_mlf
-from . import calculate_equivalent_width as calc_ew
-from . import brons_display_pixels_kcwi as bdpk
-from . import koffee
+import plotting_functions as pf
+import calculate_outflow_velocity as calc_outvel
+import calculate_star_formation_rate as calc_sfr
+import calculate_mass_loading_factor as calc_mlf
+import calculate_equivalent_width as calc_ew
+import brons_display_pixels_kcwi as bdpk
+import koffee
 
 
 

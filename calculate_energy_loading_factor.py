@@ -28,9 +28,9 @@ from astropy.constants import c
 from astropy.constants import m_p
 from astropy import units as u
 
-from . import calculate_outflow_velocity as calc_outvel
-from . import calculate_star_formation_rate as calc_sfr
-from . import calculate_mass_loading_factor as calc_mlf
+import calculate_outflow_velocity as calc_outvel
+import calculate_star_formation_rate as calc_sfr
+import calculate_mass_loading_factor as calc_mlf
 
 import importlib
 importlib.reload(calc_sfr)

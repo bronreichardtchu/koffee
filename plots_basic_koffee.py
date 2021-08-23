@@ -42,14 +42,13 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import cmasher as cmr
 
-#from .display_pixels import cap_display_pixels as cdp
-from . import plotting_functions as pf
-from . import brons_display_pixels_kcwi as bdpk
-from . import prepare_cubes as pc
-from . import koffee
-from . import calculate_outflow_velocity as calc_outvel
-from . import calculate_mass_loading_factor as calc_mlf
-from . import calculate_star_formation_rate as calc_sfr
+import plotting_functions as pf
+import brons_display_pixels_kcwi as bdpk
+import prepare_cubes as pc
+import koffee
+import calculate_outflow_velocity as calc_outvel
+import calculate_mass_loading_factor as calc_mlf
+import calculate_star_formation_rate as calc_sfr
 
 import importlib
 importlib.reload(pf)

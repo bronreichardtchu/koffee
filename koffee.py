@@ -47,8 +47,8 @@ from tqdm import tqdm #progress bar module
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from . import prepare_cubes as pc
-from . import koffee_fitting_functions as kff
+import prepare_cubes as pc
+import koffee_fitting_functions as kff
 
 from astropy.modeling import models
 

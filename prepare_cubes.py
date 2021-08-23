@@ -59,9 +59,8 @@ from matplotlib import gridspec
 # https://arxiv.org/pdf/1705.05165.pdf
 from spectres import spectres
 
-#from .display_pixels import cap_display_pixels as cdp
-from . import brons_display_pixels_kcwi as bdpk
-from . import calculate_extinction_checks as calc_ext
+import brons_display_pixels_kcwi as bdpk
+import calculate_extinction_checks as calc_ext
 
 import importlib
 importlib.reload(calc_ext)
