@@ -174,7 +174,7 @@ def plot_compare_fits(lamdas, data, spaxels, z):
 
 
 #Figure 2
-def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfixed, outflow_error_unfixed, statistical_results, lamdas, data, spaxel, z, plot_fit_parameters=False):
+def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfixed, outflow_error_unfixed, statistical_results, lamdas, data, spaxel, z, weights=None, plot_fit_parameters=False, galaxy_name='IRAS08'):
     """
     Plots a three panel graph of two histograms of the outflow velocity and the flux
     ratio for [OIII] for before and after koffee's selection criteria for outflows
@@ -212,6 +212,9 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
     z : float
         redshift
+
+    weights : :obj:'~numpy.ndarray' or None
+        The weights for the fit - these should be 1/var.  Default is None.
 
     plot_fit_parameters : boolean
         When True, plots histograms of the velocity difference and [OIII] amplitude
@@ -287,7 +290,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
     #fit the data with double gaussian
     gmodel2, pars2 = kff.gaussian2_const(lam_OIII, flux)
-    bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, verbose=False)
+    bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, weights=weights[OIII_mask, spaxel[0], spaxel[1]], verbose=False)
 
     #get the value to normalise by
     max_value = np.nanmax(flux)
