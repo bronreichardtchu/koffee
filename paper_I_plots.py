@@ -42,17 +42,6 @@ from astropy import units as u
 from astropy.cosmology import WMAP9 as cosmo
 from astropy.io import fits
 
-#from . import prepare_cubes as pc
-#from . import plotting_functions as pf
-#from . import koffee_fitting_functions as kff
-#from . import calculate_outflow_velocity as calc_outvel
-#from . import calculate_star_formation_rate as calc_sfr
-#from . import calculate_mass_loading_factor as calc_mlf
-#from . import calculate_energy_loading_factor as calc_elf
-#from . import calculate_equivalent_width as calc_ew
-#from . import brons_display_pixels_kcwi as bdpk
-#from . import koffee
-
 import prepare_cubes as pc
 import plotting_functions as pf
 import koffee_fitting_functions as kff
@@ -600,8 +589,11 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
         #ax[0].fill_between(bin_center_all, v_out_bin_lower_q_all, v_out_bin_upper_q_all, color=colours[0], alpha=0.3)
         #ax[0].fill_between(bin_center_all, v_out_bin_medians_all-v_out_bin_stdev_all, v_out_bin_medians_all+v_out_bin_stdev_all, color=colours[0], alpha=0.5)
 
-    ax[0].scatter(sig_sfr[vel_disp>51], vel_out[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.7)
-    ax[0].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=30, c=colours[0], alpha=0.7)
+    #ax[0].scatter(sig_sfr[vel_disp>51], vel_out[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.7)
+    #ax[0].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=30, c=colours[0], alpha=0.7)
+
+    ax[0].errorbar(sig_sfr[vel_disp>51], vel_out[vel_disp>51], yerr=vel_out_err[vel_disp>51], marker='o', label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.7, ls='none')
+    ax[0].errorbar(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], yerr=vel_out_err[vel_disp<=51], marker='v', c=colours[0], alpha=0.7, ls='none')
 
     if plot_medians == True:
         #ax[0].plot(bin_center_all, v_out_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_vel_out_med_all), color=colours[0])
