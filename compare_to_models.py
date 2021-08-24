@@ -26,9 +26,9 @@ MODIFICATION HISTORY:
 """
 import numpy as np
 
-from . import calculate_outflow_velocity as calc_outvel
-from . import calculate_star_formation_rate as calc_sfr
-from . import plotting_functions as pf
+import calculate_outflow_velocity as calc_outvel
+import calculate_star_formation_rate as calc_sfr
+import plotting_functions as pf
 
 
 

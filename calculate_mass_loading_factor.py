@@ -30,8 +30,8 @@ from astropy.constants import c
 from astropy.constants import m_p
 from astropy import units as u
 
-from . import calculate_outflow_velocity as calc_outvel
-from . import calculate_star_formation_rate as calc_sfr
+import calculate_outflow_velocity as calc_outvel
+import calculate_star_formation_rate as calc_sfr
 
 import importlib
 importlib.reload(calc_sfr)
@@ -110,7 +110,7 @@ def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error,
     #then use the average as R_out
     #R_out = (R_max + R_min)/2
 
-    #use 500pc as the R_out 
+    #use 500pc as the R_out
     R_out = 500 * u.parsec
 
     #L_Hbeta is the luminosity of the broad line of Hbeta (we want the outflow flux)

@@ -41,8 +41,8 @@ from astropy.constants import c
 from astropy.constants import m_p
 from astropy import units as u
 
-from . import calculate_star_formation_rate as calc_sfr
-from . import plotting_functions as pf
+import calculate_star_formation_rate as calc_sfr
+import plotting_functions as pf
 
 #===============================================================================
 #DICTIONARIES

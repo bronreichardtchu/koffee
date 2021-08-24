@@ -47,8 +47,8 @@ from tqdm import tqdm #progress bar module
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from . import prepare_cubes as pc
-from . import koffee_fitting_functions as kff
+import prepare_cubes as pc
+import koffee_fitting_functions as kff
 
 from astropy.modeling import models
 
@@ -286,8 +286,8 @@ def plot_fit(wavelength, flux, g_model, pars, best_fit, plot_initial=False, incl
 
 
 #===============================================================================
-#MAIN FUNCTION _ APPLY TO WHOLE CUBE
-def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_line2=None, OII_doublet=False, filename=None, filename2=None, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=False, plotting=True, method='leastsq', correct_bad_spaxels=False, koffee_checks=True):
+#MAIN FUNCTION - APPLY TO WHOLE CUBE
+def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_line2=None, OII_doublet=False, filename=None, filename2=None, var_filename=None, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=False, plotting=True, method='leastsq', correct_bad_spaxels=False, koffee_checks=True):
     """
     Fits the entire cube, and checks whether one or two gaussians fit the
     emission line best.  Must have either the filename to the fits file, or the
@@ -326,6 +326,10 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         the file path to the second data cube - generally the continuum subtracted
         cube. If this is not None, the first cube is used to create the S/N mask,
         and this cube is used for fitting.
+
+    var_filename : str or None
+        the filepath to the variance cube, if it's separate to the data cube file
+        and the fit should be weighted.  Default is None.
 
     data_cube_stuff : list of :obj:'~numpy.ndarray'
         [lamdas, data] if the filename is not given
@@ -437,6 +441,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         fits_stuff = pc.load_data(filename, mw_correction=False)
         if len(fits_stuff) > 3:
             lamdas, data, var, header = fits_stuff
+            all_weights = 1/var
         else:
             lamdas, data, header = fits_stuff
     elif data_cube_stuff:
@@ -444,6 +449,11 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
     else:
         print('Data input not understood.  Need either a fits file path or the [lamdas, data] in data_cube_stuff.')
         return
+
+    if var_filename:
+        _, var, var_header = pc.load_data(var_filename, mw_correction=False)
+        all_weights = 1/var
+
 
     #create filepath to output folder
     output_folder_loc = output_folder_loc+galaxy_name+'koffee_results_'+emission_line+'_'+str(date.today())+'/'
@@ -488,6 +498,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         fits_stuff = pc.load_data(filename2, mw_correction=False)
         if len(fits_stuff) > 3:
             lamdas, data, var, header = fits_stuff
+            all_weights = 1/var
         else:
             lamdas, data, header = fits_stuff
         print('Second filename being used for koffee fits')
@@ -557,15 +568,18 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             masked_lamdas = lamdas[mask_lam_OIII_3]
                             #apply the mask to the data
                             flux = data[:,i,j][mask_lam_OIII_3]
+                            weights = all_weights[:,i,j][mask_lam_OIII_3]
                             print('Using [OIII] '+str(em_rest_OIII_3)+' for spaxel '+str(i)+','+str(j))
 
                         else:
                             flux = data[:,i,j][mask_lam]
+                            weights = all_weights[:,i,j][mask_lam]
                             #apply mask to lamdas
                             masked_lamdas = lamdas[mask_lam]
 
                     elif correct_bad_spaxels == False:
                         flux = data[:,i,j][mask_lam]
+                        weights = all_weights[:,i,j][mask_lam]
                         #apply mask to lamdas
                         masked_lamdas = lamdas[mask_lam]
 
@@ -584,7 +598,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             g_model1, pars1 = kff.gaussian1(masked_lamdas, flux)
 
                         #fit model for 1 Gaussian fit
-                        best_fit1 = kff.fitter(g_model1, pars1, masked_lamdas, flux, method=method, verbose=False)
+                        best_fit1 = kff.fitter(g_model1, pars1, masked_lamdas, flux, weights=weights, method=method, verbose=False)
 
                         #create and fit model for 2 Gaussian fit, using 1 Gaussian fit as first guess for the mean
                         if include_const == True:
@@ -593,7 +607,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             g_model2, pars2 = kff.gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None)
 
                         #fit model for 2 gaussian fit
-                        best_fit2 = kff.fitter(g_model2, pars2, masked_lamdas, flux, method=method, verbose=False)
+                        best_fit2 = kff.fitter(g_model2, pars2, masked_lamdas, flux, weights=weights, method=method, verbose=False)
 
 
                         if best_fit2.bic < (best_fit1.bic-10):
@@ -639,7 +653,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                     g_model2_refit, pars2_refit = kff.gaussian2_const(masked_lamdas, flux, amplitude_guess=None, mean_guess=[masked_lamdas[flux.argmax()], masked_lamdas[flux.argmax()]-4.0], sigma_guess=[1.0,8.0])
                                 elif include_const == False:
                                     g_model2_refit, pars2_refit = kff.gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=[masked_lamdas[flux.argmax()], masked_lamdas[flux.argmax()]-4.0], sigma_guess=[1.0,8.0])
-                                best_fit2_refit = kff.fitter(g_model2_refit, pars2_refit, masked_lamdas, flux, method=method, verbose=False)
+                                best_fit2_refit = kff.fitter(g_model2_refit, pars2_refit, masked_lamdas, flux, weights=weights, method=method, verbose=False)
 
                                 print('Refit 2 gaussians for spaxel', str(i), str(j))
 
@@ -684,6 +698,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 #mask the lamdas and data
                                 masked_lamdas2 = lamdas[mask_lam2]
                                 flux2 = data[:,i,j][mask_lam2]
+                                weights2 = all_weights[:,i,j][mask_lam2]
                                 #get the guess values from the previous fits
                                 if stat_res == 1:
                                     mean_diff = best_fit2.params['Galaxy_mean'].value - best_fit2.params['Flow_mean'].value
@@ -706,10 +721,10 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                                 #do the fit
                                 #for the one gaussian fit
-                                best_fit1_second = kff.fitter(g_model1_second, pars1_second, masked_lamdas2, flux2, method=method, verbose=False)
+                                best_fit1_second = kff.fitter(g_model1_second, pars1_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
 
                                 #for the two gaussian fit
-                                best_fit2_second = kff.fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, method=method, verbose=False)
+                                best_fit2_second = kff.fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
 
                                 #fit the one gaussian fit of the emission line
                                 fig3 = plot_fit(masked_lamdas2, flux2, g_model1_second, pars1_second, best_fit1_second, plot_initial=False, include_const=include_const)
@@ -745,7 +760,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         elif include_const == False:
                                             g_model2_refit_second, pars2_refit_second = kff.gaussian2(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.5], sigma_variations=0.5)
                                         #do the fit
-                                        best_fit2_refit_second = kff.fitter(g_model2_refit_second, pars2_refit_second, masked_lamdas2, flux2, method=method, verbose=False)
+                                        best_fit2_refit_second = kff.fitter(g_model2_refit_second, pars2_refit_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
 
                                         print(emission_line2, 'fit blue-chi-squared-fit chi squared value: ', best_fit2_refit_second.bic)
                                         print(emission_line2, 'fit original chi squared value: ', best_fit2_second.bic)
@@ -774,7 +789,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                             g_model1_refit_second, pars1_refit_second = kff.gaussian1(masked_lamdas2, flux2)#, amp_guess=None, mean_guess=masked_lamdas2[flux2.argmax()], sigma_guess=sigma_guess[0])
 
                                         #do the fit
-                                        best_fit1_refit_second = kff.fitter(g_model1_refit_second, pars1_refit_second, masked_lamdas2, flux2, method=method, verbose=False)
+                                        best_fit1_refit_second = kff.fitter(g_model1_refit_second, pars1_refit_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
 
                                         #do the BIC test
                                         #if the 2 gaussian fit has a lower BIC by 10 or more, it's the better fit
@@ -860,6 +875,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 #mask the lamdas and data
                                 masked_lamdas3 = lamdas[mask_lam3]
                                 flux3 = data[:,i,j][mask_lam3]
+                                weights3 = all_weights[:,i,j][mask_lam3]
                                 #get the guess values from the previous fits
                                 if stat_res == 1:
                                     mean_diff = best_fit2.params['Galaxy_mean'].value - best_fit2.params['Flow_mean'].value
@@ -872,7 +888,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 g_model1_third, pars1_third = kff.gaussian1_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=[masked_lamdas3[np.argmax(flux3)]+1.0], sigma_guess=sigma_guess, sigma_variations=1.5)
 
                                 #do the fit
-                                best_fit1_third = kff.fitter(g_model1_third, pars1_third, masked_lamdas3, flux3, method=method, verbose=False)
+                                best_fit1_third = kff.fitter(g_model1_third, pars1_third, masked_lamdas3, flux3, weights=weights3, method=method, verbose=False)
 
                                 if plotting == True:
                                     #plot the fit
@@ -885,7 +901,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 g_model2_third, pars2_third = kff.gaussian2_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=None, sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.5], sigma_variations=1.5)
 
                                 #do the fit
-                                best_fit2_third = kff.fitter(g_model2_third, pars2_third, masked_lamdas3, flux3, method=method, verbose=False)
+                                best_fit2_third = kff.fitter(g_model2_third, pars2_third, masked_lamdas3, flux3, weights=weights3, method=method, verbose=False)
 
                                 if plotting == True:
                                     #plot the fit
@@ -907,7 +923,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         g_model2_refit_third, pars2_refit_third = kff.gaussian2_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=[masked_lamdas3[np.argmax(flux3)]+1.0], sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.0], sigma_variations=0.25)
 
                                         #do the fit
-                                        best_fit2_refit_third = kff.fitter(g_model2_refit_third, pars2_refit_third, masked_lamdas3, flux3, method=method, verbose=False)
+                                        best_fit2_refit_third = kff.fitter(g_model2_refit_third, pars2_refit_third, masked_lamdas3, flux3, weights=weights3, method=method, verbose=False)
 
                                         print('OII doublet fit blue-chi-squared-fit chi squared value: ', best_fit2_refit_third.bic)
                                         print('OII doublet fit original chi squared value: ', best_fit2_third.bic)
@@ -1316,7 +1332,7 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
             #because stat_res2 was not created in the original koffee
             statistical_results2 = np.full_like(statistical_results, np.nan, dtype=np.double)
             #check which spaxels have better BICs
-            BIC_diff2 = chi_square2[1,:,:]-chi_square[0,:,:]
+            BIC_diff2 = chi_square2[1,:,:]-chi_square2[0,:,:]
             statistical_results2[BIC_diff2<-10] = 1
             #check which spaxels didn't have high enough S/N
             statistical_results2[statistical_results==-1] = -1
@@ -1367,8 +1383,9 @@ if __name__ == '__main__':
 	#outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results = fit_cube(galaxy_name='IRAS08', redshift=0.018950, emission_line='OIII_4', output_folder_loc='/fred/oz088/Duvet/Bron/koffee_results/', filename=None, data_cube_stuff=[lamdas, data], emission_dict=all_the_lines, cont_subtract=False, plotting=True)
 
     #filename = '/fred/oz088/Duvet/nnielsen/IRAS08339/Combine/metacube.fits'
-    filename1 = '../../data/IRAS08_red_cubes/IRAS08339_metacube.fits'
-    filename2 = '../../code_outputs/IRAS08_ppxf_25June2020/IRAS08339_cont_subtracted_unnormalised_cube.fits'
+    filename1 = '../../data/IRAS08/IRAS08_red_cubes/IRAS08339_metacube.fits'
+    filename2 = '../../data/IRAS08/IRAS08_combined_metacube_all_corrections.fits'
+    #filename2 = '../../code_outputs/IRAS08_ppxf_25June2020/IRAS08339_cont_subtracted_unnormalised_cube.fits'
 
     outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, blue_chi_square, outflow_results2, outflow_error2 = fit_cube(galaxy_name='IRAS08', redshift=0.018950, emission_line='OIII_4', output_folder_loc='../../code_outputs/koffee_results_IRAS08/', emission_line2='Hbeta', filename=filename1, filename2=filename2, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=True, plotting=True, method='leastsq', correct_bad_spaxels=True)
 

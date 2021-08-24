@@ -42,16 +42,16 @@ from astropy import units as u
 from astropy.cosmology import WMAP9 as cosmo
 from astropy.io import fits
 
-from . import prepare_cubes as pc
-from . import plotting_functions as pf
-from . import koffee_fitting_functions as kff
-from . import calculate_outflow_velocity as calc_outvel
-from . import calculate_star_formation_rate as calc_sfr
-from . import calculate_mass_loading_factor as calc_mlf
-from . import calculate_energy_loading_factor as calc_elf
-from . import calculate_equivalent_width as calc_ew
-from . import brons_display_pixels_kcwi as bdpk
-from . import koffee
+import prepare_cubes as pc
+import plotting_functions as pf
+import koffee_fitting_functions as kff
+import calculate_outflow_velocity as calc_outvel
+import calculate_star_formation_rate as calc_sfr
+import calculate_mass_loading_factor as calc_mlf
+import calculate_energy_loading_factor as calc_elf
+import calculate_equivalent_width as calc_ew
+import brons_display_pixels_kcwi as bdpk
+import koffee
 
 import importlib
 importlib.reload(pf)
@@ -163,7 +163,7 @@ def plot_compare_fits(lamdas, data, spaxels, z):
 
 
 #Figure 2
-def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfixed, outflow_error_unfixed, statistical_results, lamdas, data, spaxel, z, plot_fit_parameters=False):
+def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfixed, outflow_error_unfixed, statistical_results, lamdas, data, spaxel, z, weights=None, plot_fit_parameters=False, galaxy_name='IRAS08'):
     """
     Plots a three panel graph of two histograms of the outflow velocity and the flux
     ratio for [OIII] for before and after koffee's selection criteria for outflows
@@ -201,6 +201,9 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
     z : float
         redshift
+
+    weights : :obj:'~numpy.ndarray' or None
+        The weights for the fit - these should be 1/var.  Default is None.
 
     plot_fit_parameters : boolean
         When True, plots histograms of the velocity difference and [OIII] amplitude
@@ -263,7 +266,11 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
         print('KOFFEE fits flux_ratio median:', flux_ratio_unfixed_median)
 
     #make a mask for the emission line
-    OIII_mask = (lamdas>5008.24*(1+z)-20.0) & (lamdas<5008.24*(1+z)+20.0)
+    if (spaxel[0], spaxel[1]) in koffee.dodgy_spaxels[galaxy_name]:
+        OIII_mask = (lamdas > 4960.295*(1+z)-20.) & (lamdas < 4960.295*(1+z)+20.)
+        print('Using [OIII] 4960 for spaxel '+str(spaxel[0])+','+str(spaxel[1]))
+    else:
+        OIII_mask = (lamdas>5008.24*(1+z)-20.0) & (lamdas<5008.24*(1+z)+20.0)
 
     #mask the wavelength
     lam_OIII = lamdas[OIII_mask]
@@ -276,7 +283,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
     #fit the data with double gaussian
     gmodel2, pars2 = kff.gaussian2_const(lam_OIII, flux)
-    bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, verbose=False)
+    bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, weights=weights[OIII_mask, spaxel[0], spaxel[1]], verbose=False)
 
     #get the value to normalise by
     max_value = np.nanmax(flux)
@@ -314,7 +321,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
         ax[0].hist(vel_out[statistical_results>0], bins=bins_panel1, alpha=0.5, color='tab:red', edgecolor='tab:red', label='KOFFEE fits')
 
-        ax[0].set_ylim(0,40)
+        ax[0].set_ylim(0,50)
         ax[0].set_xlabel('Maximum Outflow Velocity [km s$^{-1}$]')
 
     ax[0].legend(fontsize='x-small', frameon=False)
@@ -334,7 +341,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
         ax[1].hist(flux_ratio[statistical_results>0], bins=bins_panel2, alpha=0.5, label='KOFFEE fits', color='tab:red', edgecolor='tab:red')
 
-        ax[1].set_ylim(0,50)
+        ax[1].set_ylim(0,80)
         ax[1].set_xlabel('[OIII] Log(F$_{broad}$/F$_{narrow}$)')
 
 
@@ -582,8 +589,11 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
         #ax[0].fill_between(bin_center_all, v_out_bin_lower_q_all, v_out_bin_upper_q_all, color=colours[0], alpha=0.3)
         #ax[0].fill_between(bin_center_all, v_out_bin_medians_all-v_out_bin_stdev_all, v_out_bin_medians_all+v_out_bin_stdev_all, color=colours[0], alpha=0.5)
 
-    ax[0].scatter(sig_sfr[vel_disp>51], vel_out[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.7)
-    ax[0].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=30, c=colours[0], alpha=0.7)
+    #ax[0].scatter(sig_sfr[vel_disp>51], vel_out[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.7)
+    #ax[0].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=30, c=colours[0], alpha=0.7)
+
+    ax[0].errorbar(sig_sfr[vel_disp>51], vel_out[vel_disp>51], yerr=vel_out_err[vel_disp>51], marker='o', label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.7, ls='none')
+    ax[0].errorbar(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], yerr=vel_out_err[vel_disp<=51], marker='v', c=colours[0], alpha=0.7, ls='none')
 
     if plot_medians == True:
         #ax[0].plot(bin_center_all, v_out_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_vel_out_med_all), color=colours[0])
@@ -602,7 +612,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     ax[0].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
 
-    ax[0].set_ylim(100, 700)
+    ax[0].set_ylim(np.nanmin(vel_out)-100, np.nanmax(vel_out)+200)
     ax[0].set_xscale('log')
     if xlim_vals:
         ax[0].set_xlim(xlim_vals[0], xlim_vals[1])
@@ -611,7 +621,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
         #save the xlim values for the comparison figure
         xlim_vals = [np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr)+2.0]
 
-    lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
     ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
@@ -642,7 +652,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     ax[1].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(vel_out_err[physical_mask]), c='k')
 
     #ax[1].set_xscale('log')
-    lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
     ax[1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
@@ -673,7 +683,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     ax[2].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(vel_out_err[BIC_diff_strong]), c='k')
 
     #ax[1].set_xscale('log')
-    lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
+    lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
     ax[2].set_title('strongly likely BIC $\delta_{BIC}$>50')

@@ -51,7 +51,7 @@ from lmfit.models import GaussianModel, ConstantModel #, LinearModel, ConstantMo
 #===============================================================================
 #FITTING FUNCTION
 #===============================================================================
-def fitter(g_model, pars, wavelength, flux, method='leastsq', verbose=True):
+def fitter(g_model, pars, wavelength, flux, weights=None, method='leastsq', verbose=True):
     """
     Fits the model to the data using a Levenberg-Marquardt least squares method
     by default (lmfit generally uses the scipy.optimize or scipy.optimize.minimize
@@ -72,6 +72,9 @@ def fitter(g_model, pars, wavelength, flux, method='leastsq', verbose=True):
     flux : :obj:'~numpy.ndarray'
         the flux of the spectrum
 
+    weights : :obj:'~numpy.ndarray' or None
+        the inverse of the variance, or None.  Default is None.
+
     method : str
         the fitting method to use, for example:
         - 'leastsq' - Levenberg-Marquardt least squares method (default)
@@ -88,7 +91,7 @@ def fitter(g_model, pars, wavelength, flux, method='leastsq', verbose=True):
         the best fitting model
     """
     #fit the data
-    best_fit = g_model.fit(flux, pars, x=wavelength, method=method)
+    best_fit = g_model.fit(flux, pars, x=wavelength, weights=weights, method=method)
 
     #print out the fit report
     if verbose:
