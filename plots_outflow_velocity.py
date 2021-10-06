@@ -1634,53 +1634,53 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     #Plots
     #-----------------
     if colour_by is not None:
-        ax[0].scatter(sfr[vel_disp>=51], vel_diff[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), c=colour_by_array[vel_disp>=51])
-        ax[0].scatter(sfr[vel_disp<51], vel_diff[vel_disp<51], marker='v', lw=0, alpha=0.6, c=colour_by_array[vel_disp<51])
+        ax[0].scatter(sig_sfr[vel_disp>=51], vel_diff[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), c=colour_by_array[vel_disp>=51])
+        ax[0].scatter(sig_sfr[vel_disp<51], vel_diff[vel_disp<51], marker='v', lw=0, alpha=0.6, c=colour_by_array[vel_disp<51])
 
-        im = ax[1].scatter(sfr[vel_disp>=51], vel_disp[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_disp), c=colour_by_array[vel_disp>=51])
-        ax[1].scatter(sfr[vel_disp<51], vel_disp[vel_disp<51], marker='v', lw=0, alpha=0.6, c=colour_by_array[vel_disp<51])
+        im = ax[1].scatter(sig_sfr[vel_disp>=51], vel_disp[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_disp), c=colour_by_array[vel_disp>=51])
+        ax[1].scatter(sig_sfr[vel_disp<51], vel_disp[vel_disp<51], marker='v', lw=0, alpha=0.6, c=colour_by_array[vel_disp<51])
         cbar = plt.colorbar(im, ax=ax[1])
         cbar.ax.set_ylabel(colour_by)
 
     elif colour_by is None:
-        ax[0].plot(sfr[BIC_mask][vel_disp[BIC_mask]>=51], vel_diff[BIC_mask][vel_disp[BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Definite Flow spaxels; R={:.2f}'.format(r_vel_diff_BIC), color='tab:blue')
-        ax[0].plot(sfr[BIC_mask][vel_disp[BIC_mask]<51], vel_diff[BIC_mask][vel_disp[BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
+        #ax[0].plot(sig_sfr[BIC_mask][vel_disp[BIC_mask]>=51], vel_diff[BIC_mask][vel_disp[BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Definite Flow spaxels; R={:.2f}'.format(r_vel_diff_BIC), color='tab:blue')
+        #ax[0].plot(sig_sfr[BIC_mask][vel_disp[BIC_mask]<51], vel_diff[BIC_mask][vel_disp[BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
 
-        ax[1].plot(sfr[BIC_mask][vel_disp[BIC_mask]>=51], vel_disp[BIC_mask][vel_disp[BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Definite Flow spaxels; R={:.2f}'.format(r_disp_BIC), color='tab:blue')
-        ax[1].plot(sfr[BIC_mask][vel_disp[BIC_mask]<51], vel_disp[BIC_mask][vel_disp[BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
+        #ax[1].plot(sig_sfr[BIC_mask][vel_disp[BIC_mask]>=51], vel_disp[BIC_mask][vel_disp[BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Definite Flow spaxels; R={:.2f}'.format(r_disp_BIC), color='tab:blue')
+        #ax[1].plot(sig_sfr[BIC_mask][vel_disp[BIC_mask]<51], vel_disp[BIC_mask][vel_disp[BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
 
-        ax[0].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]>=51], vel_diff[~BIC_mask][vel_disp[~BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Likely Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:pink')
-        ax[0].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]<51], vel_diff[~BIC_mask][vel_disp[~BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:pink')
+        #ax[0].plot(sig_sfr[~BIC_mask][vel_disp[~BIC_mask]>=51], vel_diff[~BIC_mask][vel_disp[~BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Likely Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:pink')
+        #ax[0].plot(sig_sfr[~BIC_mask][vel_disp[~BIC_mask]<51], vel_diff[~BIC_mask][vel_disp[~BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:pink')
 
-        ax[1].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]>=51], vel_disp[~BIC_mask][vel_disp[~BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Likely Flow spaxels; R={:.2f}'.format(r_disp), color='tab:pink')
-        ax[1].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]<51], vel_disp[~BIC_mask][vel_disp[~BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:pink')
+        #ax[1].plot(sig_sfr[~BIC_mask][vel_disp[~BIC_mask]>=51], vel_disp[~BIC_mask][vel_disp[~BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Likely Flow spaxels; R={:.2f}'.format(r_disp), color='tab:pink')
+        #ax[1].plot(sig_sfr[~BIC_mask][vel_disp[~BIC_mask]<51], vel_disp[~BIC_mask][vel_disp[~BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:pink')
 
-        #ax[0].errorbar(sfr[vel_disp>=51], vel_diff[vel_disp>=51], xerr=sfr_err[vel_disp>=51], yerr=vel_diff_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:blue')
-        #ax[0].errorbar(sfr[vel_disp<51], vel_diff[vel_disp<51], xerr=sfr_err[vel_disp<51], yerr=vel_diff_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
+        ax[0].errorbar(sig_sfr[vel_disp>=51], vel_diff[vel_disp>=51], xerr=sig_sfr_err[vel_disp>=51], yerr=vel_diff_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:blue')
+        ax[0].errorbar(sig_sfr[vel_disp<51], vel_diff[vel_disp<51], xerr=sig_sfr_err[vel_disp<51], yerr=vel_diff_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
 
-        #ax[1].errorbar(sfr[vel_disp>=51], vel_disp[vel_disp>=51], xerr=sfr_err[vel_disp>=51], yerr=vel_disp_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_disp), color='tab:blue')
-        #ax[1].errorbar(sfr[vel_disp<51], vel_disp[vel_disp<51], xerr=sfr_err[vel_disp<51], yerr=vel_disp_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
+        ax[1].errorbar(sig_sfr[vel_disp>=51], vel_disp[vel_disp>=51], xerr=sig_sfr_err[vel_disp>=51], yerr=vel_disp_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_disp), color='tab:blue')
+        ax[1].errorbar(sig_sfr[vel_disp<51], vel_disp[vel_disp<51], xerr=sig_sfr_err[vel_disp<51], yerr=vel_disp_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
 
 
-    ax[0].fill_between(bin_center, vel_diff_bin_lower_q, vel_diff_bin_upper_q, color='tab:blue', alpha=0.3)
-    ax[0].plot(bin_center, vel_diff_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_diff_med))
-    ax[0].errorbar(5, -100, xerr=np.nanmedian(sfr_err), yerr=np.nanmedian(vel_diff_err), c='k')
+    ax[0].fill_between(bin_center_vel_diff, vel_diff_bin_medians-vel_diff_bin_stdev, vel_diff_bin_medians+vel_diff_bin_stdev, color='tab:blue', alpha=0.3)
+    ax[0].plot(bin_center_vel_diff, vel_diff_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_diff_med))
+    ax[0].errorbar(0.06, -50, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_diff_err), c='k')
     ax[0].plot(sfr_surface_density_chen, vel_diff_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[0].plot(sfr_surface_density_murray, vel_diff_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
-    ax[0].set_ylim(-150,250)
+    ax[0].set_ylim(-52-np.nanmedian(vel_diff_err), np.nanmax(vel_diff)+np.nanmax(vel_diff_err))
     ax[0].set_xscale('log')
-    lgnd = ax[0].legend(frameon=False, fontsize='x-small', loc='lower left')
+    lgnd = ax[0].legend(frameon=False, fontsize='x-small', loc='lower right')
     lgnd.legendHandles[0]._legmarker.set_markersize(4)
     ax[0].set_ylabel('Velocity Offset [km s$^{-1}$]')
     ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
 
-    ax[1].fill_between(bin_center, disp_bin_lower_q, disp_bin_upper_q, color='tab:blue', alpha=0.3)
-    ax[1].plot(bin_center, disp_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_disp_med))
-    ax[1].errorbar(5, -50, xerr=np.nanmedian(sfr_err), yerr=np.nanmedian(vel_disp_err), c='k')
+    ax[1].fill_between(bin_center_vel_disp, vel_disp_bin_medians-vel_disp_bin_stdev, vel_disp_bin_medians+vel_disp_bin_stdev, color='tab:blue', alpha=0.3)
+    ax[1].plot(bin_center_vel_disp, vel_disp_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_disp_med))
+    ax[1].errorbar(0.06, 0, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_disp_err), c='k')
     ax[1].set_xscale('log')
-    ax[1].set_ylim(-100,300)
-    lgnd = ax[1].legend(frameon=False, fontsize='x-small', loc='lower left')
+    #ax[1].set_ylim(-100,300)
+    lgnd = ax[1].legend(frameon=False, fontsize='x-small', loc='lower right')
     lgnd.legendHandles[0]._legmarker.set_markersize(4)
     ax[1].set_ylabel('Velocity Dispersion [km s$^{-1}$]')
     ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
