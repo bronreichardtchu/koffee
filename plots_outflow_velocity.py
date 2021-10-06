@@ -1498,7 +1498,7 @@ def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflo
 
 
 
-def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, colour_by=None, colour_by_array=None, weighted_average=True):
+def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, colour_by=None, colour_by_array=None, weighted_average=True):
     """
     Plots the SFR surface density against the outflow velocity offset and dispersion,
     with Sigma_SFR calculated using only the narrow component.
@@ -1549,11 +1549,11 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
 
     """
     #calculate the outflow velocity
-    vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
+    vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
 
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, total_sfr, sfr_surface_density, h_beta_integral_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #get the sfr for the outflow spaxels
     flow_mask = (statistical_results>0)
