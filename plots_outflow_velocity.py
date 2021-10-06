@@ -1600,29 +1600,31 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q = pf.binned_median_quantile_log(sfr[BIC_mask], vel_diff[BIC_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center, disp_bin_medians, disp_bin_lower_q, disp_bin_upper_q = pf.binned_median_quantile_log(sfr[BIC_mask], vel_disp[BIC_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_vel_diff, bin_center_vel_diff, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q, vel_diff_bin_stdev = pf.binned_median_quantile_log(sig_sfr, vel_diff, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_vel_disp, bin_center_vel_disp, vel_disp_bin_medians, vel_disp_bin_lower_q, vel_disp_bin_upper_q, vel_disp_bin_stdev = pf.binned_median_quantile_log(sig_sfr, vel_disp, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
     elif weighted_average == True:
-        bin_center, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q = pf.binned_median_quantile_log(sfr, vel_diff, num_bins=num_bins, weights=[vel_diff_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center, disp_bin_medians, disp_bin_lower_q, disp_bin_upper_q = pf.binned_median_quantile_log(sfr, vel_disp, num_bins=num_bins, weights=[vel_disp_err], min_bin=min_bin, max_bin=max_bin)
+        logspace_vel_diff, bin_center_vel_diff, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q, vel_diff_bin_stdev = pf.binned_median_quantile_log(sig_sfr, vel_diff, num_bins=num_bins, weights=[vel_diff_err], min_bin=min_bin, max_bin=max_bin)
+        logspace_vel_disp, bin_center_vel_disp, vel_disp_bin_medians, vel_disp_bin_lower_q, vel_disp_bin_upper_q, vel_disp_bin_stdev = pf.binned_median_quantile_log(sig_sfr, vel_disp, num_bins=num_bins, weights=[vel_disp_err], min_bin=min_bin, max_bin=max_bin)
 
 
     #calculate the r value for the median values
-    r_vel_diff_med, p_value_v_diff = pf.pearson_correlation(bin_center, vel_diff_bin_medians)
-    r_disp_med, p_value_disp = pf.pearson_correlation(bin_center, disp_bin_medians)
+    r_vel_diff_med, p_value_vel_diff = pf.pearson_correlation(bin_center_vel_diff, vel_diff_bin_medians)
+    r_vel_disp_med, p_value_vel_disp = pf.pearson_correlation(bin_center_vel_disp, vel_disp_bin_medians)
 
     #calculate the r value for all the values
-    r_vel_diff, p_value_v_diff = pf.pearson_correlation(sfr, vel_diff)
-    r_disp, p_value_disp = pf.pearson_correlation(sfr, vel_disp)
+    r_vel_diff, p_value_v_diff = pf.pearson_correlation(sig_sfr, vel_diff)
+    r_disp, p_value_disp = pf.pearson_correlation(sig_sfr, vel_disp)
 
-    r_vel_diff_BIC, p_value_v_diff_BIC = pf.pearson_correlation(sfr[BIC_mask], vel_diff[BIC_mask])
-    r_disp_BIC, p_value_disp_BIC = pf.pearson_correlation(sfr[BIC_mask], vel_disp[BIC_mask])
+    #r_vel_diff_BIC, p_value_v_diff_BIC = pf.pearson_correlation(sfr[BIC_mask], vel_diff[BIC_mask])
+    #r_disp_BIC, p_value_disp_BIC = pf.pearson_correlation(sfr[BIC_mask], vel_disp[BIC_mask])
 
 
     #create vectors to plot the literature trends
-    sfr_surface_density_chen, vel_diff_chen = pf.chen_et_al_2010(sfr.min(), sfr.max(), scale_factor=np.nanmedian(vel_diff[BIC_mask])/(np.nanmedian(sfr[BIC_mask])**0.1))
-    sfr_surface_density_murray, vel_diff_murray = pf.murray_et_al_2011(sfr.min(), sfr.max(), scale_factor=np.nanmedian(vel_diff[BIC_mask])/(np.nanmedian(sfr[BIC_mask])**2))
+    #sfr_surface_density_chen, vel_diff_chen = pf.chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_diff[BIC_mask])/(np.nanmedian(sfr[BIC_mask])**0.1))
+    #sfr_surface_density_murray, vel_diff_murray = pf.murray_et_al_2011(sfr.min(), sfr.max(), scale_factor=np.nanmedian(vel_diff[BIC_mask])/(np.nanmedian(sfr[BIC_mask])**2))
+    sfr_surface_density_chen, vel_diff_chen = pf.chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_diff)/(np.nanmedian(sig_sfr)**0.1))
+    sfr_surface_density_murray, vel_diff_murray = pf.murray_et_al_2011(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_diff)/(np.nanmedian(sig_sfr)**2))
 
     #plot it
     plt.rcParams.update(pf.get_rc_params())
