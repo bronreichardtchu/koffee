@@ -1569,24 +1569,16 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     print(y_id)
     """
 
-    #convert the sigma to km/s instead of Angstroms
-    flow_sigma = OIII_outflow_results[3,:,:][flow_mask]/(1+z)
-    systemic_mean = OIII_outflow_results[1,:,:][flow_mask]/(1+z)
-    vel_disp = flow_sigma*299792.458/systemic_mean
-
-    vel_disp_err = (flow_sigma/systemic_mean)*np.sqrt((OIII_outflow_error[3,:,:][flow_mask]/flow_sigma)**2 + (OIII_outflow_error[1,:,:][flow_mask]/systemic_mean)**2)
-
     #flatten all the arrays and get rid of extra spaxels
-    sfr = sfr_surface_density[flow_mask]
-    sfr_err = h_beta_integral_err[flow_mask]
+    sig_sfr = sfr_surface_density[flow_mask]
+    sig_sfr_err = sfr_surface_density_err[flow_mask]
     vel_diff = vel_diff[flow_mask]
     vel_diff_err = vel_diff_err[flow_mask]
+    vel_disp = vel_disp[flow_mask]
+    vel_disp_err = vel_disp_err[flow_mask]
+
     if colour_by is not None:
         colour_by_array = colour_by_array[flow_mask]
-
-    #
-    colour_by_array = colour_by_array[flow_mask]
-    BIC_mask = (colour_by_array<-10)
 
     """id_array = id_array[flow_mask]
     x_id = x_id[flow_mask]
