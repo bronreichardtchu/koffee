@@ -2195,14 +2195,14 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
     #also mask out the fits which lie on the lower limit of dispersion < 51km/s
     physical_mask = (radius < 6.1) & (vel_disp>51)
 
-    logspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_log(sig_sfr, mlf, num_bins=5, weights=None, min_bin=None, max_bin=None)
+    logspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_log(sig_sfr[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=5, weights=None, min_bin=None, max_bin=None)
 
     #divide the mass loading factor by the model
     mlf_model = np.full_like(mlf, np.nan, dtype=np.double)
 
     for i in np.arange(mlf.shape[0]):
         #calculate the expected mlf at each sigma_sfr
-        sigma_sfr_model, mlf_expected = pf.kim_et_al_2020(sig_sfr[i], sig_sfr[i], scale_factor = (10**mlf_bin_medians_all[0])/(bin_center_all[0]**-0.44)) #0.06
+        sigma_sfr_model, mlf_expected = pf.kim_et_al_2020(sig_sfr[i], sig_sfr[i], scale_factor = (10**mlf_bin_medians_strong[2])/(bin_center_strong[2]**-0.44)) #0.06
         sigma_sfr_model = sigma_sfr_model[0]
         mlf_expected = mlf_expected[0]
         #divide the mlf by the expected mlf
@@ -2220,25 +2220,26 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
     min_bin = None #-0.05
     max_bin = None #0.6
 
-    linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(radius, mlf_model, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+    linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(radius[BIC_diff_strong], mlf_model[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
-    print(bin_center_all, mlf_bin_medians_all)
+    print(bin_center_strong, mlf_bin_medians_strong)
 
-    #use constant to bring the first median point to zero
-    zero_constant = mlf_bin_medians_all[0]
-    mlf_bin_medians_all = mlf_bin_medians_all - zero_constant
-    mlf_bin_lower_q_all = mlf_bin_lower_q_all - zero_constant
-    mlf_bin_upper_q_all = mlf_bin_upper_q_all - zero_constant
+    #use constant to bring the middle median point to zero
+    zero_constant = mlf_bin_medians_strong[0]
+    mlf_bin_medians_strong = mlf_bin_medians_strong - zero_constant
+    mlf_bin_lower_q_strong = mlf_bin_lower_q_strong - zero_constant
+    mlf_bin_upper_q_strong = mlf_bin_upper_q_strong - zero_constant
     mlf_model = mlf_model - zero_constant
+
 
 
     #calculate the r value for the median values
     #model is already logged
-    r_mlf_med_all, p_value_mlf_all = pf.pearson_correlation(bin_center_all, mlf_bin_medians_all)
+    r_mlf_med_strong, p_value_mlf_strong = pf.pearson_correlation(bin_center_strong, mlf_bin_medians_strong)
     #r_mlf_med_all, p_value_mlf_all = pearson_correlation(bin_center_all, mlf_model_medians)
 
     #calculate the r value for all the values
-    r_mlf_all, p_value_mlf_all = pf.pearson_correlation(radius[~np.isnan(mlf_model)], mlf_model[~np.isnan(mlf_model)])
+    r_mlf_strong, p_value_mlf_strong = pf.pearson_correlation(radius[~np.isnan(mlf_model)], mlf_model[~np.isnan(mlf_model)])
 
 
 
@@ -2247,7 +2248,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
 
     #convert radius to kpc
     radius = radius*proper_dist
-    bin_center_all = bin_center_all*proper_dist
+    bin_center_strong = bin_center_strong*proper_dist
 
 
 
@@ -2278,7 +2279,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
 
     ax.axhline(0, ls='--', color='k')
 
-    ax.scatter(radius[vel_disp>51], mlf_model[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_mlf_all), c=colours[0], alpha=0.7)
+    ax.scatter(radius[vel_disp>51], mlf_model[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_mlf_strong), c=colours[0], alpha=0.7)
     ax.scatter(radius[vel_disp<=51], mlf_model[vel_disp<=51], marker='v', s=30, c=colours[0], alpha=0.7)
 
     #ax.errorbar(radius[vel_disp>51].value, mlf_model[vel_disp>51], yerr=np.array([mlf_max[vel_disp>51], mlf_min[vel_disp>51]]), marker='o', ms=3, ls='none', label='All KOFFEE fits; R={:.2f}'.format(r_mlf_all), c=colours[0], alpha=0.7)
@@ -2286,7 +2287,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
 
     if plot_medians == True:
         #ax.plot(bin_center_all, mlf_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
-        ax.errorbar(bin_center_all.value, mlf_bin_medians_all, yerr=mlf_bin_stdev_all, capsize=3.0, ms=5, lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
+        ax.errorbar(bin_center_strong.value, mlf_bin_medians_strong, yerr=mlf_bin_stdev_strong, capsize=3.0, ms=5, lw=3, label='Median strong KOFFEE fits; R={:.2f}'.format(r_mlf_med_strong), color=colours[0])
 
     lgnd = ax.legend(frameon=True, fontsize='small', loc='lower left', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
