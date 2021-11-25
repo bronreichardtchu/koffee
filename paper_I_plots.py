@@ -1159,26 +1159,32 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     vel_disp = vel_disp[flow_mask]
     radius = radius[flow_mask]
 
-
-    #take the log of the mlf
-    mlf = np.log10(mlf)
-    mlf_max = np.log10(mlf_max)
-    mlf_min = np.log10(mlf_min)
-
-    #calculate the errors
+    #calculate the mlf errors
     mlf_err_max = mlf_max - mlf
     mlf_err_min = mlf - mlf_min
 
-    #make sure none of the flux errors are nan values
-    systemic_flux_err[np.isnan(systemic_flux_err)] = np.nanmedian(systemic_flux_err)
-    outflow_flux_err[np.isnan(outflow_flux_err)] = np.nanmedian(outflow_flux_err)
 
-    #take the log and do the flux ratio
-    flux_ratio = np.log10(outflow_flux/systemic_flux)
-    #flux_ratio = (outflow_flux/systemic_flux)
+    #take the log of the mlf
+    mlf_err_max = abs(mlf_err_max/(mlf*np.log(10)))
+    mlf_err_min = abs(mlf_err_min/(mlf*np.log(10)))
+    mlf = np.log10(mlf)
+
+
+    #make sure none of the flux errors are nan values
+    systemic_flux_err[np.isnan(systemic_flux_err)] = np.nanmin(systemic_flux_err)
+    outflow_flux_err[np.isnan(outflow_flux_err)] = np.nanmin(outflow_flux_err)
+
+    #do the flux ratio
+    flux_ratio = (outflow_flux/systemic_flux)
 
     #calculate the error
-    flux_error = flux_ratio * np.log10(np.sqrt((outflow_flux_err/outflow_flux)**2 + (systemic_flux_err/systemic_flux)**2))
+    flux_error = abs(flux_ratio) * np.sqrt((outflow_flux_err/outflow_flux)**2 + (systemic_flux_err/systemic_flux)**2)
+
+    #calculate the logarithmic flux error
+    flux_error = abs(flux_error/(flux_ratio*np.log(10)))
+
+    #take the log of the flux ratio
+    flux_ratio = np.log10(flux_ratio)
 
     #create BIC diff
     BIC_diff = BIC_outflow - BIC_no_outflow
@@ -1187,7 +1193,11 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
     #also mask out the fits which lie on the lower limit of dispersion < 51km/s
-    physical_mask = (radius < 6.1) & (vel_disp>51)
+    #physical_mask = (radius < 6.1) & (vel_disp>51)
+    #radius: 4.4" is the 85% radius, gets rid of the high velocity points
+    #radius: 3.9" is the 80% radius, gets rid of the high velocity points
+    #radius: 3.2" is the 75% radius, gets rid of the high velocity points
+    physical_mask = (radius < 4.4) & (vel_disp>51)
 
     #make sure none of the errors are nan values
     #vel_out_err[np.where(np.isnan(vel_out_err)==True)] = np.nanmedian(vel_out_err)
@@ -1242,9 +1252,9 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     #calculate Kim et al. trend
     if xlim_vals:
-        sfr_surface_density_kim, mlf_Kim = pf.kim_et_al_2020(xlim_vals[0], xlim_vals[1], scale_factor=(10**mlf_bin_medians_all[0])/(bin_center_all[0]**-0.44))#0.06)
+        sfr_surface_density_kim, mlf_Kim = pf.kim_et_al_2020(10**xlim_vals[0], 10**xlim_vals[1]+4.0, scale_factor=(10**mlf_bin_medians_strong[2])/(bin_center_strong[2]**-0.44))#0.06)
     else:
-        sfr_surface_density_kim, mlf_Kim = pf.kim_et_al_2020(sig_sfr.min(), sig_sfr.max(), scale_factor=(10**mlf_bin_medians_all[0])/(bin_center_all[0]**-0.44))#0.06)
+        sfr_surface_density_kim, mlf_Kim = pf.kim_et_al_2020(sig_sfr.min(), sig_sfr.max(), scale_factor=(10**mlf_bin_medians_strong[2])/(bin_center_strong[2]**-0.44))#0.06)
 
 
     #fit our own trends
@@ -1270,12 +1280,15 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     print('')
 
     print('All spaxels median flux_ratio:', np.nanmedian(flux_ratio))
+    print('All spaxels median flux_ratio error:', np.nanmedian(flux_error))
     print('All spaxels standard deviation flux_ratio:', np.nanstd(flux_ratio))
     print('')
 
     print('Number of spaxels with broad sigmas at the instrument dispersion:', mlf[vel_disp<=51].shape)
     print('')
     print('Number of spaxels beyond R_90:', mlf[radius>6.1].shape)
+    print('')
+    print('Number of spaxels beyond R_85:', mlf[radius>4.4].shape)
     print('')
     print('Number of spaxels in the middle panel:', mlf[physical_mask].shape)
     print('')
@@ -1286,6 +1299,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     print('')
 
     print('Physical spaxels median flux_ratio:', np.nanmedian(flux_ratio[physical_mask]))
+    print('Physical spaxels median flux_ratio error:', np.nanmedian(flux_error[physical_mask]))
     print('Physical spaxels standard deviation flux_ratio:', np.nanstd(flux_ratio[physical_mask]))
     print('')
 
@@ -1298,8 +1312,15 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     print('')
 
     print('Clean spaxels median flux_ratio:', np.nanmedian(flux_ratio[BIC_diff_strong]))
+    print('Clean spaxels median flux_ratio error:', np.nanmedian(flux_error[BIC_diff_strong]))
     print('Clean spaxels standard deviation flux_ratio:', np.nanstd(flux_ratio[BIC_diff_strong]))
     print('')
+
+    #make all the sigma SFR things log
+    sig_sfr_log = np.log10(sig_sfr)
+    sig_sfr_err_log = abs(sig_sfr_err/(sig_sfr*np.log(10)))
+    if plot_data_fits == True:
+        sfr_logspace = np.log10(sfr_linspace)
 
     #-------
     #plot it
@@ -1311,119 +1332,107 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
 
     #plot all points
-    #if plot_medians == True:
-        #ax[1,0].fill_between(bin_center_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, color=colours[0], alpha=0.3)
-
-    ax[1,0].scatter(sig_sfr[vel_disp>51], mlf[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_mlf_all), color=colours[0], alpha=0.7)
-    ax[1,0].scatter(sig_sfr[vel_disp<=51], mlf[vel_disp<=51], marker='v', s=30, color=colours[0], alpha=0.7)
+    ax[1,0].scatter(sig_sfr_log[vel_disp>51], mlf[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_mlf_all), color=colours[0], alpha=0.7)
+    ax[1,0].scatter(sig_sfr_log[vel_disp<=51], mlf[vel_disp<=51], marker='v', s=30, color=colours[0], alpha=0.7)
 
     if plot_medians == True:
         #ax[1,0].plot(bin_center_all, mlf_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
         #plot the medians as error bars
-        ax[1,0].errorbar(bin_center_all, mlf_bin_medians_all, yerr=mlf_bin_stdev_all, capsize=3.0, lw=3, ms=5, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
+        ax[1,0].errorbar(np.log10(bin_center_all), mlf_bin_medians_all, yerr=mlf_bin_stdev_all, capsize=3.0, lw=3, ms=5, label='Median all KOFFEE fits; R={:.2f}'.format(r_mlf_med_all), color=colours[0])
 
 
-    ax[1,0].plot(sfr_surface_density_kim, np.log10(mlf_Kim), ':k', label='Kim+20, $\eta \propto \Sigma_{SFR}^{-0.44}$')
+    ax[1,0].plot(np.log10(sfr_surface_density_kim), np.log10(mlf_Kim), ':k', label='Kim+20, $\eta \propto \Sigma_{SFR}^{-0.44}$')
 
     if plot_data_fits == True:
         #fit for all
-        ax[1,0].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_all)), 'r-', label='Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_mlf_all[0], np.sqrt(np.diag(pcov_mlf_all))[0], popt_mlf_all[1], np.sqrt(np.diag(pcov_mlf_all))[1]))
+        ax[1,0].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_all)), 'r-', label='Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_mlf_all[0], np.sqrt(np.diag(pcov_mlf_all))[0], popt_mlf_all[1], np.sqrt(np.diag(pcov_mlf_all))[1]))
         #fit for medians
-        ax[1,0].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_all_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_all_medians[0], np.sqrt(np.diag(pcov_mlf_all_medians))[0], popt_mlf_all_medians[1], np.sqrt(np.diag(pcov_mlf_all_medians))[1]))
+        ax[1,0].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_all_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_all_medians[0], np.sqrt(np.diag(pcov_mlf_all_medians))[0], popt_mlf_all_medians[1], np.sqrt(np.diag(pcov_mlf_all_medians))[1]))
 
-    ax[1,0].errorbar(0.05, np.nanmin(mlf), xerr=np.nanmedian(sig_sfr_err), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
+    #put the errorbars on the plot
+    ax[1,0].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong]-0.7), xerr=np.nanmedian(sig_sfr_err_log), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
 
-
-    #ax[1,0].set_ylim(np.nanmin(mlf)-0.1, np.nanmax(mlf)+0.5)
-    ax[1,0].set_xscale('log')
     if xlim_vals:
         ax[1,0].set_xlim(xlim_vals[0], xlim_vals[1])
     else:
-        ax[1,0].set_xlim(np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr+2.0))
+        ax[1,0].set_xlim(np.log10(np.nanmin(sig_sfr)-0.002), np.log10(np.nanmax(sig_sfr)+2.0))
         #save the xlim values for the comparison figure
         xlim_vals = [np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr)+2.0]
 
-    ax[1,0].set_ylim((np.nanmin(mlf)+np.nanmedian(mlf_err_max)-0.1), np.nanmax(mlf)+0.8)
+    #ax[1,0].set_ylim((np.nanmin(mlf[BIC_diff_strong]-0.3)+np.nanmedian(mlf_err_max)-0.1), np.nanmax(mlf)+0.8)
     lgnd = ax[1,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1,0].set_ylabel(r'Log($\eta (\frac{500~\rm pc}{R_{\rm out}})$)')
-    ax[1,0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    #ax[1,0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
 
 
     #plot points within 90% radius
-    #if plot_medians == True:
-        #ax[1,1].fill_between(bin_center_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, color=colours[1], alpha=0.3)
-
     #ax[1,1].scatter(sig_sfr[radius>6.1], mlf[radius>6.1], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
     #ax[1,1].scatter(sig_sfr[vel_disp<=51], mlf[vel_disp<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
-    ax[1,1].scatter(sig_sfr[physical_mask], mlf[physical_mask], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_mlf_physical), color=colours[1], alpha=0.7)
+    ax[1,1].scatter(sig_sfr_log[physical_mask], mlf[physical_mask], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_mlf_physical), color=colours[1], alpha=0.7)
 
     if plot_medians == True:
-        #ax[1,1].plot(bin_center_physical, mlf_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_physical), color=colours[1])
-        ax[1,1].errorbar(bin_center_physical, mlf_bin_medians_physical, yerr=mlf_bin_stdev_physical, lw=3, capsize=3.0, ms=5, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_physical), color=colours[1])
+        ax[1,1].errorbar(np.log10(bin_center_physical), mlf_bin_medians_physical, yerr=mlf_bin_stdev_physical, lw=3, capsize=3.0, ms=5, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_physical), color=colours[1])
 
-    ax[1,1].plot(sfr_surface_density_kim, np.log10(mlf_Kim), ':k')
+    ax[1,1].plot(np.log10(sfr_surface_density_kim), np.log10(mlf_Kim), ':k')
 
     if plot_data_fits == True:
         #fit for all
-        ax[1,1].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_physical)), 'r-', label='Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_mlf_physical[0], np.sqrt(np.diag(pcov_mlf_physical))[0], popt_mlf_physical[1], np.sqrt(np.diag(pcov_mlf_physical))[1]))
+        ax[1,1].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_physical)), 'r-', label='Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_mlf_physical[0], np.sqrt(np.diag(pcov_mlf_physical))[0], popt_mlf_physical[1], np.sqrt(np.diag(pcov_mlf_physical))[1]))
         #fit for medians
-        ax[1,1].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_physical_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_physical_medians[0], np.sqrt(np.diag(pcov_mlf_physical_medians))[0], popt_mlf_physical_medians[1], np.sqrt(np.diag(pcov_mlf_physical_medians))[1]))
+        ax[1,1].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_physical_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_physical_medians[0], np.sqrt(np.diag(pcov_mlf_physical_medians))[0], popt_mlf_physical_medians[1], np.sqrt(np.diag(pcov_mlf_physical_medians))[1]))
 
-    ax[1,1].errorbar(0.05, np.nanmin(mlf), xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
+    #put the errorbar on the plot
+    ax[1,1].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong])-0.7, xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
 
-    #ax[0,1].set_xscale('log')
     lgnd = ax[1,1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[1,1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    ax[1,1].set_xlabel('Log $\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
 
 
     #plot points with strong BIC values
-    #if plot_medians == True:
-        #ax[1,2].fill_between(bin_center_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, color=colours[2], alpha=0.3)
-
     #ax[1,2].scatter(sig_sfr[~BIC_diff_strong], mlf[~BIC_diff_strong], marker='o', s=10, label='All KOFFEE fits', color=colours[0], alpha=0.3, facecolors='none')
-    ax[1,2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], mlf[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_mlf_strong), color=colours[2], alpha=0.8)
-    ax[1,2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], mlf[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=30, color=colours[2], alpha=0.8)
+    ax[1,2].scatter(sig_sfr_log[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], mlf[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_mlf_strong), color=colours[2], alpha=0.8)
+    ax[1,2].scatter(sig_sfr_log[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], mlf[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=30, color=colours[2], alpha=0.8)
 
     if plot_medians == True:
-        #ax[1,2].plot(bin_center_strong, mlf_bin_medians_strong, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_strong), color=colours[2])
-        ax[1,2].errorbar(bin_center_strong, mlf_bin_medians_strong, yerr=mlf_bin_stdev_strong, ms=5, lw=3, capsize=3.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_strong), color=colours[2])
+        ax[1,2].errorbar(np.log10(bin_center_strong), mlf_bin_medians_strong, yerr=mlf_bin_stdev_strong, ms=5, lw=3, capsize=3.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_mlf_med_strong), color=colours[2])
 
-    ax[1,2].plot(sfr_surface_density_kim, np.log10(mlf_Kim), ':k')
+    ax[1,2].plot(np.log10(sfr_surface_density_kim), np.log10(mlf_Kim), ':k')
 
     if plot_data_fits == True:
         #fit for all
-        ax[1,2].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_strong)), 'r-', label='Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_mlf_strong[0], np.sqrt(np.diag(pcov_mlf_strong))[0], popt_mlf_strong[1], np.sqrt(np.diag(pcov_mlf_strong))[1]))
+        ax[1,2].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_strong)), 'r-', label='Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_mlf_strong[0], np.sqrt(np.diag(pcov_mlf_strong))[0], popt_mlf_strong[1], np.sqrt(np.diag(pcov_mlf_strong))[1]))
         #fit for medians
-        ax[1,2].plot(sfr_linspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_strong_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_strong_medians[0], np.sqrt(np.diag(pcov_mlf_strong_medians))[0], popt_mlf_strong_medians[1], np.sqrt(np.diag(pcov_mlf_strong_medians))[1]))
+        ax[1,2].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_strong_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_strong_medians[0], np.sqrt(np.diag(pcov_mlf_strong_medians))[0], popt_mlf_strong_medians[1], np.sqrt(np.diag(pcov_mlf_strong_medians))[1]))
 
-    ax[1,2].errorbar(0.05, np.nanmin(mlf), xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
+    #put the errorbar on the plot
+    ax[1,2].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong])-0.7, xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
 
-    #ax[0,1].set_xscale('log')
     lgnd = ax[1,2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[1,2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    #ax[1,2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
 
 
 
     #plot all points
-    #if plot_medians == True:
-        #ax[0,0].fill_between(bin_center_all, flux_bin_lower_q_all, flux_bin_upper_q_all, color=colours[0], alpha=0.3)
-
-    ax[0,0].scatter(sig_sfr[vel_disp>51], flux_ratio[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_flux_all), color=colours[0], alpha=0.7)
-    ax[0,0].scatter(sig_sfr[vel_disp<=51], flux_ratio[vel_disp<=51], marker='v', s=30, color=colours[0], alpha=0.7)
+    ax[0,0].scatter(sig_sfr_log[vel_disp>51], flux_ratio[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_flux_all), color=colours[0], alpha=0.7)
+    ax[0,0].scatter(sig_sfr_log[vel_disp<=51], flux_ratio[vel_disp<=51], marker='v', s=30, color=colours[0], alpha=0.7)
 
     if plot_medians == True:
-        #ax[0,0].plot(bin_center_all, flux_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_flux_med_all), color=colours[0])
-        ax[0,0].errorbar(bin_center_all, flux_bin_medians_all, yerr=flux_bin_stdev_all, ms=5, lw=3, capsize=3.0, label='Median all KOFFEE fits; R={:.2f}'.format(r_flux_med_all), color=colours[0])
+        ax[0,0].errorbar(np.log10(bin_center_all), flux_bin_medians_all, yerr=flux_bin_stdev_all, ms=5, lw=3, capsize=3.0, label='Median all KOFFEE fits; R={:.2f}'.format(r_flux_med_all), color=colours[0])
 
-    ax[0,0].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(flux_error), c='k')
+    #put the error bars on the plot
+    ax[0,0].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])-0.5, xerr=np.nanmedian(sig_sfr_err_log), yerr=np.nanmedian(flux_error[flux_error<50]), c='k')
 
-    ax[0,0].set_ylim((np.nanmin(flux_ratio)+np.nanmedian(flux_error)-0.1), np.nanmax(flux_ratio)+0.6)
+    #calculate the median absolute deviation of the flux ratio
+    #flux_ratio_mad = np.nanmedian(abs(flux_ratio - np.nanmedian(flux_ratio)))
+    #ax[0,0].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong]), yerr=flux_ratio_mad, c='gray', capsize=5)
+
+    #ax[0,0].set_ylim((np.nanmin(flux_ratio)+np.nanmedian(flux_error)-0.1), np.nanmax(flux_ratio)+0.6)
     lgnd = ax[0,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,0].set_ylabel(r'H$\beta$ Log(F$_{\rm broad}$/F$_{\rm narrow}$)')
@@ -1432,44 +1441,46 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
 
     #plot points within 90% radius
-    #if plot_medians == True:
-        #ax[0,1].fill_between(bin_center_physical, flux_bin_lower_q_physical, flux_bin_upper_q_physical, color=colours[1], alpha=0.3)
-
     #ax[0,1].scatter(sig_sfr[radius>6.1], flux_ratio[radius>6.1], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
     #ax[0,1].scatter(sig_sfr[vel_disp<=51], flux_ratio[vel_disp<=51], marker='v', s=10, edgecolors=colours[0], alpha=0.3, facecolors='none')
-    ax[0,1].scatter(sig_sfr[physical_mask], flux_ratio[physical_mask], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_flux_physical), color=colours[1], alpha=0.7)
+    ax[0,1].scatter(sig_sfr_log[physical_mask], flux_ratio[physical_mask], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_flux_physical), color=colours[1], alpha=0.7)
 
     if plot_medians == True:
-        #ax[0,1].plot(bin_center_physical, flux_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_physical), color=colours[1])
-        ax[0,1].errorbar(bin_center_physical, flux_bin_medians_physical, yerr=flux_bin_stdev_physical, ms=5, lw=3, capsize=3.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_physical), color=colours[1])
+        ax[0,1].errorbar(np.log10(bin_center_physical), flux_bin_medians_physical, yerr=flux_bin_stdev_physical, ms=5, lw=3, capsize=3.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_physical), color=colours[1])
 
-    ax[0,1].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(flux_error[physical_mask]), c='k')
+    #put the errorbars on the plot
+    ax[0,1].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])-0.5, xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=np.nanmedian(flux_error[physical_mask]), c='k')
+
+    #calculate the median absolute deviation of the flux ratio
+    #flux_ratio_mad = np.nanmedian(abs(flux_ratio[physical_mask] - np.nanmedian(flux_ratio[physical_mask])))
+    #ax[0,1].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong]), yerr=flux_ratio_mad, c='gray', capsize=5)
 
     lgnd = ax[0,1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[0,1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[0,1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
 
 
     #plot points with strong BIC values
-    #if plot_medians == True:
-        #ax[0,2].fill_between(bin_center_strong, flux_bin_lower_q_strong, flux_bin_upper_q_strong, color=colours[2], alpha=0.3)
-
     #ax[0,2].scatter(sig_sfr[~BIC_diff_strong], flux_ratio[~BIC_diff_strong], marker='o', s=10, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
-    ax[0,2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], flux_ratio[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_flux_strong), color=colours[2], alpha=0.7)
-    ax[0,2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], flux_ratio[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=30, color=colours[2], alpha=0.7)
+    ax[0,2].scatter(sig_sfr_log[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], flux_ratio[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_flux_strong), color=colours[2], alpha=0.7)
+    ax[0,2].scatter(sig_sfr_log[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], flux_ratio[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=30, color=colours[2], alpha=0.7)
 
     if plot_medians == True:
-        #ax[0,2].plot(bin_center_strong, flux_bin_medians_strong, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_strong), color=colours[2])
-        ax[0,2].errorbar(bin_center_strong, flux_bin_medians_strong, yerr=flux_bin_stdev_strong, ms=5, lw=3, capsize=5.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_strong), color=colours[2])
+        ax[0,2].errorbar(np.log10(bin_center_strong), flux_bin_medians_strong, yerr=flux_bin_stdev_strong, ms=5, lw=3, capsize=5.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_strong), color=colours[2])
 
-    ax[0,2].errorbar(0.05, np.nanmin(flux_ratio)+0.1, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(flux_error[BIC_diff_strong]), c='k')
+    #put the errorbars on the plot
+    ax[0,2].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])-0.5, xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=np.nanmedian(flux_error[BIC_diff_strong]), c='k')
+
+    #calculate the median absolute deviation of the flux ratio
+    #flux_ratio_mad = np.nanmedian(abs(flux_ratio[BIC_diff_strong] - np.nanmedian(flux_ratio[BIC_diff_strong])))
+    #ax[0,2].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong]), yerr=flux_ratio_mad, c='gray', capsize=5)
 
     lgnd = ax[0,2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,2].set_title('strongly likely BIC $\delta_{BIC}$>50')
 
-    plt.subplots_adjust(left=0.08, right=0.99, top=0.96, bottom=0.07, wspace=0.04, hspace=0.04)
+    plt.subplots_adjust(left=0.08, right=0.99, top=0.96, bottom=0.07, wspace=0.06, hspace=0.04)
 
     plt.show()
 
