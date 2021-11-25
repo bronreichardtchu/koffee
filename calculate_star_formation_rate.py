@@ -862,3 +862,108 @@ def calc_save_as_fits(outflow_results, outflow_error, no_outflow_results, no_out
 
     #write to file
     hdul.writeto(output_folder+gal_name+'_star_formation_rate_surface_density.fits')
+
+
+
+def calc_save_flux_as_fits(outflow_results, outflow_error, statistical_results, z, header, gal_name, emission_line_name, output_folder):
+    """
+    Calculates the flux and broad-to-narrow flux ratio and saves the results
+    into a fits file.
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray'
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    outflow_error : :obj:'~numpy.ndarray'
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    statistical_results : :obj:'~numpy.ndarray'
+        Array containing the statistical results from koffee.  This has 0 if no
+        flow was found, 1 if a flow was found, 2 if an outflow was found using a
+        forced second fit due to the blue chi square test.
+
+    z : float
+        The redshift of the galaxy
+
+    header : FITS file object
+        The header of the data fits file, to be used in the new fits file
+
+    gal_name : str
+        the name of the galaxy, and whatever descriptor to be used in the saving
+        (e.g. IRAS08_binned_2_by_1)
+
+    emission_line_name : str
+        the name of the emission line the results are from
+        (e.g. OIII, hbeta, etc.)
+
+    output_folder : str
+        where to save the fits file
+
+    Returns
+    -------
+    A saved fits file
+    """
+    #calculate the flux
+    systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z, outflow=True)
+
+    #calculate the flux ratios
+    broad_to_narrow = outflow_flux/systemic_flux
+    broad_to_narrow_err = broad_to_narrow * (outflow_flux_err/outflow_flux + systemic_flux_err/systemic_flux)
+
+    #copy the header and change the keywords so it's just 2 axes
+    new_header = header.copy()
+
+    new_header['NAXIS'] = 2
+
+    del new_header['NAXIS3']
+    del new_header['CNAME3']
+    del new_header['CRPIX3']
+    del new_header['CRVAL3']
+    del new_header['CTYPE3']
+    del new_header['CUNIT3']
+
+    try:
+        del new_header['CD3_3']
+    except:
+        del new_header['CDELT3']
+
+    #create HDU object for galaxy flux
+    hdu = fits.PrimaryHDU(systemic_flux, header=new_header)
+    hdu_error = fits.ImageHDU(systemic_flux_err, name='Error')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_'+emission_line_name+'_narrow_flux.fits')
+
+    #create HDU object for outflow flux
+    hdu = fits.PrimaryHDU(outflow_flux, header=new_header)
+    hdu_error = fits.ImageHDU(outflow_flux_err, name='Error')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_'+emission_line_name+'_broad_flux.fits')
+
+    #create HDU object for broad to narrow flux ratio
+    hdu = fits.PrimaryHDU(broad_to_narrow, header=new_header)
+    hdu_error = fits.ImageHDU(broad_to_narrow_err, name='Error')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_'+emission_line_name+'_broad_to_narrow_flux_ratio.fits')
