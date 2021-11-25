@@ -173,7 +173,7 @@ def plot_compare_fits(lamdas, data, var, spaxels, z):
 
 
 #Figure 2
-def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfixed, outflow_error_unfixed, statistical_results, lamdas, data, spaxel, z, weights=None, plot_fit_parameters=False, galaxy_name='IRAS08'):
+def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfixed, outflow_error_unfixed, statistical_results, lamdas, data, var, spaxel, z, plot_fit_parameters=False, galaxy_name='IRAS08'):
     """
     Plots a three panel graph of two histograms of the outflow velocity and the flux
     ratio for [OIII] for before and after koffee's selection criteria for outflows
@@ -291,9 +291,12 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     #mask the data to get the flux
     flux = data[OIII_mask, spaxel[0], spaxel[1]]
 
+    #mask the variance to get the weights
+    weights = 1/np.sqrt(var[OIII_mask, spaxel[0], spaxel[1]])
+
     #fit the data with double gaussian
     gmodel2, pars2 = kff.gaussian2_const(lam_OIII, flux)
-    bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, weights=weights[OIII_mask, spaxel[0], spaxel[1]], verbose=False)
+    bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, weights=weights, verbose=False)
 
     #get the value to normalise by
     max_value = np.nanmax(flux)
@@ -331,7 +334,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
         ax[0].hist(vel_out[statistical_results>0], bins=bins_panel1, alpha=0.5, color='tab:red', edgecolor='tab:red', label='KOFFEE fits')
 
-        ax[0].set_ylim(0,50)
+        #ax[0].set_ylim(0,50)
         ax[0].set_xlabel('Maximum Outflow Velocity [km s$^{-1}$]')
 
     ax[0].legend(fontsize='x-small', frameon=False)
@@ -351,7 +354,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
         ax[1].hist(flux_ratio[statistical_results>0], bins=bins_panel2, alpha=0.5, label='KOFFEE fits', color='tab:red', edgecolor='tab:red')
 
-        ax[1].set_ylim(0,80)
+        #ax[1].set_ylim(0,80)
         ax[1].set_xlabel('[OIII] Log(F$_{broad}$/F$_{narrow}$)')
 
 
