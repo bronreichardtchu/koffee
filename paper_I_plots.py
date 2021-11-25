@@ -1898,6 +1898,204 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     plt.show()
 
 
+def maps_of_IRAS08_OIII(fuv_fits_file, outflow_velocity_fits_file, flux_ratio_fits_file, radius):
+    """"
+    Maps the results for IRAS08 and some flux distributions from fits files
+
+    Parameters
+    ----------
+    fuv_fits_file : string
+        location of the fits file with the FUV flux
+
+    outflow_velocity_fits_file : string
+        location of the fits file with the outflow velocity measured with KOFFEE
+        (must be same shape as statistical_results)
+
+    flux_ratio_fits_file : string
+        location of the fits file with the broad-to-narrow flux ratio measured
+        with KOFFEE (must be same shape as statistical_results)
+
+    radius : :obj:'~numpy.ndarray'
+        array of galaxy radius values
+
+    Returns
+    -------
+    A three-panel figure with the maps of flux from different emission lines and
+    continuum areas, and maps of the results from KOFFEE
+    """
+    #read in fits files
+    #need to shift the IRAS08 KCWI data to match the WCS with the HST data
+    fuv_data, fuv_header, fuv_wcs = pf.read_in_create_wcs(fuv_fits_file)
+    vel_out, vel_out_header, vel_out_wcs = pf.read_in_create_wcs(outflow_velocity_fits_file, shift=['CRPIX2', 32.0])
+    flux_ratio, flux_ratio_header, flux_ratio_wcs = pf.read_in_create_wcs(flux_ratio_fits_file, shift=['CRPIX2', 32.0])
+
+    #take the log of the velocity and the flux ratio
+    vel_out = np.log10(vel_out)
+    flux_ratio = np.log10(flux_ratio)
+
+    #creating the x and y limits
+    xlim = [4, 16]
+    ylim = [2, 58]
+
+    kcwi_low_lim = vel_out_wcs.all_pix2world(xlim[0], ylim[0], 0)
+    kcwi_high_lim = vel_out_wcs.all_pix2world(xlim[1], ylim[1], 0)
+    print('Limits')
+    print(kcwi_low_lim)
+    print(kcwi_high_lim)
+
+    kcwi_low_lim_fuv = fuv_wcs.all_world2pix(kcwi_low_lim[0], kcwi_low_lim[1], 0)
+    kcwi_high_lim_fuv = fuv_wcs.all_world2pix(kcwi_high_lim[0], kcwi_high_lim[1], 0)
+    print(kcwi_low_lim_fuv)
+    print(kcwi_high_lim_fuv)
+
+
+    #find the peak of the OIII flux and convert to wcs
+    print('Max flux ratio')
+    OIII_peak_pixel = np.argwhere(flux_ratio==np.nanmax(flux_ratio[radius<6.1]))
+    print(OIII_peak_pixel)
+
+    OIII_local_maxima_pixel = argrelextrema(flux_ratio[radius<6.1], np.greater)
+    #OIII_max_local_maxima_pixel = np.argwhere(flux_ratio==np.nanmax(flux_ratio[radius<6.1][OIII_local_maxima_pixel]))
+    OIII_max_local_maxima_pixel = np.argwhere(flux_ratio==np.sort(flux_ratio[radius<6.1][OIII_local_maxima_pixel])[-2])
+
+    OIII_peak_world = flux_ratio_wcs.all_pix2world(OIII_peak_pixel[0,1], OIII_peak_pixel[0,0], 0)
+    print(OIII_peak_world)
+
+    OIII_peak_fuv_pixel = fuv_wcs.all_world2pix(OIII_peak_world[0], OIII_peak_world[1], 0)
+    print(OIII_peak_fuv_pixel)
+
+    OIII_local_max_world = vel_out_wcs.all_pix2world(OIII_max_local_maxima_pixel[0,1], OIII_max_local_maxima_pixel[0,0], 0)#, 0)
+    print(OIII_local_max_world)
+
+    OIII_local_max_fuv_pixel = fuv_wcs.all_world2pix(OIII_local_max_world[0], OIII_local_max_world[1], 0)
+    print(OIII_local_max_fuv_pixel)
+
+    #find the peak of the outflow velocity and convert to wcs
+    print('Max outflow velocity')
+    outvel_peak_pixel = np.argwhere(vel_out==np.nanmax(vel_out[radius<6.1]))
+    print(outvel_peak_pixel)
+
+    outvel_local_maxima_pixel = argrelextrema(vel_out[radius<6.1], np.greater)
+    #outvel_max_local_maxima_pixel = np.argwhere(vel_out==np.nanmax(vel_out[outvel_local_maxima_pixel]))
+    outvel_max_local_maxima_pixel = np.argwhere(vel_out==np.sort(vel_out[radius<6.1][outvel_local_maxima_pixel])[-2])
+
+    out_vel_peak_world = vel_out_wcs.all_pix2world(outvel_peak_pixel[0,1], outvel_peak_pixel[0,0], 0)#, 0)
+    print(out_vel_peak_world)
+
+    out_vel_peak_fuv_pixel = fuv_wcs.all_world2pix(out_vel_peak_world[0], out_vel_peak_world[1], 0)
+    print(out_vel_peak_fuv_pixel)
+
+    out_vel_local_max_world = vel_out_wcs.all_pix2world(outvel_max_local_maxima_pixel[0,1], outvel_max_local_maxima_pixel[0,0], 0)#, 0)
+    print(out_vel_local_max_world)
+
+    out_vel_local_max_fuv_pixel = fuv_wcs.all_world2pix(out_vel_local_max_world[0], out_vel_local_max_world[1], 0)
+    print(out_vel_local_max_fuv_pixel)
+
+
+
+    #calculate the beginning and end of 5 arcsec
+    fuv_5arcsec_pixel_length = abs(5/(fuv_header['CD1_1']*60*60))
+
+    fuv_start_5_arcsec_xpixel = kcwi_high_lim_fuv[0]+20
+    fuv_start_5_arcsec_ypixel = kcwi_low_lim_fuv[1]+40
+    fuv_end_5_arcsec_xpixel = kcwi_high_lim_fuv[0]+20+fuv_5arcsec_pixel_length
+
+    fuv_start_5_arcsec_world = fuv_wcs.all_pix2world(fuv_start_5_arcsec_xpixel, fuv_start_5_arcsec_ypixel, 0)
+    fuv_end_5_arcsec_world = fuv_wcs.all_pix2world(fuv_end_5_arcsec_xpixel, fuv_start_5_arcsec_ypixel, 0)
+
+
+
+    #create the figure
+    plt.rcParams.update(pf.get_rc_params())
+
+    plt.figure(figsize=(10,3))#constrained_layout=True)
+
+    #do the plotting
+
+    #this arrow works!
+    #ax1.arrow(m_out_peak_halpha_pixel[0]-55, m_out_peak_halpha_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
+
+    ax1 = plt.subplot(131, projection=fuv_wcs)
+    ax1.set_facecolor('black')
+    #do the plotting
+    fuv_map = ax1.imshow(np.log10(fuv_data), origin='lower', cmap=cmr.ember, vmin=-3, vmax=-0.75)
+    ax1.hlines(fuv_start_5_arcsec_xpixel, fuv_start_5_arcsec_ypixel, fuv_end_5_arcsec_xpixel, colors='white')
+    ax1.text(fuv_start_5_arcsec_xpixel+10, fuv_start_5_arcsec_ypixel+10, '5" ', c='white')
+    #ax1.scatter(OIII_peak_fuv_pixel[0], OIII_peak_fuv_pixel[1], c='white', marker='x', s=20)
+    #ax1.scatter(OIII_local_max_fuv_pixel[0], OIII_local_max_fuv_pixel[1], c='white', marker='o', s=20)
+    #ax1.scatter(out_vel_peak_fuv_pixel[0], out_vel_peak_fuv_pixel[1], c='grey', marker='x', s=20)
+    #ax1.scatter(out_vel_local_max_fuv_pixel[0], out_vel_local_max_fuv_pixel[1], c='grey', marker='o', s=20)
+    #ax1.scatter(mlf_peak_fuv_pixel[0], mlf_peak_fuv_pixel[1], c='white', marker='x', s=20)
+    #ax1.arrow(m_out_peak_fuv_pixel[0]-55, m_out_peak_fuv_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
+    #ax1.arrow(m_out_peak_fuv_pixel[0]-50, m_out_peak_fuv_pixel[1]-50, 50, 50, width=5, length_includes_head=True, color='white')
+    lon1 = ax1.coords[0]
+    lat1 = ax1.coords[1]
+    #lon1.set_ticks_visible(False)
+    lon1.set_ticklabel_visible(False)
+    lon1.tick_params(colors='white')
+    #lat1.set_ticks_visible(False)
+    lat1.tick_params(colors='white')
+    lat1.set_ticklabel_visible(False)
+    ax1.set_title('FUV flux')
+    ax1.set_xlim(kcwi_high_lim_fuv[0], kcwi_low_lim_fuv[0])
+    ax1.set_ylim(kcwi_low_lim_fuv[1], kcwi_high_lim_fuv[1])
+    divider = make_axes_locatable(ax1)
+    cax = divider.append_axes("left", size="20%", pad=0.1)
+    cax.axis('off')
+
+    ax2 = plt.subplot(132, projection=flux_ratio_wcs, slices=('y', 'x'))
+    flux_ratio_spax = ax2.imshow(flux_ratio.T, origin='lower', aspect=flux_ratio_header['CD2_1']/flux_ratio_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=0.1)
+    #ax2.hlines(ymin+0.75, xmin+4, xmin+4+koffee_10arcsec_pixel_length, colors='black')
+    #ax2.hlines(koffee_start_10_arcsec_pixel[1], koffee_start_10_arcsec_pixel[0], koffee_end_10_arcsec_pixel[0], colors='black')
+    #ax2.text(low_lim_rad[0]-5, high_lim_rad[1]-5, '[OIII]', c='black')
+    ax2.grid(False)
+    ax2.coords.grid(False)
+    lon2 = ax2.coords[0]
+    lat2 = ax2.coords[1]
+    #lon2.set_ticks_visible(False)
+    #lon2.set_ticklabel_visible(False)
+    #lat2.set_ticks_visible(False)
+    #lat2.set_ticklabel_visible(False)
+
+    ax2.set_xlim(ylim[0], ylim[1])
+    ax2.set_ylim(xlim[0], xlim[1])
+    ax2.invert_xaxis()
+
+    ax2.set_title(r'Log([OIII] F$_{broad}$/F$_{narrow}$)')
+    cbar = plt.colorbar(flux_ratio_spax, ax=ax2, shrink=0.8)
+
+
+
+
+
+    ax3 = plt.subplot(133, projection=vel_out_wcs, slices=('y', 'x'))
+    #outvel_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, vel_out, angle=360, axes=ax3, cmap=cmr.gem, vmin=2.2, vmax=2.65)
+    outvel_spax = ax3.imshow(vel_out.T, origin='lower', aspect=vel_out_header['CD2_1']/vel_out_header['CD1_2'], cmap=cmr.gem, vmin=2.3, vmax=2.65)
+    #ax3.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
+    #ax3.arrow(out_vel_peak_[0], out_vel_peak_world[1], 5, 5, color='k')
+    ax3.grid(False)
+    ax3.coords.grid(False)
+    #ax3.get_xaxis().set_visible(False)
+    #ax3.get_yaxis().set_visible(False)
+    lon3 = ax3.coords[0]
+    lat3 = ax3.coords[1]
+    #lon3.set_ticks_visible(False)
+    #lon3.set_ticklabel_visible(False)
+    #lat3.set_ticks_visible(False)
+    #lat3.set_ticklabel_visible(False)
+
+    ax3.set_xlim(ylim[0], ylim[1])
+    ax3.set_ylim(xlim[0], xlim[1])
+    ax3.invert_xaxis()
+    ax3.set_title(r'Log($v_{out}$)')
+    cbar = plt.colorbar(outvel_spax, ax=ax3, shrink=0.8)
+    cbar.set_label('Log(km s$^{-1}$)')
+
+
+
+    plt.subplots_adjust(left=0.0, right=0.97, top=0.98, bottom=0.0, wspace=0.08, hspace=0.0)
+
+    plt.show()
 
 #Figure 8
 def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, compare='divide', plot_medians=True):
