@@ -1095,7 +1095,7 @@ def plot_out_vel_model_sigsfr(OIII_outflow_results, OIII_outflow_error, hbeta_ou
 
 
 
-def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True):
     """
     Plots the mass loading factor against the outflow velocity.
 
@@ -1146,7 +1146,7 @@ def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_res
 
     """
     #calculate the mass loading factor
-    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
 
     #calculate the velocity dispersion for the masking
     vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
@@ -1192,15 +1192,15 @@ def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_res
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_out, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_out[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_out[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_out, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_out[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_out[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
 
     elif weighted_average == True:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_out, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_out[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_out[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_out, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_out[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_out[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
 
     #calculate the r value for the median values
@@ -1297,7 +1297,7 @@ def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_res
 
 
 
-def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True):
     """
     Plots the mass loading factor against the outflow velocity dispersion.
 
@@ -1348,7 +1348,7 @@ def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflo
 
     """
     #calculate the mass loading factor
-    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
 
     #calculate the velocity dispersion for the masking
     vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
@@ -1393,15 +1393,15 @@ def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflo
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_disp, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_disp[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_disp[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_disp, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_disp[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_disp[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
 
     elif weighted_average == True:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_disp, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_disp[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_disp[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_disp, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_disp[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_disp[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
 
     #calculate the r value for the median values
@@ -1690,7 +1690,7 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
 
 
 
-def plot_vel_diff_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_vel_diff_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True):
     """
     Plots the mass loading factor against the velocity difference.
 
@@ -1738,7 +1738,7 @@ def plot_vel_diff_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     """
     #calculate the mass loading factor
-    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
 
     #calculate the velocity dispersion for the masking
     vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
@@ -1784,15 +1784,15 @@ def plot_vel_diff_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_diff, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_diff[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_diff[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_diff, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_diff[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_diff[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
 
     elif weighted_average == True:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_diff, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_diff[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_diff[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_diff, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_diff[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_diff[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
 
     #calculate the r value for the median values
