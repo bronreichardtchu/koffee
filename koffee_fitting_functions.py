@@ -531,15 +531,15 @@ def gaussian2_const(wavelength, flux, amplitude_guess=None, mean_guess=None, sig
     if sigma_variations is not None:
         #pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_guess[0]*sigma_variations), min=(sigma_guess[0]-sigma_guess[0]*sigma_variations), vary=True)
         #pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_guess[1]*sigma_variations), min=(sigma_guess[1]-sigma_guess[1]*sigma_variations), vary=True)
-        pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_variations), min=(sigma_guess[0]-sigma_variations), vary=True)
-        pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_variations), min=(sigma_guess[1]-sigma_variations), vary=True)
+        pars['Galaxy_sigma'].set(max=(sigma_guess[0]+sigma_variations), min=(max((0.8, sigma_guess[0]-sigma_variations))), vary=True)
+        pars['Flow_sigma'].set(max=(sigma_guess[1]+sigma_variations), min=(max((0.8, sigma_guess[1]-sigma_variations))), vary=True)
     if sigma_variations is None:
         #no super duper wide outflows
         pars['Flow_sigma'].set(max=10.0, min=0.8, vary=True)
         #edited this to fit Halpha... remember to change back!!!
         #pars['Flow_sigma'].set(max=3.5, min=0.8, vary=True)
         #also, since each wavelength value is roughly 0.5A apart, the sigma must be more than 0.25A
-        pars['Galaxy_sigma'].set(min=0.9, max=2.0, vary=True)#min=2.0 because that's the minimum we can observe with the telescope
+        pars['Galaxy_sigma'].set(min=0.8, max=2.0, vary=True)#min=2.0 because that's the minimum we can observe with the telescope
 
     return g_model, pars
 
