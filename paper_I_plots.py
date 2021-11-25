@@ -378,7 +378,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
 
 #Figure 3 and 4
-def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=False, plot_medians=True, plot_data_fits=False, xlim_vals=None):
+def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=False, plot_medians=True, plot_data_fits=False, xlim_vals=None, ylim_vals=None):
     """
     Plots the SFR surface density against the outflow velocity, with Sigma_SFR
     calculated using only the narrow component.
@@ -434,7 +434,10 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
         medians in red on top of the plot (default is False)
 
     xlim_vals : list of floats
-        the xlimits for the plotted data e.g. [0.005, 13]
+        the xlimits for the plotted data e.g. [0.008, 10.6]
+
+    ylim_vals : list of floats
+        the ylimits for the plotted data e.g. [101, 699]
 
     Returns
     -------
@@ -471,7 +474,11 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
     #also mask out the fits which lie on the lower limit of dispersion < 51km/s
-    physical_mask = (radius < 6.1) & (vel_disp>51)
+    #physical_mask = (radius < 6.1) & (vel_disp>51)
+    #radius: 4.4" is the 85% radius, gets rid of the high velocity points
+    #radius: 3.9" is the 80% radius, gets rid of the high velocity points
+    #radius: 3.2" is the 75% radius, gets rid of the high velocity points
+    physical_mask = (radius < 4.4) & (vel_disp>51)
 
     print(sig_sfr[physical_mask])
     print(sig_sfr[physical_mask].shape)
@@ -509,8 +516,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     #create vectors to plot the literature trends
     if xlim_vals:
-        sfr_surface_density_chen, v_out_chen = pf.chen_et_al_2010(xlim_vals[0], xlim_vals[1], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**0.1))
-        sfr_surface_density_murray, v_out_murray = pf.murray_et_al_2011(xlim_vals[0], xlim_vals[1], scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
+        sfr_surface_density_chen, v_out_chen = pf.chen_et_al_2010(xlim_vals[0], xlim_vals[1]+4, scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**0.1))
+        sfr_surface_density_murray, v_out_murray = pf.murray_et_al_2011(xlim_vals[0], xlim_vals[1]+4, scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
     else:
         sfr_surface_density_chen, v_out_chen = pf.chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**0.1))
         sfr_surface_density_murray, v_out_murray = pf.murray_et_al_2011(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_out[BIC_diff_strong])/(np.nanmedian(sig_sfr[BIC_diff_strong])**2))
@@ -558,6 +565,8 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     print('')
     print('Number of spaxels beyond R_90:', vel_out[radius>6.1].shape)
     print('')
+    print('Number of spaxels beyond R_85:', vel_out[radius>4.4].shape)
+    print('')
     print('Number of spaxels in the middle panel:', vel_out[physical_mask].shape)
     print('')
 
@@ -588,6 +597,11 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     print('Clean spaxels best fit errors', np.sqrt(np.diag(pcov_vout_strong)))
     print('')
 
+    #make all the sigma SFR things log
+    sig_sfr_log = np.log10(sig_sfr)
+    sig_sfr_err_log = abs(sig_sfr_err/(sig_sfr*np.log(10)))
+    sfr_logspace = np.log10(sfr_linspace)
+
     #-------
     #plot it
     #-------
@@ -598,107 +612,110 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     colours = cmr.take_cmap_colors('cmr.gem', 3, cmap_range=(0.25, 0.85), return_fmt='hex')
 
     #plot all points
-    #if plot_medians == True:
-        #ax[0].fill_between(bin_center_all, v_out_bin_lower_q_all, v_out_bin_upper_q_all, color=colours[0], alpha=0.3)
-        #ax[0].fill_between(bin_center_all, v_out_bin_medians_all-v_out_bin_stdev_all, v_out_bin_medians_all+v_out_bin_stdev_all, color=colours[0], alpha=0.5)
-
     #ax[0].scatter(sig_sfr[vel_disp>51], vel_out[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.7)
     #ax[0].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=30, c=colours[0], alpha=0.7)
 
-    ax[0].errorbar(sig_sfr[vel_disp>51], vel_out[vel_disp>51], yerr=vel_out_err[vel_disp>51], marker='o', label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.7, ls='none')
-    ax[0].errorbar(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], yerr=vel_out_err[vel_disp<=51], marker='v', c=colours[0], alpha=0.7, ls='none')
+    ax[0].scatter(sig_sfr_log[vel_disp>51], vel_out[vel_disp>51], marker='o', s=30, label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.7)
+    ax[0].scatter(sig_sfr_log[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=30, c=colours[0], alpha=0.7)
+
+    #ax[0].errorbar(sig_sfr[vel_disp>51], vel_out[vel_disp>51], yerr=vel_out_err[vel_disp>51], marker='o', label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_all), color=colours[0], alpha=0.7, ls='none')
+    #ax[0].errorbar(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], yerr=vel_out_err[vel_disp<=51], marker='v', c=colours[0], alpha=0.7, ls='none')
 
     if plot_medians == True:
-        #ax[0].plot(bin_center_all, v_out_bin_medians_all, marker='', lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_vel_out_med_all), color=colours[0])
-        #indicate the error bars
-        x_err = np.array([bin_center_all-logspace_all[:-1], logspace_all[1:]-bin_center_all])
         #plot the medians as error bars
-        ax[0].errorbar(bin_center_all, v_out_bin_medians_all, yerr=v_out_bin_stdev_all, color=colours[0], capsize=3.0, lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_vel_out_med_all))
+        ax[0].errorbar(np.log10(bin_center_all), v_out_bin_medians_all, yerr=v_out_bin_stdev_all, color=colours[0], capsize=3.0, lw=3, label='Median all KOFFEE fits; R={:.2f}'.format(r_vel_out_med_all))
 
 
     if plot_data_fits == True:
-        ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_all[0], np.sqrt(np.diag(pcov_vout_all))[0], popt_vout_all[1], np.sqrt(np.diag(pcov_vout_all))[1]))
-        ax[0].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_all_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_all_medians[0], np.sqrt(np.diag(pcov_vout_all_medians))[0], popt_vout_all_medians[1], np.sqrt(np.diag(pcov_vout_all_medians))[1]))
+        ax[0].plot(sfr_logspace, pf.fitting_function(sfr_linspace, *popt_vout_all), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_all[0], np.sqrt(np.diag(pcov_vout_all))[0], popt_vout_all[1], np.sqrt(np.diag(pcov_vout_all))[1]))
+        ax[0].plot(sfr_logspace, pf.fitting_function(sfr_linspace, *popt_vout_all_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_all_medians[0], np.sqrt(np.diag(pcov_vout_all_medians))[0], popt_vout_all_medians[1], np.sqrt(np.diag(pcov_vout_all_medians))[1]))
 
-    ax[0].plot(sfr_surface_density_chen, v_out_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
-    ax[0].plot(sfr_surface_density_murray, v_out_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
+    ax[0].plot(np.log10(sfr_surface_density_chen), v_out_chen, ':k', label='$v_{out} \propto \Sigma_{SFR}^{0.1}$') #Energy Driven
+    ax[0].plot(np.log10(sfr_surface_density_murray), v_out_murray, '--k', label='$v_{out} \propto \Sigma_{SFR}^{2}$') #Momentum Driven
 
-    ax[0].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_out_err), c='k')
+    ax[0].errorbar(np.log10(0.06), 150, xerr=np.nanmedian(sig_sfr_err_log), yerr=np.nanmedian(vel_out_err), c='k')
 
-    ax[0].set_ylim(np.nanmin(vel_out)-100, np.nanmax(vel_out)+200)
-    ax[0].set_xscale('log')
+    if ylim_vals:
+        ax[0].set_ylim(ylim_vals[0], ylim_vals[1])
+    else:
+        ax[0].set_ylim(np.nanmin(vel_out)-100, np.nanmax(vel_out)+200)
+
+    #ax[0].set_xscale('log')
     if xlim_vals:
         ax[0].set_xlim(xlim_vals[0], xlim_vals[1])
     else:
-        ax[0].set_xlim(np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr)+2.0)
+        ax[0].set_xlim(np.nanmin(sig_sfr_log)-0.002, np.nanmax(sig_sfr_log)+2.0)
         #save the xlim values for the comparison figure
-        xlim_vals = [np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr)+2.0]
+        xlim_vals = [np.nanmin(sig_sfr_log)-0.002, np.nanmax(sig_sfr_log)+2.0]
 
     lgnd = ax[0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
-    ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    #ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
     ax[0].set_title('S/N > 20 and $\delta_{BIC}$>10')
 
-    #plot points within 90% radius
-    #if plot_medians == True:
-        #ax[1].fill_between(bin_center_physical, v_out_bin_lower_q_physical, v_out_bin_upper_q_physical, color=colours[1], alpha=0.3)
-        #ax[1].fill_between(bin_center_physical, v_out_bin_medians_physical-v_out_bin_stdev_physical, v_out_bin_medians_physical+v_out_bin_stdev_physical, color=colours[0], alpha=0.5)
 
+
+
+    #plot points within 90% radius
     #ax[1].scatter(sig_sfr[radius>6.1], vel_out[radius>6.1], marker='o', s=20, label='All KOFFEE fits', edgecolors=colours[0], alpha=0.3, facecolors='none')
     #ax[1].scatter(sig_sfr[vel_disp<=51], vel_out[vel_disp<=51], marker='v', s=20, edgecolors=colours[0], alpha=0.3, facecolors='none')
-    ax[1].scatter(sig_sfr[physical_mask], vel_out[physical_mask], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_physical), color=colours[1], alpha=0.7)
+    #ax[1].scatter(sig_sfr[physical_mask], vel_out[physical_mask], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_physical), color=colours[1], alpha=0.7)
+
+    ax[1].scatter(sig_sfr_log[physical_mask], vel_out[physical_mask], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_physical), color=colours[1], alpha=0.7)
 
     if plot_medians == True:
-        #ax[1].plot(bin_center_physical, v_out_bin_medians_physical, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_physical), color=colours[1])
         x_err = np.array([bin_center_physical-logspace_physical[:-1], logspace_physical[1:]-bin_center_physical])
         #plot the medians as error bars
-        ax[1].errorbar(bin_center_physical, v_out_bin_medians_physical, yerr=v_out_bin_stdev_physical, color=colours[1], capsize=3.0, lw=3, ms=5, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_physical))
+        ax[1].errorbar(np.log10(bin_center_physical), v_out_bin_medians_physical, yerr=v_out_bin_stdev_physical, color=colours[1], capsize=3.0, lw=3, ms=5, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_physical))
 
     if plot_data_fits == True:
-        ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_physical), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_physical[0], np.sqrt(np.diag(pcov_vout_physical))[0], popt_vout_physical[1], np.sqrt(np.diag(pcov_vout_physical))[1]))
-        ax[1].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_physical_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_physical_medians[0], np.sqrt(np.diag(pcov_vout_physical_medians))[0], popt_vout_physical_medians[1], np.sqrt(np.diag(pcov_vout_physical_medians))[1]))
+        ax[1].plot(sfr_logspace, pf.fitting_function(sfr_linspace, *popt_vout_physical), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_physical[0], np.sqrt(np.diag(pcov_vout_physical))[0], popt_vout_physical[1], np.sqrt(np.diag(pcov_vout_physical))[1]))
+        ax[1].plot(sfr_logspace, pf.fitting_function(sfr_linspace, *popt_vout_physical_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_physical_medians[0], np.sqrt(np.diag(pcov_vout_physical_medians))[0], popt_vout_physical_medians[1], np.sqrt(np.diag(pcov_vout_physical_medians))[1]))
 
-    ax[1].plot(sfr_surface_density_chen, v_out_chen, ':k')#, label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
-    ax[1].plot(sfr_surface_density_murray, v_out_murray, '--k')#, label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
+    ax[1].plot(np.log10(sfr_surface_density_chen), v_out_chen, ':k')#, label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
+    ax[1].plot(np.log10(sfr_surface_density_murray), v_out_murray, '--k')#, label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
 
-    ax[1].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err[physical_mask]), yerr=np.nanmedian(vel_out_err[physical_mask]), c='k')
+    ax[1].errorbar(np.log10(0.06), 150, xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=np.nanmedian(vel_out_err[physical_mask]), c='k')
 
     #ax[1].set_xscale('log')
     lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[1].set_xlabel('Log $\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    ax[1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+
+
 
     #plot points with strong BIC values
     #if plot_medians == True:
         #ax[2].fill_between(bin_center_strong, v_out_bin_lower_q_strong, v_out_bin_upper_q_strong, color=colours[2], alpha=0.3)
         #ax[2].fill_between(bin_center_strong, v_out_bin_medians_strong-v_out_bin_stdev_strong, v_out_bin_medians_strong+v_out_bin_stdev_strong, color=colours[0], alpha=0.5)
 
-    #ax[2].scatter(sig_sfr[~BIC_diff_strong][vel_disp[~BIC_diff_strong]>51], vel_out[~BIC_diff_strong][vel_disp[~BIC_diff_strong]>51], marker='o', s=20, label='All KOFFEE fits', color=colours[0], alpha=0.3, facecolors='none')
-    #ax[2].scatter(sig_sfr[~BIC_diff_strong][vel_disp[~BIC_diff_strong]<=51], vel_out[~BIC_diff_strong][vel_disp[~BIC_diff_strong]<=51], marker='v', s=20, edgecolors=colours[0], alpha=0.3, facecolors='none')
-    ax[2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_strong), color=colours[2], alpha=0.8)
-    ax[2].scatter(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=30, color=colours[2], alpha=0.8)
+    ax[2].scatter(sig_sfr_log[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', s=30, label='Selected KOFFEE fits; R={:.2f}'.format(r_vel_out_strong), color=colours[2], alpha=0.8)
+    ax[2].scatter(sig_sfr_log[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', s=30, color=colours[2], alpha=0.8)
+
+    #ax[2].errorbar(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], yerr=vel_out_err[BIC_diff_strong][vel_disp[BIC_diff_strong]>51], marker='o', label='All KOFFEE fits; R={:.2f}'.format(r_vel_out_strong), color=colours[2], alpha=0.7, ls='none')
+    #ax[2].errorbar(sig_sfr[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], vel_out[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], yerr=vel_out_err[BIC_diff_strong][vel_disp[BIC_diff_strong]<=51], marker='v', c=colours[2], alpha=0.7, ls='none')
 
     if plot_medians == True:
         #ax[2].plot(bin_center_strong, v_out_bin_medians_strong, marker='', lw=3, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_strong), color=colours[2])
         x_err = np.array([bin_center_strong-logspace_strong[:-1], logspace_strong[1:]-bin_center_physical])
         #plot the medians as error bars
-        ax[2].errorbar(bin_center_strong, v_out_bin_medians_strong, yerr=v_out_bin_stdev_strong, color=colours[2], capsize=3.0, lw=3, ms=5, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_strong))
+        ax[2].errorbar(np.log10(bin_center_strong), v_out_bin_medians_strong, yerr=v_out_bin_stdev_strong, color=colours[2], capsize=3.0, lw=3, ms=5, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_vel_out_med_strong))
 
     if plot_data_fits == True:
-        ax[2].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_strong), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_strong[0], np.sqrt(np.diag(pcov_vout_strong))[0], popt_vout_strong[1], np.sqrt(np.diag(pcov_vout_strong))[1]))
-        ax[2].plot(sfr_linspace, pf.fitting_function(sfr_linspace, *popt_vout_strong_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_strong_medians[0], np.sqrt(np.diag(pcov_vout_strong_medians))[0], popt_vout_strong_medians[1], np.sqrt(np.diag(pcov_vout_strong_medians))[1]))
+        ax[2].plot(sfr_logspace, pf.fitting_function(sfr_linspace, *popt_vout_strong), 'r-', label='Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' % (popt_vout_strong[0], np.sqrt(np.diag(pcov_vout_strong))[0], popt_vout_strong[1], np.sqrt(np.diag(pcov_vout_strong))[1]))
+        ax[2].plot(sfr_logspace, pf.fitting_function(sfr_linspace, *popt_vout_strong_medians), 'r--', label='Median Fit: $v_{out}=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_vout_strong_medians[0], np.sqrt(np.diag(pcov_vout_strong_medians))[0], popt_vout_strong_medians[1], np.sqrt(np.diag(pcov_vout_strong_medians))[1]))
 
-    ax[2].plot(sfr_surface_density_chen, v_out_chen, ':k')#, label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
-    ax[2].plot(sfr_surface_density_murray, v_out_murray, '--k')#, label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
+    ax[2].plot(np.log10(sfr_surface_density_chen), v_out_chen, ':k')#, label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
+    ax[2].plot(np.log10(sfr_surface_density_murray), v_out_murray, '--k')#, label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
 
-    ax[2].errorbar(0.05, 150, xerr=np.nanmedian(sig_sfr_err[BIC_diff_strong]), yerr=np.nanmedian(vel_out_err[BIC_diff_strong]), c='k')
+    ax[2].errorbar(np.log10(0.06), 150, xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=np.nanmedian(vel_out_err[BIC_diff_strong]), c='k')
 
     #ax[1].set_xscale('log')
     lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+    #ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
     ax[2].set_title('strongly likely BIC $\delta_{BIC}$>50')
 
     plt.show()
