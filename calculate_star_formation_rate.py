@@ -188,7 +188,7 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
     if outflow == True:
         flow_flux = np.sqrt(2*np.pi) * flow_sigma * outflow_results[5,:,:][flow_mask]
 
-        flow_flux_err = sys_flux * np.sqrt(2*np.pi) * np.sqrt((outflow_error[3,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2)
+        flow_flux_err = flow_flux * np.sqrt(2*np.pi) * np.sqrt((outflow_error[3,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2)
 
         #save to array
         outflow_flux[flow_mask] = flow_flux
