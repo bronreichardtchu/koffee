@@ -55,7 +55,7 @@ import koffee
 
 import importlib
 importlib.reload(pf)
-#importlib.reload(calc_mlf)
+importlib.reload(calc_sfr)
 #importlib.reload(bdpk)
 
 
@@ -64,10 +64,10 @@ importlib.reload(pf)
 # PLOTTING FUNCTIONS - for paper
 #===============================================================================
 #Figure 1
-def plot_compare_fits(lamdas, data, spaxels, z):
+def plot_compare_fits(lamdas, data, var, spaxels, z):
     """
     Plots the normalised single and double gaussian fits for the OIII 5007 line
-    using a list of spaxels.  (Used spaxels [[19, 7], [26, 8], [35, 10]] for the
+    using a list of spaxels.  (Used spaxels [[19, 7], [28, 12], [35, 10]] for the
     paper.)
 
     Parameters
@@ -89,7 +89,7 @@ def plot_compare_fits(lamdas, data, spaxels, z):
     A plot comparing the OIII 5007 spaxel fits from single and double gaussians
     """
     #make a mask for the emission line
-    OIII_mask = (lamdas>5008.24*(1+z)-20.0) & (lamdas<5008.24*(1+z)+20.0)
+    OIII_mask = (lamdas>5008.24*(1+z)-13.0) & (lamdas<5008.24*(1+z)+13.0)
 
     #mask the wavelength
     lam_OIII = lamdas[OIII_mask]
@@ -112,14 +112,18 @@ def plot_compare_fits(lamdas, data, spaxels, z):
     for i in range(spaxel_num):
         #mask the data to get the flux
         flux = data[OIII_mask, spaxels[i][0], spaxels[i][1]]
+        var_this_spaxel = var[OIII_mask, spaxels[i][0], spaxels[i][1]]
+
+        #mask the variance to get the weights
+        weights = 1/np.sqrt(var_this_spaxel)
 
         #fit data with single gaussian:obj:'~numpy.ndarray'
         gmodel1, pars1 = kff.gaussian1_const(lam_OIII, flux)
-        bestfit1 = kff.fitter(gmodel1, pars1, lam_OIII, flux, verbose=False)
+        bestfit1 = kff.fitter(gmodel1, pars1, lam_OIII, flux, weights=weights, verbose=False)
 
         #fit the data with double gaussian
         gmodel2, pars2 = kff.gaussian2_const(lam_OIII, flux)
-        bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, verbose=False)
+        bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, weights=weights, verbose=False)
 
         #find the significance level using the BIC difference
         BIC_diff = bestfit1.bic - bestfit2.bic
@@ -129,7 +133,7 @@ def plot_compare_fits(lamdas, data, spaxels, z):
         elif 30 < BIC_diff <= 50:
             significance_level = 'moderately likely\n30 < $\delta_{BIC}$ < 50'
         elif 50 < BIC_diff:
-            significance_level = 'strongly likely\n$\delta_{BIC}$ < 50'
+            significance_level = 'strongly likely\n$\delta_{BIC}$ > 50'
         else:
             significance_level = str(BIC_diff)
 
@@ -137,12 +141,18 @@ def plot_compare_fits(lamdas, data, spaxels, z):
         max_value = np.nanmax(flux)
 
         #create a plotting mask
-        plotting_mask = (lam_OIII>lam_OIII[25]) & (lam_OIII<lam_OIII[-25])
-        plotting_mask2 = (fine_sampling>lam_OIII[25]) & (fine_sampling<lam_OIII[-25])
+        plotting_mask = (lam_OIII>lam_OIII[15]) & (lam_OIII<lam_OIII[-15])
+        plotting_mask2 = (fine_sampling>lam_OIII[15]) & (fine_sampling<lam_OIII[-15])
 
         #plot the fits on the figure
+        ax[0,i].fill_between(lam_OIII[plotting_mask], np.sqrt(var_this_spaxel[plotting_mask])/max_value, -np.sqrt(var_this_spaxel[plotting_mask])/max_value, alpha=0.5, color='grey')
+        ax[0,i].axhline(0, c='grey', lw=1)
+
         ax[0,i].step(lam_OIII[plotting_mask], flux[plotting_mask]/max_value, where='mid', c='k')
         ax[0,i].plot(fine_sampling[plotting_mask2], bestfit1.eval(x=fine_sampling[plotting_mask2])/max_value, c=colours[0], ls='--')#, lw=1)
+
+        ax[1,i].fill_between(lam_OIII[plotting_mask], np.sqrt(var_this_spaxel[plotting_mask])/max_value, -np.sqrt(var_this_spaxel[plotting_mask])/max_value, alpha=0.5, color='grey')
+        ax[1,i].axhline(0, c='grey', lw=1)
 
         ax[1,i].step(lam_OIII[plotting_mask], flux[plotting_mask]/max_value, where='mid', c='k', label='Data')
         ax[1,i].plot(fine_sampling[plotting_mask2], bestfit2.components[0].eval(bestfit2.params, x=fine_sampling[plotting_mask2])/max_value, c=colours[1], label='Narrow component')
