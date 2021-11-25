@@ -1490,7 +1490,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
 #Figure 7
 def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_velocity_fits_file, flux_ratio_fits_file, flux_broad_fits_file, flux_narrow_fits_file, m_out_fits_file, mlf_fits_file, radius):
-    """"
+    """
     Maps the results for IRAS08 and some flux distributions from fits files
 
     Parameters
@@ -1659,28 +1659,24 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
 
 
-    #calculate the beginning and end of 5 arcsec
-    halpha_10arcsec_pixel_length = abs(5/(halpha_header['CD1_1']*60*60))
+    #calculate the beginning and end of 6.1 arcsec (r_90)
+    f550_r90_pixel_length = abs(6.1/(f550_header['CD1_1']*60*60))
 
-    halpha_start_10_arcsec_xpixel = kcwi_high_lim_halpha[0]+20
-    halpha_start_10_arcsec_ypixel = kcwi_low_lim_halpha[1]+20
-    halpha_end_10_arcsec_xpixel = kcwi_high_lim_halpha[0]+20+halpha_10arcsec_pixel_length
+    f550_start_r90_xpixel = f550_peak_pixel[0][1] - kcwi_low_lim_f550[1] + 60
+    f550_start_r90_ypixel = kcwi_low_lim_f550[1] + 20
+    f550_end_r90_xpixel = f550_start_r90_xpixel + f550_r90_pixel_length
 
-    halpha_start_10_arcsec_world = halpha_wcs.all_pix2world(halpha_start_10_arcsec_xpixel, halpha_start_10_arcsec_ypixel, 0)
-    halpha_end_10_arcsec_world = halpha_wcs.all_pix2world(halpha_end_10_arcsec_xpixel, halpha_start_10_arcsec_ypixel, 0)
+    #calculate the beginning and end of 2.6 arcsec (r_50)
+    f550_r50_pixel_length = abs(2.6/(f550_header['CD1_1']*60*60))
 
-    fuv_start_10_arcsec_pixel = fuv_wcs.all_world2pix(halpha_start_10_arcsec_world[0], halpha_start_10_arcsec_world[1], 0)
-    fuv_end_10_arcsec_pixel = fuv_wcs.all_world2pix(halpha_end_10_arcsec_world[0], halpha_end_10_arcsec_world[1], 0)
-
-    f550_start_10_arcsec_pixel = f550_wcs.all_world2pix(halpha_start_10_arcsec_world[0], halpha_start_10_arcsec_world[1], 0)
-    f550_end_10_arcsec_pixel = f550_wcs.all_world2pix(halpha_end_10_arcsec_world[0], halpha_end_10_arcsec_world[1], 0)
-
-
+    f550_start_r50_xpixel = f550_peak_pixel[0][1] - kcwi_low_lim_f550[1] + 60
+    f550_start_r50_ypixel = kcwi_low_lim_f550[1] + 100
+    f550_end_r50_xpixel = f550_start_r50_xpixel + f550_r50_pixel_length
 
     #create the figure
     plt.rcParams.update(pf.get_rc_params())
 
-    plt.figure(figsize=(10,10))#constrained_layout=True)
+    plt.figure(figsize=(10,9))#constrained_layout=True)
 
     ax1 = plt.subplot(331, projection=halpha_wcs)
     ax1.set_facecolor('black')
@@ -1699,9 +1695,11 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
     lon1 = ax1.coords[0]
     lat1 = ax1.coords[1]
-    lon1.set_ticks_visible(False)
+    #lon1.set_ticks_visible(False)
+    lon1.tick_params(colors='white')
     lon1.set_ticklabel_visible(False)
-    lat1.set_ticks_visible(False)
+    #lat1.set_ticks_visible(False)
+    lat1.tick_params(colors='white')
     lat1.set_ticklabel_visible(False)
     ax1.set_title(r'H$\alpha$ Flux')
     ax1.set_xlim(kcwi_high_lim_halpha[0], kcwi_low_lim_halpha[0])
@@ -1721,9 +1719,9 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     ax3.coords.grid(False)
     lon3 = ax3.coords[0]
     lat3 = ax3.coords[1]
-    lon3.set_ticks_visible(False)
+    #lon3.set_ticks_visible(False)
     lon3.set_ticklabel_visible(False)
-    lat3.set_ticks_visible(False)
+    #lat3.set_ticks_visible(False)
     lat3.set_ticklabel_visible(False)
 
     ax3.set_xlim(ylim[0], ylim[1])
@@ -1749,9 +1747,11 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     #ax2.arrow(m_out_peak_fuv_pixel[0]-50, m_out_peak_fuv_pixel[1]-50, 50, 50, width=5, length_includes_head=True, color='white')
     lon2 = ax2.coords[0]
     lat2 = ax2.coords[1]
-    lon2.set_ticks_visible(False)
+    #lon2.set_ticks_visible(False)
+    lon2.tick_params(colors='white')
     lon2.set_ticklabel_visible(False)
-    lat2.set_ticks_visible(False)
+    #lat2.set_ticks_visible(False)
+    lat2.tick_params(colors='white')
     lat2.set_ticklabel_visible(False)
     ax2.set_title('FUV flux')
     ax2.set_xlim(kcwi_high_lim_fuv[0], kcwi_low_lim_fuv[0])
@@ -1763,7 +1763,7 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
     ax4 = plt.subplot(335, projection=vel_out_wcs, slices=('y', 'x'))
     #outvel_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, vel_out, angle=360, axes=ax4, cmap=cmr.gem, vmin=2.2, vmax=2.65)
-    outvel_spax = ax4.imshow(vel_out.T, origin='lower', aspect=vel_out_header['CD2_1']/vel_out_header['CD1_2'], cmap=cmr.gem, vmin=2.2, vmax=2.65)
+    outvel_spax = ax4.imshow(vel_out.T, origin='lower', aspect=vel_out_header['CD2_1']/vel_out_header['CD1_2'], cmap=cmr.gem, vmin=2.3, vmax=2.65)
     #ax4.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
     #ax4.arrow(out_vel_peak_[0], out_vel_peak_world[1], 5, 5, color='k')
     ax4.grid(False)
@@ -1772,9 +1772,9 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     #ax4.get_yaxis().set_visible(False)
     lon4 = ax4.coords[0]
     lat4 = ax4.coords[1]
-    lon4.set_ticks_visible(False)
+    #lon4.set_ticks_visible(False)
     lon4.set_ticklabel_visible(False)
-    lat4.set_ticks_visible(False)
+    #lat4.set_ticks_visible(False)
     lat4.set_ticklabel_visible(False)
 
     ax4.set_xlim(ylim[0], ylim[1])
@@ -1794,9 +1794,9 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     #ax5.get_yaxis().set_visible(False)
     lon5 = ax5.coords[0]
     lat5 = ax5.coords[1]
-    lon5.set_ticks_visible(False)
+    #lon5.set_ticks_visible(False)
     lon5.set_ticklabel_visible(False)
-    lat5.set_ticks_visible(False)
+    #lat5.set_ticks_visible(False)
     lat5.set_ticklabel_visible(False)
 
     ax5.set_xlim(ylim[0], ylim[1])
@@ -1814,9 +1814,9 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     ax6.coords.grid(False)
     lon6 = ax6.coords[0]
     lat6 = ax6.coords[1]
-    lon6.set_ticks_visible(False)
+    #lon6.set_ticks_visible(False)
     lon6.set_ticklabel_visible(False)
-    lat6.set_ticks_visible(False)
+    #lat6.set_ticks_visible(False)
     lat6.set_ticklabel_visible(False)
 
     ax6.set_xlim(ylim[0], ylim[1])
@@ -1831,13 +1831,19 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     #do the plotting
     f550_map = ax7.imshow(np.log10(f550_data), origin='lower', cmap=cmr.ember, vmin=-1.5, vmax=0.1)
     #ax2.arrow(mlf_peak_fuv_pixel[0]-55, mlf_peak_fuv_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
-    ax7.hlines(f550_start_10_arcsec_pixel[1], f550_start_10_arcsec_pixel[0], f550_end_10_arcsec_pixel[0], colors='white')
-    ax7.text(f550_start_10_arcsec_pixel[0]+5, f550_start_10_arcsec_pixel[1]+10, '2 kpc ', c='white')
+    #ax7.hlines(f550_start_10_arcsec_pixel[1], f550_start_10_arcsec_pixel[0], f550_end_10_arcsec_pixel[0], colors='white')
+    #ax7.text(f550_start_10_arcsec_pixel[0]+5, f550_start_10_arcsec_pixel[1]+10, '2 kpc ', c='white')
+    ax7.hlines(f550_start_r90_ypixel, f550_start_r90_xpixel, f550_end_r90_xpixel, colors='white')
+    ax7.text(f550_start_r90_xpixel+5, f550_start_r90_ypixel+10, '$r_{90}$ = 2.4 kpc ', c='white')
+    ax7.hlines(f550_start_r50_ypixel, f550_start_r50_xpixel, f550_end_r50_xpixel, colors='white')
+    ax7.text(f550_start_r50_xpixel+5, f550_start_r50_ypixel+10, '$r_{50}$ = 1 kpc ', c='white')
     lon7 = ax7.coords[0]
     lat7 = ax7.coords[1]
-    lon7.set_ticks_visible(False)
+    #lon7.set_ticks_visible(False)
+    lon7.tick_params(color='white')
     lon7.set_ticklabel_visible(False)
-    lat7.set_ticks_visible(False)
+    #lat7.set_ticks_visible(False)
+    lat7.tick_params(color='white')
     lat7.set_ticklabel_visible(False)
     ax7.set_title('F550m flux')
     ax7.set_xlim(kcwi_high_lim_f550[0], kcwi_low_lim_f550[0])
@@ -1855,9 +1861,9 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     ax8.coords.grid(False)
     lon8 = ax8.coords[0]
     lat8 = ax8.coords[1]
-    lon8.set_ticks_visible(False)
+    #lon8.set_ticks_visible(False)
     lon8.set_ticklabel_visible(False)
-    lat8.set_ticks_visible(False)
+    #lat8.set_ticks_visible(False)
     lat8.set_ticklabel_visible(False)
 
     ax8.set_xlim(ylim[0], ylim[1])
@@ -1875,9 +1881,9 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
     ax9.coords.grid(False)
     lon9 = ax9.coords[0]
     lat9 = ax9.coords[1]
-    lon9.set_ticks_visible(False)
+    #lon9.set_ticks_visible(False)
     lon9.set_ticklabel_visible(False)
-    lat9.set_ticks_visible(False)
+    #lat9.set_ticks_visible(False)
     lat9.set_ticklabel_visible(False)
 
     ax9.set_xlim(ylim[0], ylim[1])
