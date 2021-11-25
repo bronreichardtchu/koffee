@@ -725,100 +725,100 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
 #Figure 5
 outflow_velocity_fits_files = [
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_resolved_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_2_by_1_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_3_by_1_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_4_by_1_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_5_by_1_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_3_by_2_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_4_by_2_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_3_by_3_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_5_by_2_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_6_by_2_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_7_by_2_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_8_by_2_outflow_velocity.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_9_by_2_outflow_velocity.fits']
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_2_by_1/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_1/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_1/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_1/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_3/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_6_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_7_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_8_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_9_by_2/IRAS08_outflow_velocity.fits']
 
 outflow_dispersion_fits_files = [
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_resolved_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_2_by_1_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_3_by_1_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_4_by_1_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_5_by_1_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_3_by_2_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_4_by_2_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_3_by_3_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_5_by_2_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_6_by_2_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_7_by_2_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_8_by_2_outflow_velocity_dispersion.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_9_by_2_outflow_velocity_dispersion.fits']
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_2_by_1/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_1/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_1/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_1/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_3/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_6_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_7_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_8_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_9_by_2/IRAS08_outflow_velocity_dispersion.fits']
 
 sig_sfr_fits_files = [
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_resolved_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_2_by_1_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_3_by_1_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_4_by_1_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_5_by_1_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_3_by_2_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_4_by_2_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_3_by_3_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_5_by_2_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_6_by_2_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_7_by_2_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_8_by_2_star_formation_rate_surface_density.fits',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_binned_9_by_2_star_formation_rate_surface_density.fits']
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_2_by_1/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_1/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_1/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_1/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_3/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_6_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_7_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_8_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_9_by_2/IRAS08_star_formation_rate_surface_density.fits']
 
 chi_square_text_files = [
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-25_binned_2_by_1/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-31_binned_3_by_1/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_4_by_1/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-31_binned_5_by_1/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-25_binned_3_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_4_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_binned_3_by_3/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_5_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_6_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_7_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_8_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_9_by_2/IRAS08_chi_squared_OIII_4.txt']
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_2_by_1/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_1/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_1/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_1/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_3/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_6_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_7_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_8_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_9_by_2/IRAS08_chi_squared_OIII_4.txt']
 
 statistical_results_text_files = [
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_resolved/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-25_binned_2_by_1/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-31_binned_3_by_1/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_4_by_1/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-31_binned_5_by_1/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-25_binned_3_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_4_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-24_binned_3_by_3/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_5_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_6_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_7_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_8_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-03-30_binned_9_by_2/IRAS08_stat_results_OIII_4.txt']
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_2_by_1/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_1/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_1/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_1/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_3/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_6_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_7_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_8_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_9_by_2/IRAS08_stat_results_OIII_4.txt']
 
 data_fits_files = [
-    '../../data/IRAS08_red_cubes/IRAS08339_metacube.fits',
-    '../../data/IRAS08_metacube_binned_2_by_1.fits',
-    '../../data/IRAS08_metacube_binned_3_by_1.fits',
-    '../../data/IRAS08_metacube_binned_4_by_1.fits',
-    '../../data/IRAS08_metacube_binned_5_by_1.fits',
-    '../../data/IRAS08_metacube_binned_3_by_2.fits',
-    '../../data/IRAS08_metacube_binned_4_by_2.fits',
-    '../../data/IRAS08_metacube_binned_3_by_3.fits',
-    '../../data/IRAS08_metacube_binned_5_by_2.fits',
-    '../../data/IRAS08_metacube_binned_6_by_2.fits',
-    '../../data/IRAS08_metacube_binned_7_by_2.fits',
-    '../../data/IRAS08_metacube_binned_8_by_2.fits',
-    '../../data/IRAS08_metacube_binned_9_by_2.fits']
+    '../../../data/IRAS08/IRAS08_red_cubes/IRAS08339_metacube.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_2_by_1.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_3_by_1.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_4_by_1.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_5_by_1.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_3_by_2.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_4_by_2.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_3_by_3.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_5_by_2.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_6_by_2.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_7_by_2.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_8_by_2.fits',
+    '../../../data/IRAS08/IRAS08_metacube_binned_9_by_2.fits']
 
 data_descriptor = ['1x1', '2x1', '3x1', '4x1', '5x1', '3x2', '4x2', '3x3', '5x2', '6x2', '7x2', '8x2', '9x2']
 
-def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files, outflow_dispersion_fits_files, sig_sfr_fits_files, chi_square_text_files, statistical_results_text_files, z, data_fits_files, data_descriptor):
+def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files, outflow_dispersion_fits_files, sig_sfr_fits_files, chi_square_text_files, statistical_results_text_files, z, data_fits_files, data_descriptor, correlation='pearsons'):
     """
-    Plots the Pearson Correlation Coefficient for Sigma_SFR-v_out for each bin
+    Plots the Correlation Coefficient for Sigma_SFR-v_out for each bin
     size against circularised bin diameter.
 
     Parameters
@@ -847,6 +847,10 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
     data_descriptor : list of strings
         list of descriptors for each data set e.g. '1x1'
 
+    correlation : str
+        the type of correlation to use - 'pearsons' or 'spearman'
+        Default is pearsons.
+
     Returns
     -------
     A single panel of the correlation coefficient for Sigma_SFR against
@@ -864,9 +868,18 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
     #create arrays to save results to
     spaxel_area = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
 
-    corr_coeff_all = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
-    corr_coeff_physical = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
-    corr_coeff_strong = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+    if correlation == 'both':
+        corr_coeff_all_pearson = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+        corr_coeff_physical_pearson = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+        corr_coeff_strong_pearson = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+
+        corr_coeff_all_spearman = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+        corr_coeff_physical_spearman = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+        corr_coeff_strong_spearman = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+    else:
+        corr_coeff_all = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+        corr_coeff_physical = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
+        corr_coeff_strong = np.full(len(outflow_velocity_fits_files), np.nan, dtype=np.double)
 
     #calculate the proper distance
     proper_dist = cosmo.kpc_proper_per_arcmin(z).to(u.kpc/u.arcsec)
@@ -914,7 +927,7 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
         print('stat_res shape:', statistical_results.shape)
 
         #load the radius
-        lam, xx, yy, rad, data, xx_flat, yy_flat, rad_flat, data_flat, header = pc.prepare_single_cube(data_fits_files[i], 'IRAS08_'+data_descriptor[i], z, 'red', '../../code_outputs/koffee_results_IRAS08/')
+        lam, xx, yy, rad, data, xx_flat, yy_flat, rad_flat, data_flat, header = pc.prepare_single_cube(data_fits_files[i], 'IRAS08_'+data_descriptor[i], z, 'red', '../../../code_outputs/koffee_results_IRAS08/')
         del lam, xx, yy, data, xx_flat, yy_flat, rad_flat, data_flat
 
         #get the sfr for the outflow spaxels
@@ -939,7 +952,10 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
         #physical limits mask -
         #for the radius mask 6.1" is the 90% radius
         #also mask out the fits which lie on the lower limit of dispersion < 51km/s
-        physical_mask = (radius_masked < 6.1) & (vel_disp>51)
+        #radius: 4.4" is the 85% radius, gets rid of the high velocity points
+        #radius: 3.9" is the 80% radius, gets rid of the high velocity points
+        #radius: 3.2" is the 75% radius, gets rid of the high velocity points
+        physical_mask = (radius_masked < 4.4) & (vel_disp>51)
 
         print(sig_sfr[physical_mask])
         print(sig_sfr[physical_mask].shape)
@@ -948,16 +964,38 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
         vel_out_err[np.where(np.isnan(vel_out_err)==True)] = np.nanmedian(vel_out_err)
 
         #calculate the r value for all the values
-        r_vel_out_all, p_value_v_out_all = pf.pearson_correlation(np.log10(sig_sfr), np.log10(vel_out))
-        r_vel_out_physical, p_value_v_out_physical = pf.pearson_correlation(np.log10(sig_sfr[physical_mask]), np.log10(vel_out[physical_mask]))
-        r_vel_out_clean, p_value_v_out_clean = pf.pearson_correlation(np.log10(sig_sfr[BIC_diff_strong]), np.log10(vel_out[BIC_diff_strong]))
+        if correlation == 'pearsons':
+            r_vel_out_all, p_value_v_out_all = pf.pearson_correlation(np.log10(sig_sfr), np.log10(vel_out))
+            r_vel_out_physical, p_value_v_out_physical = pf.pearson_correlation(np.log10(sig_sfr[physical_mask]), np.log10(vel_out[physical_mask]))
+            r_vel_out_clean, p_value_v_out_clean = pf.pearson_correlation(np.log10(sig_sfr[BIC_diff_strong]), np.log10(vel_out[BIC_diff_strong]))
+        elif correlation == 'spearman':
+            r_vel_out_all, p_value_v_out_all = pf.spearman_coefficient(np.log10(sig_sfr), np.log10(vel_out))
+            r_vel_out_physical, p_value_v_out_physical = pf.spearman_coefficient(np.log10(sig_sfr[physical_mask]), np.log10(vel_out[physical_mask]))
+            r_vel_out_clean, p_value_v_out_clean = pf.spearman_coefficient(np.log10(sig_sfr[BIC_diff_strong]), np.log10(vel_out[BIC_diff_strong]))
+        elif correlation == 'both':
+            r_vel_out_all_pearson, p_value_v_out_all_pearson = pf.pearson_correlation(np.log10(sig_sfr), np.log10(vel_out))
+            r_vel_out_physical_pearson, p_value_v_out_physical_pearson = pf.pearson_correlation(np.log10(sig_sfr[physical_mask]), np.log10(vel_out[physical_mask]))
+            r_vel_out_clean_pearson, p_value_v_out_clean_pearson = pf.pearson_correlation(np.log10(sig_sfr[BIC_diff_strong]), np.log10(vel_out[BIC_diff_strong]))
+
+            r_vel_out_all_spearman, p_value_v_out_all_spearman = pf.spearman_coefficient(np.log10(sig_sfr), np.log10(vel_out))
+            r_vel_out_physical_spearman, p_value_v_out_physical_spearman = pf.spearman_coefficient(np.log10(sig_sfr[physical_mask]), np.log10(vel_out[physical_mask]))
+            r_vel_out_clean_spearman, p_value_v_out_clean_spearman = pf.spearman_coefficient(np.log10(sig_sfr[BIC_diff_strong]), np.log10(vel_out[BIC_diff_strong]))
 
         #save results to arrays
         spaxel_area[i] = ((header['CD1_2']*60*60*header['CD2_1']*60*60)*(proper_dist**2)).value
 
-        corr_coeff_all[i] = r_vel_out_all
-        corr_coeff_physical[i] = r_vel_out_physical
-        corr_coeff_strong[i] = r_vel_out_clean
+        if correlation == 'both':
+            corr_coeff_all_pearson[i] = r_vel_out_all_pearson
+            corr_coeff_physical_pearson[i] = r_vel_out_physical_pearson
+            corr_coeff_strong_pearson[i] = r_vel_out_clean_pearson
+
+            corr_coeff_all_spearman[i] = r_vel_out_all_spearman
+            corr_coeff_physical_spearman[i] = r_vel_out_physical_spearman
+            corr_coeff_strong_spearman[i] = r_vel_out_clean_spearman
+        else:
+            corr_coeff_all[i] = r_vel_out_all
+            corr_coeff_physical[i] = r_vel_out_physical
+            corr_coeff_strong[i] = r_vel_out_clean
 
         #print average numbers for the different panels
         print(data_descriptor[i])
@@ -1000,17 +1038,31 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
     #-------
     #plot it
     #-------
-    ax.plot(circularised_radius*2, corr_coeff_all**2, marker='o', label='S/N>20 and $\delta_{BIC}$>10', color=colours[0])
-    ax.plot(circularised_radius*2, corr_coeff_physical**2, marker='o', label=r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
-    ax.plot(circularised_radius*2, corr_coeff_strong**2, marker='o', label='strongly likely BIC $\delta_{BIC}$>50', color=colours[2])
+    if correlation == 'pearsons':
+        #ax.plot(circularised_radius*2, corr_coeff_all**2, marker='o', label='S/N>20 and $\delta_{BIC}$>10', color=colours[0])
+        ax.plot(circularised_radius*2, corr_coeff_physical**2, marker='o', label=r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
+        #ax.plot(circularised_radius*2, corr_coeff_strong**2, marker='o', label='strongly likely BIC $\delta_{BIC}$>50', color=colours[2])
+
+        ax.set_ylabel('Correlation Coefficient $R^2$')
+        #ax.set_ylim(np.nanmin(np.array([corr_coeff_all, corr_coeff_physical, corr_coeff_strong])**2)-0.04, np.nanmax(np.array([corr_coeff_all, corr_coeff_physical, corr_coeff_strong])**2)+0.05)
+        ax.set_ylim(0.0, np.nanmax(np.array([corr_coeff_all, corr_coeff_physical, corr_coeff_strong])**2)+0.05)
+
+    elif correlation == 'spearman':
+        ax.plot(circularised_radius*2, corr_coeff_all, marker='o', label='S/N>20 and $\delta_{BIC}$>10', color=colours[0])
+        ax.plot(circularised_radius*2, corr_coeff_physical, marker='o', label=r'$\delta_{BIC}$>10, $r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
+        ax.plot(circularised_radius*2, corr_coeff_strong, marker='o', label='strongly likely BIC $\delta_{BIC}$>50', color=colours[2])
+
+        ax.set_ylabel('Spearman Correlation Coefficient $R$')
+
+    elif correlation == 'both':
+        ax.plot(circularised_radius*2, corr_coeff_physical_pearson, marker='o', label='Pearson Correlation', color=colours[1], ls='--')#label=r'$\delta_{BIC}$>10, $r$<$r_{90}$ and $\sigma_{broad}$>$\sigma_{inst}$', color=colours[1])
+        ax.plot(circularised_radius*2, corr_coeff_physical_spearman, marker='o', label='Spearman Correlation', color=colours[1])
+
+        ax.set_ylabel('Correlation Coefficient')
 
 
     lgnd = ax.legend(frameon=True, fontsize='small', loc='upper left', framealpha=0.5)
-    ax.set_ylabel('Correlation Coefficient $R^2$')
-    #ax.set_ylabel('Correlation Coefficient $R^2$')
     ax.set_xlabel('Circularised Bin Diameter [kpc]')
-
-    ax.set_ylim(np.nanmin(np.array([corr_coeff_all, corr_coeff_physical, corr_coeff_strong])**2)-0.04, np.nanmax(np.array([corr_coeff_all, corr_coeff_physical, corr_coeff_strong])**2)+0.05)
 
     plt.show()
 
