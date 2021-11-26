@@ -626,6 +626,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             #save blue chi square
                             blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit1, g_model1)
 
+                        print('Blue chi squared residual for [OIII] spaxel', str(i), str(j), str(blue_chi_square[i,j]))
+
 
 
                         #plot fit results
@@ -653,7 +655,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
 
                         if koffee_checks == True:
-                            if blue_chi_square[i,j] > 0.1:
+                            if blue_chi_square[i,j] > 1.5:
                                 if include_const == True:
                                     g_model2_refit, pars2_refit = kff.gaussian2_const(masked_lamdas, flux, amplitude_guess=None, mean_guess=[masked_lamdas[flux.argmax()], masked_lamdas[flux.argmax()]-4.0], sigma_guess=[1.0,8.0])
                                 elif include_const == False:
@@ -662,9 +664,15 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                                 print('Refit 2 gaussians for spaxel', str(i), str(j))
 
-                                #force it to take the new fit if it is a better BIC
-                                if (best_fit2_refit.bic < (best_fit1.bic-10)) and (best_fit2_refit.bic < (best_fit2.bic-10)) :
+                                #recheck the blue chi squared residual
+                                new_blue_chi_square = check_blue_chi_square(masked_lamdas, flux, best_fit2_refit, g_model2_refit)
+
+
+                                #force it to take the new fit if it has improved the blue side chi squared residual
+                                #AND the new two gaussian fit has a lower BIC value than the single gaussian fit
+                                if (new_blue_chi_square < blue_chi_square[i,j]) and (best_fit2_refit.bic < best_fit1.bic):
                                     stat_res = 2
+                                    print('Refit 2 Gaussians fit better, old chi square: ', str(blue_chi_square[i,j]), ' new chi square: ', str(new_blue_chi_square))
                                     #print('Refit 2 Gaussians fit better, BIC_diff=', str(best_fit2_refit.bic-best_fit2.bic))
 
                                 if plotting == True:
@@ -753,10 +761,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                     #check the fit using the blue-side-residual test
                                     blue_chi_square_check = check_blue_chi_square(masked_lamdas2, flux2, best_fit2_second, g_model2_second)
 
-                                    if blue_chi_square_check > 0.2:
+                                    print('This spaxel had', emission_line2, 'blue_chi_square_check ', str(blue_chi_square_check))
+
+                                    if blue_chi_square_check > 1.5:
                                         #refit using...
                                         print('Refitting', emission_line2, 'fit for spaxel ', str(i), str(j))
-                                        print('This spaxel had blue_chi_square_check ', str(blue_chi_square_check))
+
                                         #create the fitting objects
                                         if include_const == True:
                                             g_model2_refit_second, pars2_refit_second = kff.gaussian2_const(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.5], sigma_variations=0.5)
@@ -764,6 +774,10 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                             g_model2_refit_second, pars2_refit_second = kff.gaussian2(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.5], sigma_variations=0.5)
                                         #do the fit
                                         best_fit2_refit_second = kff.fitter(g_model2_refit_second, pars2_refit_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
+
+                                        blue_chi_square_check_refit = check_blue_chi_square(masked_lamdas2, flux2, best_fit2_refit_second, g_model2_refit_second)
+
+                                        print(emission_line2, 'refitted blue_chi_square_check ', blue_chi_square_check_refit)
 
                                         print(emission_line2, 'fit blue-chi-squared-fit chi squared value: ', best_fit2_refit_second.bic)
                                         print(emission_line2, 'fit original chi squared value: ', best_fit2_second.bic)
@@ -776,51 +790,48 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                             plt.close(fig4)
                                             #print('plotted hbeta refit')
 
-                                        g_model2_second = g_model2_refit_second
-                                        pars2_second = pars2_refit_second
-                                        best_fit2_second = best_fit2_refit_second
+                                        #accept the refit if it has a better blue side residual
+                                        #AND the new two gaussian fit has a lower BIC value than the single gaussian fit
+                                        if (blue_chi_square_check_refit < blue_chi_square_check) and (best_fit2_refit_second.bic < best_fit1_second.bic):
+                                            g_model2_second = g_model2_refit_second
+                                            pars2_second = pars2_refit_second
+                                            best_fit2_second = best_fit2_refit_second
+                                            #make the stat_res=2 to signify a refit
+                                            statistical_results2[i,j] = 2
 
 
                                     #check that a single gaussian fit wouldn't be better if the flow amplitude
                                     #is greater than 90% of the galaxy amplitude
                                     if best_fit2_second.params['Flow_amp'].value > 0.9*best_fit2_second.params['Galaxy_amp'].value:
-                                        print('Doing one Gaussian hbeta fit for spaxel ', str(i), str(j))
-                                        #create the fitting objects
-                                        if include_const == True:
-                                            g_model1_refit_second, pars1_refit_second = kff.gaussian1_const(masked_lamdas2, flux2)#, amp_guess=None, mean_guess=masked_lamdas2[flux2.argmax()])#, sigma_guess=sigma_guess[0])
-                                        elif include_const == False:
-                                            g_model1_refit_second, pars1_refit_second = kff.gaussian1(masked_lamdas2, flux2)#, amp_guess=None, mean_guess=masked_lamdas2[flux2.argmax()], sigma_guess=sigma_guess[0])
+                                        print('Checking one Gaussian hbeta fit for spaxel ', str(i), str(j))
 
-                                        #do the fit
-                                        best_fit1_refit_second = kff.fitter(g_model1_refit_second, pars1_refit_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
 
                                         #do the BIC test
                                         #if the 2 gaussian fit has a lower BIC by 10 or more, it's the better fit
-                                        print('One Gaussian fit BIC: ', str(best_fit1_refit_second.bic))
+                                        print('One Gaussian fit BIC: ', str(best_fit1_second.bic))
                                         print('Two Gaussian fit BIC: ', str(best_fit2_second.bic))
-                                        print('Difference: ', str(best_fit2_second.bic - best_fit1_refit_second.bic))
+                                        print('Difference: ', str(best_fit2_second.bic - best_fit1_second.bic))
 
-                                        if plotting == True:
-                                            #plot the refit
-                                            fig4 = plot_fit(masked_lamdas2, flux2, g_model1_refit_second, pars1_refit_second, best_fit1_refit_second, plot_initial=False, include_const=include_const)
-                                            fig4.suptitle(emission_line2+' ['+str(em_rest2)+'] BIC test Refit')
-                                            fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_BIC_test_refit')
-                                            plt.close(fig4)
 
+                                        #if the flow amp is more than 98% of the amplitude of the galaxy amp,
+                                        #then force the one gaussian fit
                                         if best_fit2_second.params['Flow_amp'].value > 0.98*best_fit2_second.params['Galaxy_amp'].value:
                                             print('Using one Gaussian fit for spaxel ', str(i), str(j))
 
-                                            g_model2_second = g_model1_refit_second
-                                            pars2_second = pars1_refit_second
-                                            best_fit2_second = best_fit1_refit_second
+                                            #g_model2_second = g_model1_second
+                                            #pars2_second = pars1_second
+                                            #best_fit2_second = best_fit1_second
+                                            statistical_results2[i,j] = 0
 
+                                        #only use the one gaussian fit if it's seriously better than the two gaussian fit
                                         else:
-                                            if best_fit1_refit_second.bic < best_fit2_second.bic+50:
+                                            if best_fit1_second.bic < best_fit2_second.bic+50:
                                                 #print('One Gaussian fit better for spaxel ', str(i), str(j))
 
-                                                g_model2_second = g_model1_refit_second
-                                                pars2_second = pars1_refit_second
-                                                best_fit2_second = best_fit1_refit_second
+                                                #g_model2_second = g_model1_second
+                                                #pars2_second = pars1_second
+                                                #best_fit2_second = best_fit1_second
+                                                statistical_results2[i,j] = 0
 
 
                                 #plot final fits
@@ -1129,6 +1140,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
     np.savetxt(output_folder_loc+galaxy_name+'_stat_results_'+emission_line+'.txt', np.reshape(statistical_results, (1, -1)))
     np.savetxt(output_folder_loc+galaxy_name+'_chi_squared_'+emission_line+'.txt', np.reshape(chi_square, (2,-1)))
+    np.savetxt(output_folder_loc+galaxy_name+'_blue_chi_squared_'+emission_line+'.txt', np.reshape(blue_chi_square, (-1)))
 
     if emission_line2:
         if include_const == True:
