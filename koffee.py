@@ -192,7 +192,10 @@ def check_blue_chi_square(wavelength, flux, best_fit, g_model, OII_doublet_fit=F
     #calculate the chi squared
     chi_square = np.sum(residual[lam_mask]**2)
 
-    return chi_square
+    #calculate the reduced chi squared by dividing by the degrees of freedom
+    red_chi_square = chi_square/best_fit.nfree
+
+    return red_chi_square
 
 
 
