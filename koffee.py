@@ -444,7 +444,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         fits_stuff = pc.load_data(filename, mw_correction=False)
         if len(fits_stuff) > 3:
             lamdas, data, var, header = fits_stuff
-            all_weights = 1/var
+            all_weights = 1/np.sqrt(var)
         else:
             lamdas, data, header = fits_stuff
     elif data_cube_stuff:
@@ -455,7 +455,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
     if var_filename:
         _, var, var_header = pc.load_data(var_filename, mw_correction=False)
-        all_weights = 1/var
+        all_weights = 1/np.sqrt(var)
 
 
     #create filepath to output folder
