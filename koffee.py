@@ -531,6 +531,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
             no_outflow_error2 = np.empty_like(data[:3,:,:])
 
         chi_square2 = np.empty_like(data[:2,:,:])
+        #1 for outflow, 0 for no outflow
+        statistical_results2 = np.empty_like(data[0,:,:])
 
     #if fitting the OII doublet, create the wavelength mask
     if OII_doublet == True:
@@ -698,6 +700,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         if emission_line2:
                             #only want to fit hbeta where there is an outflow
                             if stat_res > 0:
+                                #first assume we can fit an outflow
+                                statistical_results2[i,j] = 1
                                 #mask the lamdas and data
                                 masked_lamdas2 = lamdas[mask_lam2]
                                 flux2 = data[:,i,j][mask_lam2]
@@ -709,6 +713,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 elif stat_res == 2:
                                     mean_diff = best_fit2_refit.params['Galaxy_mean'].value - best_fit2_refit.params['Flow_mean'].value
                                     sigma_guess = [best_fit2_refit.params['Galaxy_sigma'].value, best_fit2_refit.params['Flow_sigma'].value]
+
                                 #create the fitting objects
                                 if include_const == True:
                                     #for the one gaussian fit
@@ -716,6 +721,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                                     #for the two gaussian fit
                                     g_model2_second, pars2_second = kff.gaussian2_const(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.5], sigma_variations=1.5)
+
                                 elif include_const == False:
                                     #for the one gaussian fit
                                     g_model1_second, pars1_second = kff.gaussian1(masked_lamdas2, flux2, amp_guess=None, mean_guess=None, sigma_guess=None)
@@ -862,7 +868,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         print('saved hbeta fit for spaxel', str(i), str(j), 'exception')
 
                                 #print('saved hbeta fit for spaxel', str(i), str(j))
-
+                            elif stat_res == 0:
+                                #assume there's no outflow in hbeta either
+                                statistical_results2[i,j] = 0
                         #-------------------
                         #FIT THE OII DOUBLET
                         #-------------------
@@ -993,6 +1001,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         #print('S/N for '+str(i)+', '+str(j)+' is '+str(sn_array[i,j]))
                         #statistical results have no outflow
                         statistical_results[i,j] = -1
+                        statistical_results2[i,j] = -1
 
                         #chi squared for the fits
                         chi_square[:,i,j] = (np.nan, np.nan)
@@ -1049,6 +1058,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                     print(e, '\n\n')
                     #statistical results obviously no outflow
                     statistical_results[i,j] = np.nan
+                    statistical_results2[i,j] = np.nan
 
                     #chi squared for the fits
                     chi_square[:,i,j] = (np.nan, np.nan)
@@ -1132,6 +1142,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
             np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_results_'+emission_line2+'.txt', np.reshape(outflow_results2, (3, -1)))
             np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line2+'.txt', np.reshape(outflow_error2, (3, -1)))
         np.savetxt(output_folder_loc+galaxy_name+'_chi_squared_'+emission_line2+'.txt', np.reshape(chi_square2, (2,-1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_stat_results_'+emission_line2+'.txt', np.reshape(statistical_results2, (1, -1)))
 
     if OII_doublet == True:
         np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_OII_doublet.txt', np.reshape(outflow_results3, (13, -1)))
@@ -1145,10 +1156,10 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
 
     if OII_doublet==False and emission_line2:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, chi_square2
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, chi_square2
 
     if OII_doublet==True and emission_line2:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, chi_square2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, chi_square3
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, chi_square2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, chi_square3
 
     else:
         return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square
