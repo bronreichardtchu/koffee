@@ -501,12 +501,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         fits_stuff = pc.load_data(filename2, mw_correction=False)
         if len(fits_stuff) > 3:
             lamdas, data, var, header = fits_stuff
-            all_weights = 1/var
+            all_weights = 1/np.sqrt(var)
         else:
             lamdas, data, header = fits_stuff
         print('Second filename being used for koffee fits')
         #recreate mask to choose emission line wavelength range with new lamdas
-        mask_lam = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
+        mask_lam = (lamdas > em_observed-13.) & (lamdas < em_observed+13.)
 
     #if fitting a second emission line, create the wavelength mask
     if emission_line2:
@@ -516,7 +516,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         em_observed = em_rest2*(1+redshift)
 
         #create mask to choose emission line wavelength range
-        mask_lam2 = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
+        mask_lam2 = (lamdas > em_observed-13.) & (lamdas < em_observed+13.)
 
         #create arrays to save results in
         if include_const == True:
@@ -540,7 +540,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         em_observed = em_rest3*(1+redshift)
 
         #create mask to choose emission line wavelength range
-        mask_lam3 = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
+        mask_lam3 = (lamdas > em_observed-13.) & (lamdas < em_observed+13.)
 
         #create arrays to save results in - always use a constant when fitting OII doublet
         outflow_results3 = np.empty_like(data[:13,:,:])
@@ -557,7 +557,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         em_obs_OIII_3 = em_rest_OIII_3*(1+redshift)
 
         #use OIII_3 to make the mask
-        mask_lam_OIII_3 = (lamdas > em_obs_OIII_3-20.) & (lamdas < em_obs_OIII_3+20.)
+        mask_lam_OIII_3 = (lamdas > em_obs_OIII_3-13.) & (lamdas < em_obs_OIII_3+13.)
 
     #loop through cube
     with tqdm(total=data.shape[1]*data.shape[2]) as pbar:
