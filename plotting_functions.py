@@ -474,6 +474,35 @@ def pearson_correlation(x, y):
     return r, p_value
 
 
+def spearman_coefficient(x, y):
+    """
+    Calculate the Spearman correlation coefficient and p-value
+
+    Parameters
+    ----------
+    x : :obj:'~numpy.ndarray'
+        Input array - x values
+
+    y : :obj:'~numpy.ndarray'
+        Input array - y values
+
+    Returns
+    -------
+    r : float
+        Spearman correlation coefficient
+
+    p_value : float
+        Two-tailed p-value
+    """
+    #make sure the arrays are 1D, not 2D
+    x = np.ravel(x)
+    y = np.ravel(y)
+
+    r, p_value = stats.spearmanr(x, y, nan_policy='omit')
+
+    return r, p_value
+
+
 def read_in_create_wcs(fits_file, index=0, shift=None):
     """
     Reads in the fits file and creates the wcs

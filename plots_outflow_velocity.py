@@ -1095,7 +1095,7 @@ def plot_out_vel_model_sigsfr(OIII_outflow_results, OIII_outflow_error, hbeta_ou
 
 
 
-def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True):
     """
     Plots the mass loading factor against the outflow velocity.
 
@@ -1146,7 +1146,7 @@ def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_res
 
     """
     #calculate the mass loading factor
-    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
 
     #calculate the velocity dispersion for the masking
     vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
@@ -1192,15 +1192,15 @@ def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_res
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_out, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_out[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_out[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_out, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_out[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_out[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
 
     elif weighted_average == True:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_out, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_out[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_out[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_out, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_out[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_out[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
 
     #calculate the r value for the median values
@@ -1297,7 +1297,7 @@ def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_res
 
 
 
-def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True):
     """
     Plots the mass loading factor against the outflow velocity dispersion.
 
@@ -1348,7 +1348,7 @@ def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflo
 
     """
     #calculate the mass loading factor
-    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
 
     #calculate the velocity dispersion for the masking
     vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
@@ -1393,15 +1393,15 @@ def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflo
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_disp, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_disp[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_disp[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_disp, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_disp[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_disp[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
 
     elif weighted_average == True:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_disp, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_disp[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_disp[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_disp, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_disp[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_disp[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
 
     #calculate the r value for the median values
@@ -1498,7 +1498,7 @@ def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflo
 
 
 
-def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, colour_by=None, colour_by_array=None, weighted_average=True):
+def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, colour_by=None, colour_by_array=None, weighted_average=True):
     """
     Plots the SFR surface density against the outflow velocity offset and dispersion,
     with Sigma_SFR calculated using only the narrow component.
@@ -1549,11 +1549,11 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
 
     """
     #calculate the outflow velocity
-    vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
+    vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
 
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
-    sfr, total_sfr, sfr_surface_density, h_beta_integral_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, include_extinction=False, include_outflow=False)
+    sfr, sfr_err, total_sfr, sfr_surface_density, sfr_surface_density_err = calc_sfr.calc_sfr_koffee(hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, include_extinction=False, include_outflow=False)
 
     #get the sfr for the outflow spaxels
     flow_mask = (statistical_results>0)
@@ -1569,24 +1569,16 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     print(y_id)
     """
 
-    #convert the sigma to km/s instead of Angstroms
-    flow_sigma = OIII_outflow_results[3,:,:][flow_mask]/(1+z)
-    systemic_mean = OIII_outflow_results[1,:,:][flow_mask]/(1+z)
-    vel_disp = flow_sigma*299792.458/systemic_mean
-
-    vel_disp_err = (flow_sigma/systemic_mean)*np.sqrt((OIII_outflow_error[3,:,:][flow_mask]/flow_sigma)**2 + (OIII_outflow_error[1,:,:][flow_mask]/systemic_mean)**2)
-
     #flatten all the arrays and get rid of extra spaxels
-    sfr = sfr_surface_density[flow_mask]
-    sfr_err = h_beta_integral_err[flow_mask]
+    sig_sfr = sfr_surface_density[flow_mask]
+    sig_sfr_err = sfr_surface_density_err[flow_mask]
     vel_diff = vel_diff[flow_mask]
     vel_diff_err = vel_diff_err[flow_mask]
+    vel_disp = vel_disp[flow_mask]
+    vel_disp_err = vel_disp_err[flow_mask]
+
     if colour_by is not None:
         colour_by_array = colour_by_array[flow_mask]
-
-    #
-    colour_by_array = colour_by_array[flow_mask]
-    BIC_mask = (colour_by_array<-10)
 
     """id_array = id_array[flow_mask]
     x_id = x_id[flow_mask]
@@ -1608,29 +1600,31 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q = pf.binned_median_quantile_log(sfr[BIC_mask], vel_diff[BIC_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center, disp_bin_medians, disp_bin_lower_q, disp_bin_upper_q = pf.binned_median_quantile_log(sfr[BIC_mask], vel_disp[BIC_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_vel_diff, bin_center_vel_diff, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q, vel_diff_bin_stdev = pf.binned_median_quantile_log(sig_sfr, vel_diff, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        logspace_vel_disp, bin_center_vel_disp, vel_disp_bin_medians, vel_disp_bin_lower_q, vel_disp_bin_upper_q, vel_disp_bin_stdev = pf.binned_median_quantile_log(sig_sfr, vel_disp, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
     elif weighted_average == True:
-        bin_center, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q = pf.binned_median_quantile_log(sfr, vel_diff, num_bins=num_bins, weights=[vel_diff_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center, disp_bin_medians, disp_bin_lower_q, disp_bin_upper_q = pf.binned_median_quantile_log(sfr, vel_disp, num_bins=num_bins, weights=[vel_disp_err], min_bin=min_bin, max_bin=max_bin)
+        logspace_vel_diff, bin_center_vel_diff, vel_diff_bin_medians, vel_diff_bin_lower_q, vel_diff_bin_upper_q, vel_diff_bin_stdev = pf.binned_median_quantile_log(sig_sfr, vel_diff, num_bins=num_bins, weights=[vel_diff_err], min_bin=min_bin, max_bin=max_bin)
+        logspace_vel_disp, bin_center_vel_disp, vel_disp_bin_medians, vel_disp_bin_lower_q, vel_disp_bin_upper_q, vel_disp_bin_stdev = pf.binned_median_quantile_log(sig_sfr, vel_disp, num_bins=num_bins, weights=[vel_disp_err], min_bin=min_bin, max_bin=max_bin)
 
 
     #calculate the r value for the median values
-    r_vel_diff_med, p_value_v_diff = pf.pearson_correlation(bin_center, vel_diff_bin_medians)
-    r_disp_med, p_value_disp = pf.pearson_correlation(bin_center, disp_bin_medians)
+    r_vel_diff_med, p_value_vel_diff = pf.pearson_correlation(bin_center_vel_diff, vel_diff_bin_medians)
+    r_vel_disp_med, p_value_vel_disp = pf.pearson_correlation(bin_center_vel_disp, vel_disp_bin_medians)
 
     #calculate the r value for all the values
-    r_vel_diff, p_value_v_diff = pf.pearson_correlation(sfr, vel_diff)
-    r_disp, p_value_disp = pf.pearson_correlation(sfr, vel_disp)
+    r_vel_diff, p_value_v_diff = pf.pearson_correlation(sig_sfr, vel_diff)
+    r_disp, p_value_disp = pf.pearson_correlation(sig_sfr, vel_disp)
 
-    r_vel_diff_BIC, p_value_v_diff_BIC = pf.pearson_correlation(sfr[BIC_mask], vel_diff[BIC_mask])
-    r_disp_BIC, p_value_disp_BIC = pf.pearson_correlation(sfr[BIC_mask], vel_disp[BIC_mask])
+    #r_vel_diff_BIC, p_value_v_diff_BIC = pf.pearson_correlation(sfr[BIC_mask], vel_diff[BIC_mask])
+    #r_disp_BIC, p_value_disp_BIC = pf.pearson_correlation(sfr[BIC_mask], vel_disp[BIC_mask])
 
 
     #create vectors to plot the literature trends
-    sfr_surface_density_chen, vel_diff_chen = pf.chen_et_al_2010(sfr.min(), sfr.max(), scale_factor=np.nanmedian(vel_diff[BIC_mask])/(np.nanmedian(sfr[BIC_mask])**0.1))
-    sfr_surface_density_murray, vel_diff_murray = pf.murray_et_al_2011(sfr.min(), sfr.max(), scale_factor=np.nanmedian(vel_diff[BIC_mask])/(np.nanmedian(sfr[BIC_mask])**2))
+    #sfr_surface_density_chen, vel_diff_chen = pf.chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_diff[BIC_mask])/(np.nanmedian(sfr[BIC_mask])**0.1))
+    #sfr_surface_density_murray, vel_diff_murray = pf.murray_et_al_2011(sfr.min(), sfr.max(), scale_factor=np.nanmedian(vel_diff[BIC_mask])/(np.nanmedian(sfr[BIC_mask])**2))
+    sfr_surface_density_chen, vel_diff_chen = pf.chen_et_al_2010(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_diff)/(np.nanmedian(sig_sfr)**0.1))
+    sfr_surface_density_murray, vel_diff_murray = pf.murray_et_al_2011(sig_sfr.min(), sig_sfr.max(), scale_factor=np.nanmedian(vel_diff)/(np.nanmedian(sig_sfr)**2))
 
     #plot it
     plt.rcParams.update(pf.get_rc_params())
@@ -1640,53 +1634,53 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
     #Plots
     #-----------------
     if colour_by is not None:
-        ax[0].scatter(sfr[vel_disp>=51], vel_diff[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), c=colour_by_array[vel_disp>=51])
-        ax[0].scatter(sfr[vel_disp<51], vel_diff[vel_disp<51], marker='v', lw=0, alpha=0.6, c=colour_by_array[vel_disp<51])
+        ax[0].scatter(sig_sfr[vel_disp>=51], vel_diff[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), c=colour_by_array[vel_disp>=51])
+        ax[0].scatter(sig_sfr[vel_disp<51], vel_diff[vel_disp<51], marker='v', lw=0, alpha=0.6, c=colour_by_array[vel_disp<51])
 
-        im = ax[1].scatter(sfr[vel_disp>=51], vel_disp[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_disp), c=colour_by_array[vel_disp>=51])
-        ax[1].scatter(sfr[vel_disp<51], vel_disp[vel_disp<51], marker='v', lw=0, alpha=0.6, c=colour_by_array[vel_disp<51])
+        im = ax[1].scatter(sig_sfr[vel_disp>=51], vel_disp[vel_disp>=51], marker='o', lw=0, alpha=0.6, label='Flow spaxels; R={:.2f}'.format(r_disp), c=colour_by_array[vel_disp>=51])
+        ax[1].scatter(sig_sfr[vel_disp<51], vel_disp[vel_disp<51], marker='v', lw=0, alpha=0.6, c=colour_by_array[vel_disp<51])
         cbar = plt.colorbar(im, ax=ax[1])
         cbar.ax.set_ylabel(colour_by)
 
     elif colour_by is None:
-        ax[0].plot(sfr[BIC_mask][vel_disp[BIC_mask]>=51], vel_diff[BIC_mask][vel_disp[BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Definite Flow spaxels; R={:.2f}'.format(r_vel_diff_BIC), color='tab:blue')
-        ax[0].plot(sfr[BIC_mask][vel_disp[BIC_mask]<51], vel_diff[BIC_mask][vel_disp[BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
+        #ax[0].plot(sig_sfr[BIC_mask][vel_disp[BIC_mask]>=51], vel_diff[BIC_mask][vel_disp[BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Definite Flow spaxels; R={:.2f}'.format(r_vel_diff_BIC), color='tab:blue')
+        #ax[0].plot(sig_sfr[BIC_mask][vel_disp[BIC_mask]<51], vel_diff[BIC_mask][vel_disp[BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
 
-        ax[1].plot(sfr[BIC_mask][vel_disp[BIC_mask]>=51], vel_disp[BIC_mask][vel_disp[BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Definite Flow spaxels; R={:.2f}'.format(r_disp_BIC), color='tab:blue')
-        ax[1].plot(sfr[BIC_mask][vel_disp[BIC_mask]<51], vel_disp[BIC_mask][vel_disp[BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
+        #ax[1].plot(sig_sfr[BIC_mask][vel_disp[BIC_mask]>=51], vel_disp[BIC_mask][vel_disp[BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Definite Flow spaxels; R={:.2f}'.format(r_disp_BIC), color='tab:blue')
+        #ax[1].plot(sig_sfr[BIC_mask][vel_disp[BIC_mask]<51], vel_disp[BIC_mask][vel_disp[BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:blue')
 
-        ax[0].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]>=51], vel_diff[~BIC_mask][vel_disp[~BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Likely Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:pink')
-        ax[0].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]<51], vel_diff[~BIC_mask][vel_disp[~BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:pink')
+        #ax[0].plot(sig_sfr[~BIC_mask][vel_disp[~BIC_mask]>=51], vel_diff[~BIC_mask][vel_disp[~BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Likely Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:pink')
+        #ax[0].plot(sig_sfr[~BIC_mask][vel_disp[~BIC_mask]<51], vel_diff[~BIC_mask][vel_disp[~BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:pink')
 
-        ax[1].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]>=51], vel_disp[~BIC_mask][vel_disp[~BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Likely Flow spaxels; R={:.2f}'.format(r_disp), color='tab:pink')
-        ax[1].plot(sfr[~BIC_mask][vel_disp[~BIC_mask]<51], vel_disp[~BIC_mask][vel_disp[~BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:pink')
+        #ax[1].plot(sig_sfr[~BIC_mask][vel_disp[~BIC_mask]>=51], vel_disp[~BIC_mask][vel_disp[~BIC_mask]>=51], marker='o', lw=0, alpha=0.4, label='Likely Flow spaxels; R={:.2f}'.format(r_disp), color='tab:pink')
+        #ax[1].plot(sig_sfr[~BIC_mask][vel_disp[~BIC_mask]<51], vel_disp[~BIC_mask][vel_disp[~BIC_mask]<51], marker='v', lw=0, alpha=0.4, color='tab:pink')
 
-        #ax[0].errorbar(sfr[vel_disp>=51], vel_diff[vel_disp>=51], xerr=sfr_err[vel_disp>=51], yerr=vel_diff_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:blue')
-        #ax[0].errorbar(sfr[vel_disp<51], vel_diff[vel_disp<51], xerr=sfr_err[vel_disp<51], yerr=vel_diff_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
+        ax[0].errorbar(sig_sfr[vel_disp>=51], vel_diff[vel_disp>=51], xerr=sig_sfr_err[vel_disp>=51], yerr=vel_diff_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_vel_diff), color='tab:blue')
+        ax[0].errorbar(sig_sfr[vel_disp<51], vel_diff[vel_disp<51], xerr=sig_sfr_err[vel_disp<51], yerr=vel_diff_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
 
-        #ax[1].errorbar(sfr[vel_disp>=51], vel_disp[vel_disp>=51], xerr=sfr_err[vel_disp>=51], yerr=vel_disp_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_disp), color='tab:blue')
-        #ax[1].errorbar(sfr[vel_disp<51], vel_disp[vel_disp<51], xerr=sfr_err[vel_disp<51], yerr=vel_disp_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
+        ax[1].errorbar(sig_sfr[vel_disp>=51], vel_disp[vel_disp>=51], xerr=sig_sfr_err[vel_disp>=51], yerr=vel_disp_err[vel_disp>=51], marker='o', lw=0, alpha=0.4, elinewidth=1, label='Flow spaxels; R={:.2f}'.format(r_disp), color='tab:blue')
+        ax[1].errorbar(sig_sfr[vel_disp<51], vel_disp[vel_disp<51], xerr=sig_sfr_err[vel_disp<51], yerr=vel_disp_err[vel_disp<51], marker='v', lw=0, alpha=0.4, elinewidth=1, color='tab:blue')
 
 
-    ax[0].fill_between(bin_center, vel_diff_bin_lower_q, vel_diff_bin_upper_q, color='tab:blue', alpha=0.3)
-    ax[0].plot(bin_center, vel_diff_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_diff_med))
-    ax[0].errorbar(5, -100, xerr=np.nanmedian(sfr_err), yerr=np.nanmedian(vel_diff_err), c='k')
+    ax[0].fill_between(bin_center_vel_diff, vel_diff_bin_medians-vel_diff_bin_stdev, vel_diff_bin_medians+vel_diff_bin_stdev, color='tab:blue', alpha=0.3)
+    ax[0].plot(bin_center_vel_diff, vel_diff_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_diff_med))
+    ax[0].errorbar(0.06, -50, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_diff_err), c='k')
     ax[0].plot(sfr_surface_density_chen, vel_diff_chen, ':k', label='Energy driven, $v_{out} \propto \Sigma_{SFR}^{0.1}$')
     ax[0].plot(sfr_surface_density_murray, vel_diff_murray, '--k', label='Momentum driven, $v_{out} \propto \Sigma_{SFR}^{2}$')
-    ax[0].set_ylim(-150,250)
+    ax[0].set_ylim(-52-np.nanmedian(vel_diff_err), np.nanmax(vel_diff)+np.nanmax(vel_diff_err))
     ax[0].set_xscale('log')
-    lgnd = ax[0].legend(frameon=False, fontsize='x-small', loc='lower left')
+    lgnd = ax[0].legend(frameon=False, fontsize='x-small', loc='lower right')
     lgnd.legendHandles[0]._legmarker.set_markersize(4)
     ax[0].set_ylabel('Velocity Offset [km s$^{-1}$]')
     ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
 
 
-    ax[1].fill_between(bin_center, disp_bin_lower_q, disp_bin_upper_q, color='tab:blue', alpha=0.3)
-    ax[1].plot(bin_center, disp_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_disp_med))
-    ax[1].errorbar(5, -50, xerr=np.nanmedian(sfr_err), yerr=np.nanmedian(vel_disp_err), c='k')
+    ax[1].fill_between(bin_center_vel_disp, vel_disp_bin_medians-vel_disp_bin_stdev, vel_disp_bin_medians+vel_disp_bin_stdev, color='tab:blue', alpha=0.3)
+    ax[1].plot(bin_center_vel_disp, vel_disp_bin_medians, marker='', color='tab:blue', lw=3.0, label='Median; R={:.2f}'.format(r_vel_disp_med))
+    ax[1].errorbar(0.06, 0, xerr=np.nanmedian(sig_sfr_err), yerr=np.nanmedian(vel_disp_err), c='k')
     ax[1].set_xscale('log')
-    ax[1].set_ylim(-100,300)
-    lgnd = ax[1].legend(frameon=False, fontsize='x-small', loc='lower left')
+    #ax[1].set_ylim(-100,300)
+    lgnd = ax[1].legend(frameon=False, fontsize='x-small', loc='lower right')
     lgnd.legendHandles[0]._legmarker.set_markersize(4)
     ax[1].set_ylabel('Velocity Dispersion [km s$^{-1}$]')
     ax[1].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
@@ -1696,7 +1690,7 @@ def plot_sfr_vseparate(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_r
 
 
 
-def plot_vel_diff_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, weighted_average=True):
+def plot_vel_diff_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, weighted_average=True):
     """
     Plots the mass loading factor against the velocity difference.
 
@@ -1744,7 +1738,7 @@ def plot_vel_diff_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     """
     #calculate the mass loading factor
-    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
 
     #calculate the velocity dispersion for the masking
     vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
@@ -1790,15 +1784,15 @@ def plot_vel_diff_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_diff, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_diff[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_diff[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_diff, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_diff[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_diff[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
 
     elif weighted_average == True:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(vel_diff, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(vel_diff[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(vel_diff[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(vel_diff, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(vel_diff[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(vel_diff[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
 
     #calculate the r value for the median values

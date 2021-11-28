@@ -29,6 +29,7 @@ from astropy.cosmology import WMAP9 as cosmo
 from astropy.constants import c
 from astropy.constants import m_p
 from astropy import units as u
+from astropy.io import fits
 
 import calculate_outflow_velocity as calc_outvel
 import calculate_star_formation_rate as calc_sfr
@@ -316,3 +317,113 @@ def calc_mass_loading_factor2(OIII_results, OIII_error, hbeta_results, hbeta_err
     mlf = mlf.decompose()
 
     return mlf, mlf_max, mlf_min
+
+
+
+def calc_save_as_fits(OIII_results, OIII_error, hbeta_results, hbeta_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header, gal_name, output_folder):
+    """
+    Calculates the mass outflow rate and mass loading factor and saves the
+    results into fits files.
+
+    Parameters
+    ----------
+    OIII_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for OIII line.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    OIII_error : :obj:'~numpy.ndarray'
+        Array containing the outflow result errors from KOFFEE for the OIII line.
+        This will have either shape [6, i, j] or [7, i, j] depending on whether
+        a constant was included in the koffee fit.  Either way, the flow and
+        galaxy parameters are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    hbeta_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for Hbeta line.  Used to calculate
+        the Sigma SFR.  Should be (7, statistical_results.shape)
+
+    hbeta_error : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for Hbeta line
+
+    hbeta_no_outflow_results : :obj:'~numpy.ndarray'
+        array of single gaussian results from KOFFEE for Hbeta line.  Used to
+        calculate the Sigma SFR.  Should be (4, statistical_results.shape)
+
+    hbeta_no_outflow_error : :obj:'~numpy.ndarray'
+        array of the single gaussian result errors from KOFFEE for Hbeta line
+
+    statistical_results : :obj:'~numpy.ndarray'
+        Array containing the statistical results from koffee.  This has 0 if no
+        flow was found, 1 if a flow was found, 2 if an outflow was found using a
+        forced second fit due to the blue chi square test.
+
+    z : float
+        The redshift of the galaxy
+
+    header : FITS file object
+        The header of the data fits file, to be used in the new fits file
+
+    gal_name : str
+        the name of the galaxy, and whatever descriptor to be used in the saving
+        (e.g. IRAS08_binned_2_by_1)
+
+    emission_line_name : str
+        the name of the emission line the results are from
+        (e.g. OIII, hbeta, etc.)
+
+    output_folder : str
+        where to save the fits file
+
+    Returns
+    -------
+    A saved fits file
+    """
+    #calculate the mass outflow rate
+    M_out, M_out_max, M_out_min = calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error, statistical_results, z)
+
+    #calculate the mass loading factor
+    mlf, mlf_max, mlf_min = calc_mass_loading_factor(OIII_results, OIII_error, hbeta_results, hbeta_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
+
+    #copy the header and change the keywords so it's just 2 axes
+    new_header = header.copy()
+
+    new_header['NAXIS'] = 2
+
+    del new_header['NAXIS3']
+    del new_header['CNAME3']
+    del new_header['CRPIX3']
+    del new_header['CRVAL3']
+    del new_header['CTYPE3']
+    del new_header['CUNIT3']
+
+    try:
+        del new_header['CD3_3']
+    except:
+        del new_header['CDELT3']
+
+    #create HDU object for galaxy flux
+    hdu = fits.PrimaryHDU((M_out.to('M_sun/yr')).value, header=new_header)
+    hdu_error = fits.ImageHDU((M_out_max.to('M_sun/yr')).value, name='Mass Outflow Rate with maximum R_out')
+    hdu_error2 = fits.ImageHDU((M_out_min.to('M_sun/yr')).value, name='Mass Outflow Rate with minimum R_out')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error, hdu_error2])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_mass_outflow_rate.fits')
+
+    #create HDU object for galaxy flux
+    hdu = fits.PrimaryHDU(mlf.value, header=new_header)
+    hdu_error = fits.ImageHDU(mlf_max.value, name='Mass Loading Factor with maximum R_out')
+    hdu_error2 = fits.ImageHDU(mlf_min.value, name='Mass Loading Factor with minimum R_out')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error, hdu_error2])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_mass_loading_factor.fits')
