@@ -67,10 +67,21 @@ def convolve_data(filename, fwhm, output_folder, gal_name):
         with fits.open(filename) as hdu:
             data = hdu[0].data
             header = hdu[0].header
+            try:
+                data.shape
+            except AttributeError:
+                data = hdu['SCI'].data
+                header = hdu['SCI'].header
+
             #if there is more than one extension in the fits file, assume the second one is the variance
             if len(hdu) > 1:
-                var = hdu[1].data
+                if (hdu[1].header['EXTNAME'])=='SCI':
+                    print('')
+                else:
+                    var = hdu[1].data
         hdu.close()
+
+    print(data.shape)
 
     #convert FWHM to standard deviation
     stddev = fwhm/(2*np.sqrt(2*np.log(2)))
