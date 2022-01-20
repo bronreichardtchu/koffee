@@ -31,6 +31,12 @@ import prepare_cubes as pc
 from astropy.io import fits
 from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import convolve
+from astropy import units as u
+from astropy.nddata import Cutout2D
+from astropy.coordinates import SkyCoord
+from astropy.wcs import WCS
+
+from reproject import reproject_adaptive
 
 import montage_wrapper as montage
 
