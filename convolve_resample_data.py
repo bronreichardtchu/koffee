@@ -135,6 +135,190 @@ def convolve_data(filename, fwhm, output_folder, gal_name):
         return convolved_data
 
 
+def cutout_data(filename, position, size, output_folder, gal_name, plot_cutout=True):
+    """
+    Cuts out a section of the data around a central position, and saves it in a
+    new fits file with appropriate wcs.
+
+    Parameters
+    ----------
+    filename : str
+        The filepath to the data; should be a 2D fits file
+
+    position : str
+        The position which will be central to the new cutout data in degrees
+        e.g. '129.596583 65.120889' for IRAS08
+
+    size : tuple of floats
+        The size of the area to be cutout in arcseconds e.g. (20,20)
+
+    output_folder : str
+        Where to save the new fits file
+
+    gal_name : str
+        The galaxy name and any other descriptors for the fits file name
+
+    plot_cutout : boolean
+        If True, plots where the data was cutout from on the original data, and
+        also the new cutout data
+
+    Returns
+    -------
+    cutout : obj
+        a Cutout2D instance, with data and wcs, etc.
+    """
+    #read in the data
+    #not a 3d array
+    with fits.open(filename) as hdu:
+        data = hdu[0].data
+        header = hdu[0].header
+        try:
+            data.shape
+        except AttributeError:
+            data = hdu['SCI'].data
+            header = hdu['SCI'].header
+
+        #if there is more than one extension in the fits file, assume the second one is the variance
+        if len(hdu) > 1:
+            if (hdu[1].header['EXTNAME'])=='SCI':
+                print('')
+            else:
+                var = hdu[1].data
+    hdu.close()
+
+    print(data.shape)
+
+    #create a WCS for the data
+    wcs = WCS(header)
+
+    #turn the position into a sky coordinate
+    position = SkyCoord(position, unit='deg')
+
+    #give units to the size of the cutout
+    size = u.Quantity(size, u.arcsec)
+
+    #cutout the data
+    cutout = Cutout2D(data, position, size, wcs=wcs)
+
+    #save the cutout data to a fits file
+    #create HDU object
+    hdu = fits.PrimaryHDU(cutout.data, header=cutout.wcs.to_header())
+
+    #create HDU list
+    hdul = fits.HDUList([hdu])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_cutout.fits')
+
+    #plot where the data was cutout from and the new cutout data
+    if plot_cutout == True:
+        plt.figure()
+        ax1 = plt.subplot(1,2,1, projection=wcs)
+        ax1.imshow(np.log10(data), origin='lower')
+        cutout.plot_on_original(color='white')
+        ax1.coords['ra'].set_axislabel('Right Ascension')
+        ax1.coords['dec'].set_axislabel('Declination')
+        ax1.set_title(gal_name)
+
+        ax2 = plt.subplot(1,2,2, projection=cutout.wcs)
+        ax2.imshow(np.log10(cutout.data), origin='lower')
+        ax2.coords['ra'].set_axislabel('Right Ascension')
+        ax2.coords['dec'].set_axislabel('Declination')
+        ax2.coords['dec'].set_axislabel_position('r')
+        ax2.coords['dec'].set_ticklabel_position('r')
+        ax2.set_title('Cutout')
+
+        plt.show()
+
+    return cutout
+
+
+def reproject_data(filename1, filename2, output_folder, gal_name, plot_cutout=True):
+    """
+    Reprojects the data to a second data set's wcs and resolution
+
+    Parameters
+    ----------
+    filename1 : str
+        The filepath to the data to be reprojected; should be a 2D fits file
+
+    filename2 : str
+        The filepath to the data with the WCS to be matched; should be a 2D fits
+        file
+
+    output_folder : str
+        Where to save the new fits file
+
+    gal_name : str
+        The galaxy name and any other descriptors for the fits file name
+
+    Returns
+    -------
+    cutout : obj
+        a Cutout2D instance, with data and wcs, etc.
+    """
+    #read in the data to be reprojected
+    #not a 3d array
+    with fits.open(filename1) as hdu:
+        data1 = hdu[0].data
+        header1 = hdu[0].header
+        try:
+            data1.shape
+        except AttributeError:
+            data1 = hdu['SCI'].data
+            header1 = hdu['SCI'].header
+
+        #if there is more than one extension in the fits file, assume the second one is the variance
+        if len(hdu) > 1:
+            if (hdu[1].header['EXTNAME'])=='SCI':
+                print('')
+            else:
+                var1 = hdu[1].data
+    hdu.close()
+
+    #read in the file to be matched
+    with fits.open(filename2) as hdu:
+        data2 = hdu[0].data
+        header2 = hdu[0].header
+        try:
+            data2.shape
+        except AttributeError:
+            data2 = hdu['SCI'].data
+            header2 = hdu['SCI'].header
+    hdu.close()
+
+    print(data1.shape)
+    print(data2.shape)
+
+    #create a WCS for the data to be reprojected
+    wcs1 = WCS(header1)
+
+    #create a WCS for the data to be matched
+    wcs2 = WCS(header2)
+
+    #reproject data1 to match data2
+    reprojected_data, reproject_footprint = reproject_adaptive((data1, wcs1), header2)
+
+    plt.figure()
+    ax1 = plt.subplot(1,2,1, projection=wcs2)
+    ax1.imshow(np.log10(reprojected_data), origin='lower')
+    ax1.coords['ra'].set_axislabel('Right Ascension')
+    ax1.coords['dec'].set_axislabel('Declination')
+    ax1.set_title('Reprojected')
+
+    ax2 = plt.subplot(1,2,2, projection=wcs2)
+    ax2.imshow(np.log10(data2), origin='lower')
+    ax2.coords['ra'].set_axislabel('Right Ascension')
+    ax2.coords['dec'].set_axislabel('Declination')
+    ax2.coords['dec'].set_axislabel_position('r')
+    ax2.coords['dec'].set_ticklabel_position('r')
+    ax2.set_title('Matched')
+
+    plt.show()
+
+
+
+
 def resample_data(filename, resolution, output_folder, gal_name):
     """
     Resamples data1 to match the resolution of data2
