@@ -55,6 +55,12 @@ def convolve_data(filename, fwhm, output_folder, gal_name):
         The full width half maximum of the Gaussian kernel to convolve the data
         with
 
+    output_folder : str
+        Where to save the new fits file
+
+    gal_name : str
+        The galaxy name and any other descriptors for the fits file name
+
     Returns
     -------
     convolved_data : :obj:'~numpy.ndarray'
