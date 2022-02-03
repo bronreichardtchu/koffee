@@ -224,7 +224,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     spaxel : list
         the spaxel of the emission line which will be fit for the third panel,
         this is usually chosen to be one of the spaxels for which not doing
-        KOFFEE's checks means the fit is an unlikely one. e.g. [33, 5]
+        KOFFEE's checks means the fit is an unlikely one. e.g. [34, 6]
 
     z : float
         redshift
