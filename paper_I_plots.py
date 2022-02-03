@@ -65,10 +65,10 @@ importlib.reload(calc_outvel)
 # PLOTTING FUNCTIONS - for paper
 #===============================================================================
 #Figure 1
-def plot_compare_fits(lamdas, data, var, spaxels, z):
+def plot_compare_fits(lamdas, data, var, spaxels, z, use_lmfit_bic=False):
     """
     Plots the normalised single and double gaussian fits for the OIII 5007 line
-    using a list of spaxels.  (Used spaxels [[19, 7], [28, 12], [35, 10]] for the
+    using a list of spaxels.  (Used spaxels [[35, 12], [28, 12], [35, 10]] for the
     paper.)
 
     Parameters
@@ -84,6 +84,10 @@ def plot_compare_fits(lamdas, data, var, spaxels, z):
 
     z : float
         redshift
+
+    use_lmfit_bic : boolean
+        Whether to use lmfit's definition of the BIC, or the actual definition.
+        Default is False.
 
     Returns
     -------
@@ -127,16 +131,28 @@ def plot_compare_fits(lamdas, data, var, spaxels, z):
         bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, weights=weights, verbose=False)
 
         #find the significance level using the BIC difference
-        BIC_diff = bestfit1.bic - bestfit2.bic
-        print(BIC_diff)
-        if 10 < BIC_diff <= 30:
-            significance_level = 'weakly likely\n10 < $\delta_{BIC}$ < 30'
-        elif 30 < BIC_diff <= 50:
-            significance_level = 'moderately likely\n30 < $\delta_{BIC}$ < 50'
-        elif 50 < BIC_diff:
-            significance_level = 'strongly likely\n$\delta_{BIC}$ > 50'
-        else:
-            significance_level = str(BIC_diff)
+        if use_lmfit_bic == True:
+            BIC_diff = bestfit1.bic - bestfit2.bic
+            print(BIC_diff)
+            if 10 < BIC_diff <= 30:
+                significance_level = 'weakly likely\n10 < $\delta_{BIC}$ < 30'
+            elif 30 < BIC_diff <= 50:
+                significance_level = 'moderately likely\n30 < $\delta_{BIC}$ < 50'
+            elif 50 < BIC_diff:
+                significance_level = 'strongly likely\n$\delta_{BIC}$ > 50'
+            else:
+                significance_level = str(BIC_diff)
+        elif use_lmfit_bic == False:
+            BIC_diff = koffee.calc_BIC(lam_OIII, flux, weights, bestfit1) - koffee.calc_BIC(lam_OIII, flux, weights, bestfit2)
+            print(BIC_diff)
+            if 500 < BIC_diff <= 1000:
+                significance_level = 'weakly likely\n500 < $\delta_{BIC}$ < 1000'
+            elif 1000 < BIC_diff <= 2000:
+                significance_level = 'moderately likely\n1000 < $\delta_{BIC}$ < 2000'
+            elif 2000 < BIC_diff:
+                significance_level = 'strongly likely\n$\delta_{BIC}$ > 2000'
+            else:
+                significance_level = str(BIC_diff)
 
         #get the value to normalise by
         max_value = np.nanmax(flux)
