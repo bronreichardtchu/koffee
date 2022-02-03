@@ -475,6 +475,9 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     #get the sfr for the outflow spaxels
     flow_mask = (statistical_results>0) #& (sfr_surface_density>0.1)
 
+    #BIC_diff = BIC_no_outflow - BIC_outflow
+    #flow_mask = (statistical_results>0) & (BIC_diff>500)
+
     #flatten all the arrays and get rid of extra spaxels
     sig_sfr = sfr_surface_density[flow_mask]
     sig_sfr_err = sfr_surface_density_err[flow_mask]
@@ -486,10 +489,16 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     radius = radius[flow_mask]
 
     #create BIC diff
-    BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_weak = (BIC_diff < -10) & (BIC_diff >= -30)
-    BIC_diff_moderate = (BIC_diff < -30) & (BIC_diff >= -50)
-    BIC_diff_strong = (BIC_diff < -50)
+    #BIC_diff = BIC_outflow - BIC_no_outflow
+    #original boundaries:
+    #BIC_diff_weak = (BIC_diff < -10) & (BIC_diff >= -30)
+    #BIC_diff_moderate = (BIC_diff < -30) & (BIC_diff >= -50)
+    #BIC_diff_strong = (BIC_diff < -50)
+    #new boundaries:
+    BIC_diff = BIC_no_outflow - BIC_outflow
+    BIC_diff_weak = (BIC_diff > 500) & (BIC_diff <= 1000)
+    BIC_diff_moderate = (BIC_diff > 1000) & (BIC_diff <= 2000)
+    BIC_diff_strong = (BIC_diff > 2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
@@ -672,7 +681,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
     #ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[0].set_title('S/N > 20 and $\delta_{BIC}$>10')
+    ax[0].set_title('S/N > 20')# and $\delta_{BIC}$>10')
 
 
 
@@ -702,7 +711,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1].set_xlabel('Log $\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[1].set_title(r'$r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
 
 
@@ -736,7 +745,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     #ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[2].set_title('strongly likely BIC $\delta_{BIC}$>50')
+    ax[2].set_title('strongly likely BIC')
 
     plt.show()
 
