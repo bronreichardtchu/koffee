@@ -2148,7 +2148,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
 
     #create BIC diff
     BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_strong = (BIC_diff < -50)
+    BIC_diff_strong = (BIC_diff < -2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
@@ -2258,7 +2258,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
         ax.set_ylabel(r'$\eta$-model+$const$')
 
     ax.set_xlabel('Galaxy Radius [kpc]')
-    ax.set_title('S/N > 20 and $\delta_{BIC}$ > 10')
+    ax.set_title('S/N > 20 and $\delta_{BIC}$ > 2000')
 
     ax.set_ylim(np.nanmin(mlf_model)-0.4, np.nanmax(mlf_model)+0.1)
 
