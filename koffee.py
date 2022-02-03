@@ -165,8 +165,8 @@ def check_blue_chi_square(wavelength, flux, best_fit, g_model, OII_doublet_fit=F
 
     Returns
     -------
-    chi_square : int
-        the chi squared residual of the blue side of the fit
+    chi_square_reduced : int
+        the reduced chi squared residual of the blue side of the fit
     """
     #get the residuals
     residual = best_fit.residual
@@ -193,9 +193,53 @@ def check_blue_chi_square(wavelength, flux, best_fit, g_model, OII_doublet_fit=F
     chi_square = np.sum(residual[lam_mask]**2)
 
     #calculate the reduced chi squared by dividing by the degrees of freedom
-    red_chi_square = chi_square/best_fit.nfree
+    chi_square_reduced = chi_square/best_fit.nfree
 
-    return red_chi_square
+    return chi_square_reduced
+
+
+def calc_BIC(wavelength, flux, weights, best_fit):
+    """
+    Calculates the Bayesian Information Criterion for non-gaussian case.
+    BIC = chi^2 + kln(N)
+    where k is the number of parameters, and N is the number of data points
+
+    Parameters
+    ----------
+    wavelength : :obj:'~numpy.ndarray'
+        the wavelength vector
+
+    flux : :obj:'~numpy.ndarray'
+        the data vector
+
+    weights : :obj:'~numpy.ndarray'
+        1/sqrt(var)
+        In the fit_cube() function, this is calculated at the beginning
+
+    best_fit : class
+        the best_fit object
+
+    Returns
+    -------
+    bic : float
+        The BIC value
+    """
+    #first calculate the chi^2 value
+    residual = flux - best_fit.eval(x=wavelength)
+    chi_square = np.nansum(weights**2 * residual**2)
+
+    #get the number of parameters
+    k = best_fit.nvarys
+
+    #get the number of data points
+    n = len(flux)
+
+    #calculate the BIC
+    bic = chi_square + k*np.log(n)
+
+    return bic
+
+
 
 
 
