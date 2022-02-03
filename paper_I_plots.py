@@ -1217,7 +1217,8 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     #create BIC diff
     BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_strong = (BIC_diff < -50)
+    #BIC_diff_strong = (BIC_diff < -50)
+    BIC_diff_strong = (BIC_diff < -2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
@@ -1379,7 +1380,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[1,0].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_all_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_all_medians[0], np.sqrt(np.diag(pcov_mlf_all_medians))[0], popt_mlf_all_medians[1], np.sqrt(np.diag(pcov_mlf_all_medians))[1]))
 
     #put the errorbars on the plot
-    ax[1,0].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong]-0.7), xerr=np.nanmedian(sig_sfr_err_log), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
+    ax[1,0].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong]), xerr=np.nanmedian(sig_sfr_err_log), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
 
     if xlim_vals:
         ax[1,0].set_xlim(xlim_vals[0], xlim_vals[1])
@@ -1389,6 +1390,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         xlim_vals = [np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr)+2.0]
 
     #ax[1,0].set_ylim((np.nanmin(mlf[BIC_diff_strong]-0.3)+np.nanmedian(mlf_err_max)-0.1), np.nanmax(mlf)+0.8)
+    ax[1,0].set_ylim(-1.7, 1.2)
     lgnd = ax[1,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1,0].set_ylabel(r'Log($\eta (\frac{500~\rm pc}{R_{\rm out}})$)')
@@ -1413,7 +1415,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[1,1].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_physical_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_physical_medians[0], np.sqrt(np.diag(pcov_mlf_physical_medians))[0], popt_mlf_physical_medians[1], np.sqrt(np.diag(pcov_mlf_physical_medians))[1]))
 
     #put the errorbar on the plot
-    ax[1,1].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong])-0.7, xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
+    ax[1,1].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong]), xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
 
     lgnd = ax[1,1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
@@ -1438,7 +1440,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[1,2].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_strong_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_strong_medians[0], np.sqrt(np.diag(pcov_mlf_strong_medians))[0], popt_mlf_strong_medians[1], np.sqrt(np.diag(pcov_mlf_strong_medians))[1]))
 
     #put the errorbar on the plot
-    ax[1,2].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong])-0.7, xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
+    ax[1,2].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong]), xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
 
     lgnd = ax[1,2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
@@ -1455,17 +1457,18 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[0,0].errorbar(np.log10(bin_center_all), flux_bin_medians_all, yerr=flux_bin_stdev_all, ms=5, lw=3, capsize=3.0, label='Median all KOFFEE fits; R={:.2f}'.format(r_flux_med_all), color=colours[0])
 
     #put the error bars on the plot
-    ax[0,0].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])-0.5, xerr=np.nanmedian(sig_sfr_err_log), yerr=np.nanmedian(flux_error[flux_error<50]), c='k')
+    ax[0,0].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong]+0.2), xerr=np.nanmedian(sig_sfr_err_log), yerr=np.nanmedian(flux_error[flux_error<50]), c='k')
 
     #calculate the median absolute deviation of the flux ratio
     #flux_ratio_mad = np.nanmedian(abs(flux_ratio - np.nanmedian(flux_ratio)))
     #ax[0,0].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong]), yerr=flux_ratio_mad, c='gray', capsize=5)
 
     #ax[0,0].set_ylim((np.nanmin(flux_ratio)+np.nanmedian(flux_error)-0.1), np.nanmax(flux_ratio)+0.6)
+    ax[0,0].set_ylim(-2.1, 0.5)
     lgnd = ax[0,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,0].set_ylabel(r'H$\beta$ Log(F$_{\rm broad}$/F$_{\rm narrow}$)')
-    ax[0,0].set_title('S/N > 20 and $\delta_{BIC}$>10')
+    ax[0,0].set_title('S/N > 20')# and $\delta_{BIC}$>10')
 
 
 
@@ -1478,7 +1481,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[0,1].errorbar(np.log10(bin_center_physical), flux_bin_medians_physical, yerr=flux_bin_stdev_physical, ms=5, lw=3, capsize=3.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_physical), color=colours[1])
 
     #put the errorbars on the plot
-    ax[0,1].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])-0.5, xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=np.nanmedian(flux_error[physical_mask]), c='k')
+    ax[0,1].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])+0.2, xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=np.nanmedian(flux_error[physical_mask]), c='k')
 
     #calculate the median absolute deviation of the flux ratio
     #flux_ratio_mad = np.nanmedian(abs(flux_ratio[physical_mask] - np.nanmedian(flux_ratio[physical_mask])))
@@ -1486,7 +1489,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     lgnd = ax[0,1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[0,1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[0,1].set_title(r'$r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
 
 
@@ -1499,7 +1502,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[0,2].errorbar(np.log10(bin_center_strong), flux_bin_medians_strong, yerr=flux_bin_stdev_strong, ms=5, lw=3, capsize=5.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_strong), color=colours[2])
 
     #put the errorbars on the plot
-    ax[0,2].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])-0.5, xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=np.nanmedian(flux_error[BIC_diff_strong]), c='k')
+    ax[0,2].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])+0.2, xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=np.nanmedian(flux_error[BIC_diff_strong]), c='k')
 
     #calculate the median absolute deviation of the flux ratio
     #flux_ratio_mad = np.nanmedian(abs(flux_ratio[BIC_diff_strong] - np.nanmedian(flux_ratio[BIC_diff_strong])))
@@ -1507,7 +1510,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     lgnd = ax[0,2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[0,2].set_title('strongly likely BIC $\delta_{BIC}$>50')
+    ax[0,2].set_title('strongly likely BIC')
 
     plt.subplots_adjust(left=0.08, right=0.99, top=0.96, bottom=0.07, wspace=0.06, hspace=0.04)
 
