@@ -877,7 +877,7 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
         list of descriptors for each data set e.g. '1x1'
 
     correlation : str
-        the type of correlation to use - 'pearsons' or 'spearman'
+        the type of correlation to use - 'pearsons', 'spearman' or 'both'
         Default is pearsons.
 
     Returns
