@@ -183,9 +183,9 @@ def davies_et_al_2019(sfr_surface_density_min, sfr_surface_density_max):
 
     return sfr_surface_density, vel_disp
 
-def kim_et_al_2020(sfr_surface_density_min, sfr_surface_density_max, scale_factor=1):
+def kim_et_al_2020_sigma_sfr(sfr_surface_density_min, sfr_surface_density_max, scale_factor=1):
     """
-    The trendline from Kim et al. (2020) where mass the loading factor is proportional
+    The trendline from Kim et al. (2020) where the mass loading factor is proportional
     to (SFR surface density)^-0.44
 
     Parameters
@@ -215,6 +215,72 @@ def kim_et_al_2020(sfr_surface_density_min, sfr_surface_density_max, scale_facto
     mlf = scale_factor*sfr_surface_density**-0.44
 
     return sfr_surface_density, mlf
+
+def kim_et_al_2020_sigma_sfr_log(log_sfr_surface_density_min, log_sfr_surface_density_max, height_500pc=False):
+    """
+    The trendline from Kim et al. (2020) where the mass loading factor is proportional
+    to (SFR surface density)^-0.44
+    log(eta) = -0.44 log(sigma_sfr) - 0.07
+
+    Parameters
+    ----------
+    log_sfr_surface_density_min : float
+        The minimum value of the logarithmic SFR surface density
+
+    log_sfr_surface_density_max : float
+        The maximum value of the logarithmic SFR surface density
+
+    Returns
+    -------
+    log_sfr_surface_density : :obj:'~numpy.ndarray'
+        vector of log SFR surface densities
+
+    log_mlf : :obj:'~numpy.ndarray'
+        vector of logarithmic mass loading factors following the trend
+    """
+    #create a vector for sfr surface density
+    log_sfr_surface_density = np.linspace(log_sfr_surface_density_min, log_sfr_surface_density_max, num=1000)
+
+    #use the relationship to predict the v_out
+    if height_500pc == True:
+        log_mlf = -0.48*log_sfr_surface_density - 0.26
+    else:
+        log_mlf = -0.44*log_sfr_surface_density - 0.07
+
+    return log_sfr_surface_density, log_mlf
+
+def kim_et_al_2020_sigma_mol_log(log_sigma_mol_min, log_sigma_mol_max, height_500pc=False):
+    """
+    The trendline from Kim et al. (2020) where the mass loading factor is proportional
+    to (molecular surface density)^-1.16
+    log(eta) = -0.16 log(sigma_mol) + 2.17
+
+    Parameters
+    ----------
+    log_sigma_mol_min : float
+        The minimum value of the logarithmic molecular surface density
+
+    log_sigma_mol_max : float
+        The maximum value of the logarithmic molecular surface density
+
+    Returns
+    -------
+    log_mol_surface_density : :obj:'~numpy.ndarray'
+        vector of log molecular surface densities
+
+    log_mlf : :obj:'~numpy.ndarray'
+        vector of logarithmic mass loading factors following the trend
+    """
+    #create a vector for sfr surface density
+    log_mol_surface_density = np.linspace(log_sigma_mol_min, log_sigma_mol_max, num=1000)
+
+    #use the relationship to predict the v_out
+    if height_500pc == True:
+        log_mlf = -1.27*log_mol_surface_density + 2.18
+    else:
+        log_mlf = -1.16*log_mol_surface_density + 2.17
+
+    return log_mol_surface_density, log_mlf
 
 
 #===============================================================================
@@ -451,7 +517,8 @@ def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_b
 
 def pearson_correlation(x, y):
     """
-    Calculate the Pearson correlation coefficient and p-value
+    Calculate the Pearson correlation coefficient and p-value.  This is a measure
+    of the linear correlation between two sets of data.
 
     Parameters
     ----------
@@ -476,7 +543,9 @@ def pearson_correlation(x, y):
 
 def spearman_coefficient(x, y):
     """
-    Calculate the Spearman correlation coefficient and p-value
+    Calculate Spearman's rank correlation coefficient and p-value.  This is a
+    nonparametric measure of the strength and direction of association that
+    exists between two variables.
 
     Parameters
     ----------
