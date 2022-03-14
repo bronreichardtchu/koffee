@@ -1176,7 +1176,7 @@ def plot_out_vel_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_res
 
     #create BIC diff
     BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_strong = (BIC_diff < -50)
+    BIC_diff_strong = (BIC_diff < -2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
@@ -1377,7 +1377,7 @@ def plot_out_vel_disp_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflo
 
     #create BIC diff
     BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_strong = (BIC_diff < -50)
+    BIC_diff_strong = (BIC_diff < -2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
@@ -1768,7 +1768,7 @@ def plot_vel_diff_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     #create BIC diff
     BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_strong = (BIC_diff < -50)
+    BIC_diff_strong = (BIC_diff < -2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius

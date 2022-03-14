@@ -36,6 +36,7 @@ import cmasher as cmr
 
 from scipy.optimize import curve_fit
 from scipy.signal import argrelextrema
+from scipy.ndimage import gaussian_filter
 
 from astropy.wcs import WCS
 from astropy import units as u
@@ -55,7 +56,7 @@ import koffee
 
 import importlib
 importlib.reload(pf)
-importlib.reload(calc_sfr)
+importlib.reload(calc_outvel)
 #importlib.reload(bdpk)
 
 
@@ -64,10 +65,10 @@ importlib.reload(calc_sfr)
 # PLOTTING FUNCTIONS - for paper
 #===============================================================================
 #Figure 1
-def plot_compare_fits(lamdas, data, var, spaxels, z):
+def plot_compare_fits(lamdas, data, var, spaxels, z, use_lmfit_bic=False):
     """
     Plots the normalised single and double gaussian fits for the OIII 5007 line
-    using a list of spaxels.  (Used spaxels [[19, 7], [28, 12], [35, 10]] for the
+    using a list of spaxels.  (Used spaxels [[35, 12], [28, 12], [35, 10]] for the
     paper.)
 
     Parameters
@@ -83,6 +84,10 @@ def plot_compare_fits(lamdas, data, var, spaxels, z):
 
     z : float
         redshift
+
+    use_lmfit_bic : boolean
+        Whether to use lmfit's definition of the BIC, or the actual definition.
+        Default is False.
 
     Returns
     -------
@@ -126,16 +131,28 @@ def plot_compare_fits(lamdas, data, var, spaxels, z):
         bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, weights=weights, verbose=False)
 
         #find the significance level using the BIC difference
-        BIC_diff = bestfit1.bic - bestfit2.bic
-        print(BIC_diff)
-        if 10 < BIC_diff <= 30:
-            significance_level = 'weakly likely\n10 < $\delta_{BIC}$ < 30'
-        elif 30 < BIC_diff <= 50:
-            significance_level = 'moderately likely\n30 < $\delta_{BIC}$ < 50'
-        elif 50 < BIC_diff:
-            significance_level = 'strongly likely\n$\delta_{BIC}$ > 50'
-        else:
-            significance_level = str(BIC_diff)
+        if use_lmfit_bic == True:
+            BIC_diff = bestfit1.bic - bestfit2.bic
+            print(BIC_diff)
+            if 10 < BIC_diff <= 30:
+                significance_level = 'weakly likely\n10 < $\delta_{BIC}$ < 30'
+            elif 30 < BIC_diff <= 50:
+                significance_level = 'moderately likely\n30 < $\delta_{BIC}$ < 50'
+            elif 50 < BIC_diff:
+                significance_level = 'strongly likely\n$\delta_{BIC}$ > 50'
+            else:
+                significance_level = str(BIC_diff)
+        elif use_lmfit_bic == False:
+            BIC_diff = koffee.calc_BIC(lam_OIII, flux, weights, bestfit1) - koffee.calc_BIC(lam_OIII, flux, weights, bestfit2)
+            print(BIC_diff)
+            if 500 < BIC_diff <= 1000:
+                significance_level = 'weakly likely\n500 < $\delta_{BIC}$ < 1000'
+            elif 1000 < BIC_diff <= 2000:
+                significance_level = 'moderately likely\n1000 < $\delta_{BIC}$ < 2000'
+            elif 2000 < BIC_diff:
+                significance_level = 'strongly likely\n$\delta_{BIC}$ > 2000'
+            else:
+                significance_level = str(BIC_diff)
 
         #get the value to normalise by
         max_value = np.nanmax(flux)
@@ -151,7 +168,7 @@ def plot_compare_fits(lamdas, data, var, spaxels, z):
         ax[0,i].step(lam_OIII[plotting_mask], flux[plotting_mask]/max_value, where='mid', c='k')
         ax[0,i].plot(fine_sampling[plotting_mask2], bestfit1.eval(x=fine_sampling[plotting_mask2])/max_value, c=colours[0], ls='--')#, lw=1)
 
-        ax[1,i].fill_between(lam_OIII[plotting_mask], np.sqrt(var_this_spaxel[plotting_mask])/max_value, -np.sqrt(var_this_spaxel[plotting_mask])/max_value, alpha=0.5, color='grey')
+        ax[1,i].fill_between(lam_OIII[plotting_mask], np.sqrt(var_this_spaxel[plotting_mask])/max_value, -np.sqrt(var_this_spaxel[plotting_mask])/max_value, alpha=0.5, color='grey', label='Error spectrum')
         ax[1,i].axhline(0, c='grey', lw=1)
 
         ax[1,i].step(lam_OIII[plotting_mask], flux[plotting_mask]/max_value, where='mid', c='k', label='Data')
@@ -159,7 +176,7 @@ def plot_compare_fits(lamdas, data, var, spaxels, z):
         ax[1,i].plot(fine_sampling[plotting_mask2], bestfit2.components[1].eval(bestfit2.params, x=fine_sampling[plotting_mask2])/max_value, c=colours[2], label='Broad component')
         ax[1,i].plot(fine_sampling[plotting_mask2], bestfit2.eval(x=fine_sampling[plotting_mask2])/max_value, c=colours[0], ls='--', label='Bestfit')
 
-        ax[1,i].set_xlabel('Wavelength ($\AA$)')
+        ax[1,i].set_xlabel('Wavelength [$\mathrm{\AA}$]')
         ax[0,i].set_title(significance_level, fontsize='medium')
 
         if i == 0:
@@ -207,7 +224,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
     spaxel : list
         the spaxel of the emission line which will be fit for the third panel,
         this is usually chosen to be one of the spaxels for which not doing
-        KOFFEE's checks means the fit is an unlikely one. e.g. [33, 5]
+        KOFFEE's checks means the fit is an unlikely one. e.g. [34, 6]
 
     z : float
         redshift
@@ -290,9 +307,10 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
     #mask the data to get the flux
     flux = data[OIII_mask, spaxel[0], spaxel[1]]
+    var_this_spaxel = var[OIII_mask, spaxel[0], spaxel[1]]
 
     #mask the variance to get the weights
-    weights = 1/np.sqrt(var[OIII_mask, spaxel[0], spaxel[1]])
+    weights = 1/np.sqrt(var_this_spaxel)
 
     #fit the data with double gaussian
     gmodel2, pars2 = kff.gaussian2_const(lam_OIII, flux)
@@ -359,6 +377,8 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
 
     #plot the example of a bad fit
+    ax[2].fill_between(lam_OIII[plotting_mask], np.sqrt(var_this_spaxel[plotting_mask])/max_value, -np.sqrt(var_this_spaxel[plotting_mask])/max_value, alpha=0.5, color='grey', label='Error spectrum')
+    ax[2].axhline(0, c='grey', lw=1)
     ax[2].step(lam_OIII[plotting_mask], flux[plotting_mask]/max_value, where='mid', c='k', label='Data')
     ax[2].plot(fine_sampling[plotting_mask2], bestfit2.components[0].eval(bestfit2.params, x=fine_sampling[plotting_mask2])/max_value, c=colours[1], label='Narrow component')
     ax[2].plot(fine_sampling[plotting_mask2], bestfit2.components[1].eval(bestfit2.params, x=fine_sampling[plotting_mask2])/max_value, c=colours[2], label='Broad component')
@@ -366,7 +386,7 @@ def plot_hist_out_vel_flux(outflow_results, outflow_error, outflow_results_unfix
 
     ax[2].xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
 
-    ax[2].set_xlabel('Wavelength ($\AA$)')
+    ax[2].set_xlabel('Wavelength [$\mathrm{\AA}$]')
     ax[2].legend(fontsize='x-small', frameon=False, loc='upper left')
     ax[2].set_ylabel('Normalised Flux')
     #ax[0,i].set_ylim(-0.05, 0.75)
@@ -446,7 +466,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     """
     #calculate the outflow velocity
-    vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z)
+    vel_disp, vel_disp_err, vel_diff, vel_diff_err, vel_out, vel_out_err = calc_outvel.calc_outflow_vel(OIII_outflow_results, OIII_outflow_error, statistical_results, z, sigma_lsf=41.9)
 
     #calculate the sfr surface density - using just the systemic line, and including the flux line
     #don't include extinction since this was included in the continuum subtraction using ppxf
@@ -454,6 +474,9 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
     #get the sfr for the outflow spaxels
     flow_mask = (statistical_results>0) #& (sfr_surface_density>0.1)
+
+    #BIC_diff = BIC_no_outflow - BIC_outflow
+    #flow_mask = (statistical_results>0) & (BIC_diff>500)
 
     #flatten all the arrays and get rid of extra spaxels
     sig_sfr = sfr_surface_density[flow_mask]
@@ -466,10 +489,16 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     radius = radius[flow_mask]
 
     #create BIC diff
-    BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_weak = (BIC_diff < -10) & (BIC_diff >= -30)
-    BIC_diff_moderate = (BIC_diff < -30) & (BIC_diff >= -50)
-    BIC_diff_strong = (BIC_diff < -50)
+    #BIC_diff = BIC_outflow - BIC_no_outflow
+    #original boundaries:
+    #BIC_diff_weak = (BIC_diff < -10) & (BIC_diff >= -30)
+    #BIC_diff_moderate = (BIC_diff < -30) & (BIC_diff >= -50)
+    #BIC_diff_strong = (BIC_diff < -50)
+    #new boundaries:
+    BIC_diff = BIC_no_outflow - BIC_outflow
+    BIC_diff_weak = (BIC_diff > 500) & (BIC_diff <= 1000)
+    BIC_diff_moderate = (BIC_diff > 1000) & (BIC_diff <= 2000)
+    BIC_diff_strong = (BIC_diff > 2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
@@ -652,7 +681,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0].set_ylabel('Maximum Outflow Velocity [km s$^{-1}$]')
     #ax[0].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[0].set_title('S/N > 20 and $\delta_{BIC}$>10')
+    ax[0].set_title('S/N > 20')# and $\delta_{BIC}$>10')
 
 
 
@@ -682,7 +711,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     lgnd = ax[1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1].set_xlabel('Log $\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[1].set_title(r'$r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
 
 
@@ -716,7 +745,7 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
     lgnd = ax[2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     #ax[2].set_xlabel('$\Sigma_{SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
-    ax[2].set_title('strongly likely BIC $\delta_{BIC}$>50')
+    ax[2].set_title('strongly likely BIC')
 
     plt.show()
 
@@ -725,79 +754,79 @@ def plot_sfr_vout(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_result
 
 #Figure 5
 outflow_velocity_fits_files = [
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_2_by_1/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_1/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_1/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_1/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_2/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_2/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_3/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_2/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_6_by_2/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_7_by_2/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_8_by_2/IRAS08_outflow_velocity.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_9_by_2/IRAS08_outflow_velocity.fits']
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_resolved/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_2_by_1/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_1/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_4_by_1/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_5_by_1/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_4_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_3/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_5_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_6_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_7_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_8_by_2/IRAS08_outflow_velocity.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_9_by_2/IRAS08_outflow_velocity.fits']
 
 outflow_dispersion_fits_files = [
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_2_by_1/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_1/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_1/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_1/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_2/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_2/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_3/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_2/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_6_by_2/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_7_by_2/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_8_by_2/IRAS08_outflow_velocity_dispersion.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_9_by_2/IRAS08_outflow_velocity_dispersion.fits']
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_resolved/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_2_by_1/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_1/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_4_by_1/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_5_by_1/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_4_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_3/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_5_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_6_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_7_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_8_by_2/IRAS08_outflow_velocity_dispersion.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_9_by_2/IRAS08_outflow_velocity_dispersion.fits']
 
 sig_sfr_fits_files = [
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_2_by_1/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_1/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_1/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_1/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_2/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_2/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_3/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_2/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_6_by_2/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_7_by_2/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_8_by_2/IRAS08_star_formation_rate_surface_density.fits',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_9_by_2/IRAS08_star_formation_rate_surface_density.fits']
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_resolved/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_2_by_1/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_1/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_4_by_1/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_5_by_1/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_4_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_3/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_5_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_6_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_7_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_8_by_2/IRAS08_star_formation_rate_surface_density.fits',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_9_by_2/IRAS08_star_formation_rate_surface_density.fits']
 
 chi_square_text_files = [
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_2_by_1/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_1/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_1/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_1/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_3/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_6_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_7_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_8_by_2/IRAS08_chi_squared_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_9_by_2/IRAS08_chi_squared_OIII_4.txt']
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_resolved/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_2_by_1/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_1/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_4_by_1/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_5_by_1/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_4_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_3/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_5_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_6_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_7_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_8_by_2/IRAS08_chi_squared_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_9_by_2/IRAS08_chi_squared_OIII_4.txt']
 
 statistical_results_text_files = [
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_2_by_1/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_1/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_1/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_1/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_4_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_3_by_3/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_5_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_6_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_7_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_8_by_2/IRAS08_stat_results_OIII_4.txt',
-    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_binned_9_by_2/IRAS08_stat_results_OIII_4.txt']
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_resolved/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_2_by_1/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_1/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_4_by_1/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_5_by_1/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_4_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_3_by_3/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_5_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_6_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_7_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_8_by_2/IRAS08_stat_results_OIII_4.txt',
+    '../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2022-01-28_binned_9_by_2/IRAS08_stat_results_OIII_4.txt']
 
 data_fits_files = [
     '../../../data/IRAS08/IRAS08_red_cubes/IRAS08339_metacube.fits',
@@ -848,7 +877,7 @@ def plot_sfr_vout_correlation_with_binning_from_file(outflow_velocity_fits_files
         list of descriptors for each data set e.g. '1x1'
 
     correlation : str
-        the type of correlation to use - 'pearsons' or 'spearman'
+        the type of correlation to use - 'pearsons', 'spearman' or 'both'
         Default is pearsons.
 
     Returns
@@ -1188,7 +1217,8 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     #create BIC diff
     BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_strong = (BIC_diff < -50)
+    #BIC_diff_strong = (BIC_diff < -50)
+    BIC_diff_strong = (BIC_diff < -2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
@@ -1350,7 +1380,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[1,0].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_all_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_all_medians[0], np.sqrt(np.diag(pcov_mlf_all_medians))[0], popt_mlf_all_medians[1], np.sqrt(np.diag(pcov_mlf_all_medians))[1]))
 
     #put the errorbars on the plot
-    ax[1,0].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong]-0.7), xerr=np.nanmedian(sig_sfr_err_log), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
+    ax[1,0].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong]), xerr=np.nanmedian(sig_sfr_err_log), yerr=[[np.nanmedian(mlf_err_min)], [np.nanmedian(mlf_err_max)]], c='k')
 
     if xlim_vals:
         ax[1,0].set_xlim(xlim_vals[0], xlim_vals[1])
@@ -1360,6 +1390,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         xlim_vals = [np.nanmin(sig_sfr)-0.002, np.nanmax(sig_sfr)+2.0]
 
     #ax[1,0].set_ylim((np.nanmin(mlf[BIC_diff_strong]-0.3)+np.nanmedian(mlf_err_max)-0.1), np.nanmax(mlf)+0.8)
+    ax[1,0].set_ylim(-1.7, 1.2)
     lgnd = ax[1,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[1,0].set_ylabel(r'Log($\eta (\frac{500~\rm pc}{R_{\rm out}})$)')
@@ -1384,7 +1415,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[1,1].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_physical_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_physical_medians[0], np.sqrt(np.diag(pcov_mlf_physical_medians))[0], popt_mlf_physical_medians[1], np.sqrt(np.diag(pcov_mlf_physical_medians))[1]))
 
     #put the errorbar on the plot
-    ax[1,1].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong])-0.7, xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
+    ax[1,1].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong]), xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=[[np.nanmedian(mlf_err_min[physical_mask])], [np.nanmedian(mlf_err_max[physical_mask])]], c='k')
 
     lgnd = ax[1,1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
@@ -1409,7 +1440,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[1,2].plot(sfr_logspace, np.log10(pf.fitting_function(sfr_linspace, *popt_mlf_strong_medians)), 'r--', label='Median Fit: $\eta=%5.0f\pm$%2.0f $\Sigma_{SFR}^{%5.2f \pm %5.2f}$' %(popt_mlf_strong_medians[0], np.sqrt(np.diag(pcov_mlf_strong_medians))[0], popt_mlf_strong_medians[1], np.sqrt(np.diag(pcov_mlf_strong_medians))[1]))
 
     #put the errorbar on the plot
-    ax[1,2].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong])-0.7, xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
+    ax[1,2].errorbar(np.log10(0.02), np.nanmin(mlf[BIC_diff_strong]), xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=[[np.nanmedian(mlf_err_min[BIC_diff_strong])], [np.nanmedian(mlf_err_max[BIC_diff_strong])]], c='k')
 
     lgnd = ax[1,2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
@@ -1426,17 +1457,18 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[0,0].errorbar(np.log10(bin_center_all), flux_bin_medians_all, yerr=flux_bin_stdev_all, ms=5, lw=3, capsize=3.0, label='Median all KOFFEE fits; R={:.2f}'.format(r_flux_med_all), color=colours[0])
 
     #put the error bars on the plot
-    ax[0,0].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])-0.5, xerr=np.nanmedian(sig_sfr_err_log), yerr=np.nanmedian(flux_error[flux_error<50]), c='k')
+    ax[0,0].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong]+0.2), xerr=np.nanmedian(sig_sfr_err_log), yerr=np.nanmedian(flux_error[flux_error<50]), c='k')
 
     #calculate the median absolute deviation of the flux ratio
     #flux_ratio_mad = np.nanmedian(abs(flux_ratio - np.nanmedian(flux_ratio)))
     #ax[0,0].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong]), yerr=flux_ratio_mad, c='gray', capsize=5)
 
     #ax[0,0].set_ylim((np.nanmin(flux_ratio)+np.nanmedian(flux_error)-0.1), np.nanmax(flux_ratio)+0.6)
+    ax[0,0].set_ylim(-2.1, 0.5)
     lgnd = ax[0,0].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
     ax[0,0].set_ylabel(r'H$\beta$ Log(F$_{\rm broad}$/F$_{\rm narrow}$)')
-    ax[0,0].set_title('S/N > 20 and $\delta_{BIC}$>10')
+    ax[0,0].set_title('S/N > 20')# and $\delta_{BIC}$>10')
 
 
 
@@ -1449,7 +1481,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[0,1].errorbar(np.log10(bin_center_physical), flux_bin_medians_physical, yerr=flux_bin_stdev_physical, ms=5, lw=3, capsize=3.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_physical), color=colours[1])
 
     #put the errorbars on the plot
-    ax[0,1].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])-0.5, xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=np.nanmedian(flux_error[physical_mask]), c='k')
+    ax[0,1].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])+0.2, xerr=np.nanmedian(sig_sfr_err_log[physical_mask]), yerr=np.nanmedian(flux_error[physical_mask]), c='k')
 
     #calculate the median absolute deviation of the flux ratio
     #flux_ratio_mad = np.nanmedian(abs(flux_ratio[physical_mask] - np.nanmedian(flux_ratio[physical_mask])))
@@ -1457,7 +1489,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     lgnd = ax[0,1].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[0,1].set_title(r'$\delta_{BIC}$>10, $r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$')
+    ax[0,1].set_title(r'$r$<$r_{85}$ and $\sigma_{broad}$>$\sigma_{inst}$')
 
 
 
@@ -1470,7 +1502,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
         ax[0,2].errorbar(np.log10(bin_center_strong), flux_bin_medians_strong, yerr=flux_bin_stdev_strong, ms=5, lw=3, capsize=5.0, label='Median of selected KOFFEE fits; R={:.2f}'.format(r_flux_med_strong), color=colours[2])
 
     #put the errorbars on the plot
-    ax[0,2].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])-0.5, xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=np.nanmedian(flux_error[BIC_diff_strong]), c='k')
+    ax[0,2].errorbar(np.log10(0.02), np.nanmin(flux_ratio[BIC_diff_strong])+0.2, xerr=np.nanmedian(sig_sfr_err_log[BIC_diff_strong]), yerr=np.nanmedian(flux_error[BIC_diff_strong]), c='k')
 
     #calculate the median absolute deviation of the flux ratio
     #flux_ratio_mad = np.nanmedian(abs(flux_ratio[BIC_diff_strong] - np.nanmedian(flux_ratio[BIC_diff_strong])))
@@ -1478,7 +1510,7 @@ def plot_sfr_mlf_flux(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_re
 
     lgnd = ax[0,2].legend(frameon=True, fontsize='small', loc='upper right', framealpha=0.5, edgecolor=None)
     #lgnd.legendHandles[0]._legmarker.set_markersize(3)
-    ax[0,2].set_title('strongly likely BIC $\delta_{BIC}$>50')
+    ax[0,2].set_title('strongly likely BIC')
 
     plt.subplots_adjust(left=0.08, right=0.99, top=0.96, bottom=0.07, wspace=0.06, hspace=0.04)
 
@@ -1895,207 +1927,135 @@ def maps_of_IRAS08(halpha_fits_file, fuv_fits_file, f550m_fits_file, outflow_vel
 
     plt.subplots_adjust(left=0.0, right=0.96, top=0.99, bottom=0.0, wspace=0.1, hspace=0.0)
 
-    plt.show()
+    #plt.show()
+    plt.savefig('../../../code_outputs/koffee_results_IRAS08/IRAS08koffee_results_OIII_4_2021-10-18_resolved/fig_maps_9panel_convolved.png')
 
 
-def maps_of_IRAS08_OIII(fuv_fits_file, outflow_velocity_fits_file, flux_ratio_fits_file, radius):
+def maps_of_IRAS08_OIII(data_cube, flux_cube, stat_res, radius, z):
     """"
-    Maps the results for IRAS08 and some flux distributions from fits files
+    Maps the OIII flux
 
     Parameters
     ----------
-    fuv_fits_file : string
-        location of the fits file with the FUV flux
+    data_cube : string
+        location of the fits file with the galaxy data cube
 
-    outflow_velocity_fits_file : string
-        location of the fits file with the outflow velocity measured with KOFFEE
-        (must be same shape as statistical_results)
-
-    flux_ratio_fits_file : string
-        location of the fits file with the broad-to-narrow flux ratio measured
-        with KOFFEE (must be same shape as statistical_results)
+    flux_cube : string
+        location of a flux fits file - mostly just for the 2D WCS
 
     radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
+    z : float
+        the redshift of the galaxy
+
     Returns
     -------
-    A three-panel figure with the maps of flux from different emission lines and
-    continuum areas, and maps of the results from KOFFEE
+    A one-panel figure with the maps of flux from OIII 5007
     """
     #read in fits files
+    lamdas, data, var, header = pc.load_data(data_cube, mw_correction=False)
+
+    #read in fits file with wcs
     #need to shift the IRAS08 KCWI data to match the WCS with the HST data
-    fuv_data, fuv_header, fuv_wcs = pf.read_in_create_wcs(fuv_fits_file)
-    vel_out, vel_out_header, vel_out_wcs = pf.read_in_create_wcs(outflow_velocity_fits_file, shift=['CRPIX2', 32.0])
-    flux_ratio, flux_ratio_header, flux_ratio_wcs = pf.read_in_create_wcs(flux_ratio_fits_file, shift=['CRPIX2', 32.0])
+    data, header, wcs = pf.read_in_create_wcs(data_cube, shift=['CRPIX2', 32.0])
 
-    #take the log of the velocity and the flux ratio
-    vel_out = np.log10(vel_out)
-    flux_ratio = np.log10(flux_ratio)
+    flux_data, flux_header, flux_wcs = pf.read_in_create_wcs(flux_cube, shift=['CRPIX2', 32.0])
 
-    #creating the x and y limits
-    xlim = [4, 16]
-    ylim = [2, 58]
+    #plot limits
+    #xlim = [4, 16]
+    #ylim = [2, 58]
+    xlim = [1, 16]
+    ylim = [1, 58]
 
-    kcwi_low_lim = vel_out_wcs.all_pix2world(xlim[0], ylim[0], 0)
-    kcwi_high_lim = vel_out_wcs.all_pix2world(xlim[1], ylim[1], 0)
-    print('Limits')
-    print(kcwi_low_lim)
-    print(kcwi_high_lim)
+    #turn stat_res into s/n mask thing for contour
+    sn_mask = np.zeros_like(stat_res)
+    sn_mask[stat_res>-1] = 1
 
-    kcwi_low_lim_fuv = fuv_wcs.all_world2pix(kcwi_low_lim[0], kcwi_low_lim[1], 0)
-    kcwi_high_lim_fuv = fuv_wcs.all_world2pix(kcwi_high_lim[0], kcwi_high_lim[1], 0)
-    print(kcwi_low_lim_fuv)
-    print(kcwi_high_lim_fuv)
+
+    #filter it with a gaussian filter
+    sigma = [header['CD2_1']*3600/10, header['CD1_2']*3600/10]
+    sn_mask = gaussian_filter(sn_mask, sigma, mode='constant')
+
+    #take the sum of the area around OIII 5007
+    OIII_mask = (lamdas > 5007*(1+z)-5.0) & (lamdas < 5007*(1+z)+5.0)
+    OIII_flux = np.nansum(data[OIII_mask,:,:], axis=0)
+
+    #take the log of the flux
+    OIII_flux = np.log10(OIII_flux)
 
 
     #find the peak of the OIII flux and convert to wcs
     print('Max flux ratio')
-    OIII_peak_pixel = np.argwhere(flux_ratio==np.nanmax(flux_ratio[radius<6.1]))
+    OIII_peak_pixel = np.argwhere(OIII_flux==np.nanmax(OIII_flux[radius<6.1]))
     print(OIII_peak_pixel)
 
-    OIII_local_maxima_pixel = argrelextrema(flux_ratio[radius<6.1], np.greater)
+    OIII_local_maxima_pixel = argrelextrema(OIII_flux[radius<6.1], np.greater)
     #OIII_max_local_maxima_pixel = np.argwhere(flux_ratio==np.nanmax(flux_ratio[radius<6.1][OIII_local_maxima_pixel]))
-    OIII_max_local_maxima_pixel = np.argwhere(flux_ratio==np.sort(flux_ratio[radius<6.1][OIII_local_maxima_pixel])[-2])
+    OIII_max_local_maxima_pixel = np.argwhere(OIII_flux==np.sort(OIII_flux[radius<6.1][OIII_local_maxima_pixel])[-2])
 
-    OIII_peak_world = flux_ratio_wcs.all_pix2world(OIII_peak_pixel[0,1], OIII_peak_pixel[0,0], 0)
+    OIII_peak_world = flux_wcs.all_pix2world(OIII_peak_pixel[0,1], OIII_peak_pixel[0,0], 0)
     print(OIII_peak_world)
 
-    OIII_peak_fuv_pixel = fuv_wcs.all_world2pix(OIII_peak_world[0], OIII_peak_world[1], 0)
-    print(OIII_peak_fuv_pixel)
-
-    OIII_local_max_world = vel_out_wcs.all_pix2world(OIII_max_local_maxima_pixel[0,1], OIII_max_local_maxima_pixel[0,0], 0)#, 0)
+    OIII_local_max_world = flux_wcs.all_pix2world(OIII_max_local_maxima_pixel[0,1], OIII_max_local_maxima_pixel[0,0], 0)#, 0)
     print(OIII_local_max_world)
 
-    OIII_local_max_fuv_pixel = fuv_wcs.all_world2pix(OIII_local_max_world[0], OIII_local_max_world[1], 0)
-    print(OIII_local_max_fuv_pixel)
+    #calculate the beginning and end of 6.1 arcsec (r_90)
+    r90_pixel_length = abs(6.1/(header['CD1_2']*60*60))
 
-    #find the peak of the outflow velocity and convert to wcs
-    print('Max outflow velocity')
-    outvel_peak_pixel = np.argwhere(vel_out==np.nanmax(vel_out[radius<6.1]))
-    print(outvel_peak_pixel)
+    start_r90_xpixel = OIII_peak_pixel[0][1]
+    start_r90_ypixel = 1.5
+    end_r90_xpixel = start_r90_xpixel + r90_pixel_length
 
-    outvel_local_maxima_pixel = argrelextrema(vel_out[radius<6.1], np.greater)
-    #outvel_max_local_maxima_pixel = np.argwhere(vel_out==np.nanmax(vel_out[outvel_local_maxima_pixel]))
-    outvel_max_local_maxima_pixel = np.argwhere(vel_out==np.sort(vel_out[radius<6.1][outvel_local_maxima_pixel])[-2])
+    #calculate the beginning and end of 2.6 arcsec (r_50)
+    r50_pixel_length = abs(2.6/(header['CD1_2']*60*60))
 
-    out_vel_peak_world = vel_out_wcs.all_pix2world(outvel_peak_pixel[0,1], outvel_peak_pixel[0,0], 0)#, 0)
-    print(out_vel_peak_world)
-
-    out_vel_peak_fuv_pixel = fuv_wcs.all_world2pix(out_vel_peak_world[0], out_vel_peak_world[1], 0)
-    print(out_vel_peak_fuv_pixel)
-
-    out_vel_local_max_world = vel_out_wcs.all_pix2world(outvel_max_local_maxima_pixel[0,1], outvel_max_local_maxima_pixel[0,0], 0)#, 0)
-    print(out_vel_local_max_world)
-
-    out_vel_local_max_fuv_pixel = fuv_wcs.all_world2pix(out_vel_local_max_world[0], out_vel_local_max_world[1], 0)
-    print(out_vel_local_max_fuv_pixel)
-
-
-
-    #calculate the beginning and end of 5 arcsec
-    fuv_5arcsec_pixel_length = abs(5/(fuv_header['CD1_1']*60*60))
-
-    fuv_start_5_arcsec_xpixel = kcwi_high_lim_fuv[0]+20
-    fuv_start_5_arcsec_ypixel = kcwi_low_lim_fuv[1]+40
-    fuv_end_5_arcsec_xpixel = kcwi_high_lim_fuv[0]+20+fuv_5arcsec_pixel_length
-
-    fuv_start_5_arcsec_world = fuv_wcs.all_pix2world(fuv_start_5_arcsec_xpixel, fuv_start_5_arcsec_ypixel, 0)
-    fuv_end_5_arcsec_world = fuv_wcs.all_pix2world(fuv_end_5_arcsec_xpixel, fuv_start_5_arcsec_ypixel, 0)
-
+    start_r50_xpixel = OIII_peak_pixel[0][1] + r90_pixel_length - r50_pixel_length
+    start_r50_ypixel = 3
+    end_r50_xpixel = start_r50_xpixel + r50_pixel_length
 
 
     #create the figure
     plt.rcParams.update(pf.get_rc_params())
 
-    plt.figure(figsize=(10,3))#constrained_layout=True)
+    plt.figure(figsize=(4,4))#constrained_layout=True)
 
     #do the plotting
 
     #this arrow works!
     #ax1.arrow(m_out_peak_halpha_pixel[0]-55, m_out_peak_halpha_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
 
-    ax1 = plt.subplot(131, projection=fuv_wcs)
-    ax1.set_facecolor('black')
-    #do the plotting
-    fuv_map = ax1.imshow(np.log10(fuv_data), origin='lower', cmap=cmr.ember, vmin=-3, vmax=-0.75)
-    ax1.hlines(fuv_start_5_arcsec_xpixel, fuv_start_5_arcsec_ypixel, fuv_end_5_arcsec_xpixel, colors='white')
-    ax1.text(fuv_start_5_arcsec_xpixel+10, fuv_start_5_arcsec_ypixel+10, '5" ', c='white')
-    #ax1.scatter(OIII_peak_fuv_pixel[0], OIII_peak_fuv_pixel[1], c='white', marker='x', s=20)
-    #ax1.scatter(OIII_local_max_fuv_pixel[0], OIII_local_max_fuv_pixel[1], c='white', marker='o', s=20)
-    #ax1.scatter(out_vel_peak_fuv_pixel[0], out_vel_peak_fuv_pixel[1], c='grey', marker='x', s=20)
-    #ax1.scatter(out_vel_local_max_fuv_pixel[0], out_vel_local_max_fuv_pixel[1], c='grey', marker='o', s=20)
-    #ax1.scatter(mlf_peak_fuv_pixel[0], mlf_peak_fuv_pixel[1], c='white', marker='x', s=20)
-    #ax1.arrow(m_out_peak_fuv_pixel[0]-55, m_out_peak_fuv_pixel[1]+55, 50, -50, width=5, length_includes_head=True, color='white')
-    #ax1.arrow(m_out_peak_fuv_pixel[0]-50, m_out_peak_fuv_pixel[1]-50, 50, 50, width=5, length_includes_head=True, color='white')
+    ax1 = plt.subplot(111, projection=flux_wcs, slices=('y', 'x'))
+    flux_spax = ax1.imshow(OIII_flux.T, origin='lower', aspect=header['CD2_1']/header['CD1_2'], cmap=cmr.gem, vmin=-0.5, vmax=3.0)
+    ax1.contour(sn_mask.T, levels=0, origin='lower', colors='white')
+
+    ax1.hlines(start_r90_ypixel, start_r90_xpixel, end_r90_xpixel, colors='white')
+    ax1.text(end_r90_xpixel, start_r90_ypixel+0.5, '$r_{90}$ = 2.4 kpc ', c='white')
+    ax1.hlines(start_r50_ypixel, start_r50_xpixel, end_r50_xpixel, colors='white')
+    ax1.text(end_r50_xpixel, start_r50_ypixel+0.5, '$r_{50}$ = 1 kpc ', c='white')
+
+    ax1.grid(False)
+    ax1.coords.grid(False)
     lon1 = ax1.coords[0]
     lat1 = ax1.coords[1]
     #lon1.set_ticks_visible(False)
-    lon1.set_ticklabel_visible(False)
-    lon1.tick_params(colors='white')
+    #lon1.set_ticklabel_visible(False)
     #lat1.set_ticks_visible(False)
-    lat1.tick_params(colors='white')
-    lat1.set_ticklabel_visible(False)
-    ax1.set_title('FUV flux')
-    ax1.set_xlim(kcwi_high_lim_fuv[0], kcwi_low_lim_fuv[0])
-    ax1.set_ylim(kcwi_low_lim_fuv[1], kcwi_high_lim_fuv[1])
-    divider = make_axes_locatable(ax1)
-    cax = divider.append_axes("left", size="20%", pad=0.1)
-    cax.axis('off')
+    #lat1.set_ticklabel_visible(False)
+    ax1.set_xlim(ylim[0], ylim[1])
+    ax1.set_ylim(xlim[0], xlim[1])
+    ax1.invert_xaxis()
 
-    ax2 = plt.subplot(132, projection=flux_ratio_wcs, slices=('y', 'x'))
-    flux_ratio_spax = ax2.imshow(flux_ratio.T, origin='lower', aspect=flux_ratio_header['CD2_1']/flux_ratio_header['CD1_2'], cmap=cmr.gem, vmin=-1.5, vmax=0.1)
-    #ax2.hlines(ymin+0.75, xmin+4, xmin+4+koffee_10arcsec_pixel_length, colors='black')
-    #ax2.hlines(koffee_start_10_arcsec_pixel[1], koffee_start_10_arcsec_pixel[0], koffee_end_10_arcsec_pixel[0], colors='black')
-    #ax2.text(low_lim_rad[0]-5, high_lim_rad[1]-5, '[OIII]', c='black')
-    ax2.grid(False)
-    ax2.coords.grid(False)
-    lon2 = ax2.coords[0]
-    lat2 = ax2.coords[1]
-    #lon2.set_ticks_visible(False)
-    #lon2.set_ticklabel_visible(False)
-    #lat2.set_ticks_visible(False)
-    #lat2.set_ticklabel_visible(False)
+    #ax1.set_title(r'Log([OIII] Flux)')
+    cbar = plt.colorbar(flux_spax, ax=ax1)#, shrink=0.8)
+    cbar.set_label(r'Log($10^{-16}$ erg s$^{-1}$ cm$^{-2}$)')
 
-    ax2.set_xlim(ylim[0], ylim[1])
-    ax2.set_ylim(xlim[0], xlim[1])
-    ax2.invert_xaxis()
-
-    ax2.set_title(r'Log([OIII] F$_{broad}$/F$_{narrow}$)')
-    cbar = plt.colorbar(flux_ratio_spax, ax=ax2, shrink=0.8)
-
-
-
-
-
-    ax3 = plt.subplot(133, projection=vel_out_wcs, slices=('y', 'x'))
-    #outvel_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, vel_out, angle=360, axes=ax3, cmap=cmr.gem, vmin=2.2, vmax=2.65)
-    outvel_spax = ax3.imshow(vel_out.T, origin='lower', aspect=vel_out_header['CD2_1']/vel_out_header['CD1_2'], cmap=cmr.gem, vmin=2.3, vmax=2.65)
-    #ax3.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
-    #ax3.arrow(out_vel_peak_[0], out_vel_peak_world[1], 5, 5, color='k')
-    ax3.grid(False)
-    ax3.coords.grid(False)
-    #ax3.get_xaxis().set_visible(False)
-    #ax3.get_yaxis().set_visible(False)
-    lon3 = ax3.coords[0]
-    lat3 = ax3.coords[1]
-    #lon3.set_ticks_visible(False)
-    #lon3.set_ticklabel_visible(False)
-    #lat3.set_ticks_visible(False)
-    #lat3.set_ticklabel_visible(False)
-
-    ax3.set_xlim(ylim[0], ylim[1])
-    ax3.set_ylim(xlim[0], xlim[1])
-    ax3.invert_xaxis()
-    ax3.set_title(r'Log($v_{out}$)')
-    cbar = plt.colorbar(outvel_spax, ax=ax3, shrink=0.8)
-    cbar.set_label('Log(km s$^{-1}$)')
-
-
-
-    plt.subplots_adjust(left=0.0, right=0.97, top=0.98, bottom=0.0, wspace=0.08, hspace=0.0)
+    plt.tight_layout()
+    #plt.subplots_adjust(left=0.0, right=0.97, top=0.98, bottom=0.0, wspace=0.08, hspace=0.0)
 
     plt.show()
+
+
 
 #Figure 8
 def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, compare='divide', plot_medians=True):
@@ -2188,7 +2148,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
 
     #create BIC diff
     BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_strong = (BIC_diff < -50)
+    BIC_diff_strong = (BIC_diff < -2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
@@ -2298,7 +2258,7 @@ def plot_mlf_model_rad_singlepanel(OIII_outflow_results, OIII_outflow_error, hbe
         ax.set_ylabel(r'$\eta$-model+$const$')
 
     ax.set_xlabel('Galaxy Radius [kpc]')
-    ax.set_title('S/N > 20 and $\delta_{BIC}$ > 10')
+    ax.set_title('S/N > 20 and $\delta_{BIC}$ > 2000')
 
     ax.set_ylim(np.nanmin(mlf_model)-0.4, np.nanmax(mlf_model)+0.1)
 

@@ -2155,7 +2155,7 @@ def plot_flux_mlf(flux_outflow_results, flux_outflow_error, OIII_outflow_results
 
     #create BIC diff
     BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_strong = (BIC_diff < -50)
+    BIC_diff_strong = (BIC_diff < -2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
@@ -2163,7 +2163,7 @@ def plot_flux_mlf(flux_outflow_results, flux_outflow_error, OIII_outflow_results
     physical_mask = (radius < 6.1) & (vel_disp>51)
 
     #do the calculations for all the bins
-    num_bins = 4
+    num_bins = 3
     min_bin = None #-0.05
     max_bin = None #0.6
 
