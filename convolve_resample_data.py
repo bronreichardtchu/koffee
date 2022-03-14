@@ -35,10 +35,80 @@ from astropy import units as u
 from astropy.nddata import Cutout2D
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
+from FITS_tools import strip_headers
 
 from reproject import reproject_adaptive
 
 import montage_wrapper as montage
+
+
+def cd_to_cdelt(header):
+    """
+    Takes a header that uses the CD matrix and converts it to CDELT and CROTA
+    keywords
+
+    Probably need to fix something to do with the reference pixels
+
+    Parameters
+    ----------
+    header : fits header
+        the fits header to convert
+
+    Returns
+    -------
+    new_header : fits header
+        the new fits header
+    """
+    #first check that the keywords don't already exist
+    if all(key in header for key in ['CDELT1', 'CDELT2']):
+        raise Exception('The keys CDELT1 and CDELT2 already exist in header')
+
+    #create a copy of the header
+    new_header = header.copy()
+
+    #first the non-rotation case:
+    if (header['CD1_2']==0.0) and (header['CD2_1']==0.0):
+        new_header['CDELT1'] = header['CD1_1']
+        new_header['CDELT2'] = header['CD2_2']
+        del new_header['CD1_1']
+        del new_header['CD2_2']
+
+    #otherwise there is rotation
+    else:
+        new_header['CDELT1'] = np.sqrt(header['CD1_1']**2+header['CD2_1']**2)
+        new_header['CDELT2'] = np.sqrt(header['CD1_2']**2+header['CD2_2']**2)
+
+        #get the determinant of the rotation matrix
+        det = header['CD1_1']*header['CD2_2'] - header['CD1_2']*header['CD2_1']
+        #use the determinant to find the sign of the rotation
+        sign = 1.0
+        if det < 0.0:
+            sign = -1.0
+
+        #calculate the rotation
+        rot1_cd = np.arctan2(-header['CD2_1'], sign*header['CD1_1'])
+        rot2_cd = np.arctan2(sign*header['CD1_2'], header['CD2_2'])
+        rot_av = (rot1_cd + rot2_cd)/2.0
+        crota_cd = np.degrees(rot_av)
+
+        new_header['CROTA2'] = crota_cd
+
+        #find if there is any skew
+        skew = np.degrees(abs(rot1_cd - rot2_cd))
+        if skew > 0:
+            print('There was a skew of ', skew)
+
+
+        #and delete the old header keys
+        del new_header['CD1_1']
+        del new_header['CD2_2']
+
+    if 'CD3_3' in header:
+        new_header['CDELT3'] = header['CD3_3']
+        del new_header['CD3_3']
+
+    return new_header
+
 
 
 def convolve_data(filename, fwhm, output_folder, gal_name):
@@ -88,7 +158,7 @@ def convolve_data(filename, fwhm, output_folder, gal_name):
             #if there is more than one extension in the fits file, assume the second one is the variance
             if len(hdu) > 1:
                 if (hdu[1].header['EXTNAME'])=='SCI':
-                    print('')
+                    print('HDU[1] is SCI')
                 else:
                     var = hdu[1].data
         hdu.close()
@@ -181,15 +251,22 @@ def cutout_data(filename, position, size, output_folder, gal_name, plot_cutout=T
         #if there is more than one extension in the fits file, assume the second one is the variance
         if len(hdu) > 1:
             if (hdu[1].header['EXTNAME'])=='SCI':
-                print('')
+                print('HDU[1] is SCI')
             else:
                 var = hdu[1].data
     hdu.close()
 
+    #if the data has an extra dimension, need to squeeze that out
     print(data.shape)
+    if len(data.shape) > 2:
+        data = np.squeeze(data)
+        print(data.shape)
+        #and get rid of it in the header too
+        header = strip_headers.flatten_header(header)
 
     #create a WCS for the data
     wcs = WCS(header)
+    print(wcs)
 
     #turn the position into a sky coordinate
     position = SkyCoord(position, unit='deg')
@@ -197,8 +274,18 @@ def cutout_data(filename, position, size, output_folder, gal_name, plot_cutout=T
     #give units to the size of the cutout
     size = u.Quantity(size, u.arcsec)
 
+    #if it's kcwi data, need to transform the axes?
+    #if kcwi == True:
+    #    data = data.T
+    #    wcs = wcs.swapaxes(0,1)
+
     #cutout the data
     cutout = Cutout2D(data, position, size, wcs=wcs)
+
+    #print the new wcs
+    print(' ')
+    print('NEW WCS:')
+    print(cutout.wcs)
 
     #save the cutout data to a fits file
     #create HDU object
@@ -208,25 +295,42 @@ def cutout_data(filename, position, size, output_folder, gal_name, plot_cutout=T
     hdul = fits.HDUList([hdu])
 
     #write to file
-    hdul.writeto(output_folder+gal_name+'_cutout.fits')
+    hdul.writeto(output_folder+gal_name+'_cutout_'+str(size[0].value)+'_by_'+str(size[1].value)+'.fits')
 
     #plot where the data was cutout from and the new cutout data
     if plot_cutout == True:
         plt.figure()
+        #if kcwi == True:
+        #    ax1 = plt.subplot(1,2,1, projection=wcs, slices=('y', 'x'))
+        #else:
         ax1 = plt.subplot(1,2,1, projection=wcs)
-        ax1.imshow(np.log10(data), origin='lower')
-        cutout.plot_on_original(color='white')
+        try:
+            ax1.imshow(np.log10(data), origin='lower', aspect=header['CDELT2']/header['CDELT1'])
+        except KeyError:
+            ax1.imshow(np.log10(data), origin='lower', aspect=header['CD1_2']/header['CD2_1'])
+        cutout.plot_on_original(color='red')
         ax1.coords['ra'].set_axislabel('Right Ascension')
         ax1.coords['dec'].set_axislabel('Declination')
         ax1.set_title(gal_name)
+        #if kcwi == True:
+        #    ax1.invert_xaxis()
 
+        #if kcwi == True:
+        #    ax2 = plt.subplot(1,2,2, projection=cutout.wcs, slices=('y', 'x'))
+        #else:
         ax2 = plt.subplot(1,2,2, projection=cutout.wcs)
-        ax2.imshow(np.log10(cutout.data), origin='lower')
+        try:
+            ax2.imshow(np.log10(cutout.data), origin='lower', aspect=header['CDELT2']/header['CDELT1'])
+        except KeyError:
+            ax2.imshow(np.log10(cutout.data), origin='lower', aspect=header['CD1_2']/header['CD2_1'])
         ax2.coords['ra'].set_axislabel('Right Ascension')
         ax2.coords['dec'].set_axislabel('Declination')
         ax2.coords['dec'].set_axislabel_position('r')
         ax2.coords['dec'].set_ticklabel_position('r')
-        ax2.set_title('Cutout')
+        ax2.set_title('Cutout '+str(size[0].value)+' by '+str(size[1].value))
+        #if kcwi == True:
+        #    ax2.invert_xaxis()
+
 
         plt.show()
 
@@ -321,7 +425,7 @@ def reproject_data(filename1, filename2, output_folder, gal_name, plot_cutout=Tr
 
 def resample_data(filename, resolution, output_folder, gal_name):
     """
-    Resamples data1 to match the resolution of data2
+    Resamples data1 to match the resolution of data2... not the best option
 
     Parameters
     ----------
