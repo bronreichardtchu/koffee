@@ -1244,8 +1244,8 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
         array with 0 where one gaussian gave a better BIC value, and 1 where two
         gaussians gave a better BIC value.
 
-    chi_square :obj:'~numpy.ndarray' object
-        array with the chi square values for the [single gaussian, double gaussian]
+    bic :obj:'~numpy.ndarray' object
+        array with the BIC values for the [single gaussian, double gaussian]
         fits in the same spatial shape as the input data array
 
     outflow_results2 : :obj:'~numpy.ndarray' object
@@ -1268,8 +1268,8 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
         spatial shape as the input data array for the second emission line fit,
         if emission_line2 is not None.
 
-    chi_square2 :obj:'~numpy.ndarray' object
-        array with the chi square values for the [single gaussian, double gaussian]
+    bic2 :obj:'~numpy.ndarray' object
+        array with the BIC values for the [single gaussian, double gaussian]
         fits in the same spatial shape as the input data array for the second
         emission line fit, if emission_line2 is not None.
 
@@ -1293,8 +1293,8 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
         spatial shape as the input data array for the OII doublet line fit, if
         OII_doublet is True.
 
-    chi_square3 :obj:'~numpy.ndarray' object
-        array with the chi square values for the [single gaussian, double gaussian]
+    bic3 :obj:'~numpy.ndarray' object
+        array with the BIC values for the [single gaussian, double gaussian]
         fits in the same spatial shape as the input data array for the OII doublet
         line fit, if OII_doublet is True.
     """
@@ -1305,7 +1305,7 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
     no_outflow_results = np.loadtxt(output_folder+galaxy_name+'_no_outflow_results_'+emission_line1+'.txt')
     no_outflow_error = np.loadtxt(output_folder+galaxy_name+'_no_outflow_error_'+emission_line1+'.txt')
 
-    chi_square = np.loadtxt(output_folder+galaxy_name+'_chi_squared_'+emission_line1+'.txt')
+    bic = np.loadtxt(output_folder+galaxy_name+'_bic_'+emission_line1+'.txt')
     statistical_results = np.loadtxt(output_folder+galaxy_name+'_stat_results_'+emission_line1+'.txt')
 
     #reshape arrays
@@ -1314,7 +1314,7 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
         outflow_error = outflow_error.reshape(7, data_shape[0], data_shape[1])
         no_outflow_results = no_outflow_results.reshape(4, data_shape[0], data_shape[1])
         no_outflow_error = no_outflow_error.reshape(4, data_shape[0], data_shape[1])
-        chi_square = chi_square.reshape(2, data_shape[0], data_shape[1])
+        bic = bic.reshape(2, data_shape[0], data_shape[1])
         statistical_results = statistical_results.reshape(data_shape[0], data_shape[1])
 
     elif include_const == False:
@@ -1322,7 +1322,7 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
         outflow_error = outflow_error.reshape(6, data_shape[0], data_shape[1])
         no_outflow_results = no_outflow_results.reshape(3, data_shape[0], data_shape[1])
         no_outflow_error = no_outflow_error.reshape(3, data_shape[0], data_shape[1])
-        chi_square = chi_square.reshape(2, data_shape[0], data_shape[1])
+        bic = bic.reshape(2, data_shape[0], data_shape[1])
         statistical_results = statistical_results.reshape(data_shape[0], data_shape[1])
 
     #second emission line files = Hbeta
@@ -1333,7 +1333,7 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
         no_outflow_results2 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_results_'+emission_line2+'.txt')
         no_outflow_error2 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_error_'+emission_line2+'.txt')
 
-        chi_square2 = np.loadtxt(output_folder+galaxy_name+'_chi_squared_'+emission_line2+'.txt')
+        bic2 = np.loadtxt(output_folder+galaxy_name+'_bic_'+emission_line2+'.txt')
 
         #reshape arrays
         if include_const == True:
@@ -1341,14 +1341,14 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
             outflow_error2 = outflow_error2.reshape(7, data_shape[0], data_shape[1])
             no_outflow_results2 = no_outflow_results2.reshape(4, data_shape[0], data_shape[1])
             no_outflow_error2 = no_outflow_error2.reshape(4, data_shape[0], data_shape[1])
-            chi_square2 = chi_square2.reshape(2, data_shape[0], data_shape[1])
+            bic2 = bic2.reshape(2, data_shape[0], data_shape[1])
 
         elif include_const == False:
             outflow_results2 = outflow_results2.reshape(6, data_shape[0], data_shape[1])
             outflow_error2 = outflow_error2.reshape(6, data_shape[0], data_shape[1])
             no_outflow_results2 = no_outflow_results2.reshape(3, data_shape[0], data_shape[1])
             no_outflow_error2 = no_outflow_error2.reshape(3, data_shape[0], data_shape[1])
-            chi_square2 = chi_square2.reshape(2, data_shape[0], data_shape[1])
+            bic2 = bic2.reshape(2, data_shape[0], data_shape[1])
 
         try:
             statistical_results2 = np.loadtxt(output_folder+galaxy_name+'_stat_results_'+emission_line2+'.txt')
@@ -1378,23 +1378,23 @@ def read_output_files(output_folder, galaxy_name, include_const=True, emission_l
         no_outflow_results3 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_results_OII_doublet.txt')
         no_outflow_error3 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_error_OII_doublet.txt')
 
-        chi_square3 = np.loadtxt(output_folder+galaxy_name+'_chi_squared_OII_doublet.txt')
+        bic3 = np.loadtxt(output_folder+galaxy_name+'_bic_OII_doublet.txt')
 
         #reshape arrays
         outflow_results3 = outflow_results3.reshape(13, data_shape[0], data_shape[1])
         outflow_error3 = outflow_error3.reshape(13, data_shape[0], data_shape[1])
         no_outflow_results3 = no_outflow_results3.reshape(7, data_shape[0], data_shape[1])
         no_outflow_error3 = no_outflow_error3.reshape(7, data_shape[0], data_shape[1])
-        chi_square3 = chi_square3.reshape(2, data_shape[0], data_shape[1])
+        bic3 = bic3.reshape(2, data_shape[0], data_shape[1])
 
     if OII_doublet==False and emission_line2:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, chi_square2
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, bic, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, bic2
 
     if OII_doublet==True and emission_line2:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, chi_square2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, chi_square3
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, bic, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, bic2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, bic3
 
     else:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, bic
 
 
 
