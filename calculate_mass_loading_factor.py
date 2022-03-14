@@ -35,7 +35,7 @@ import calculate_outflow_velocity as calc_outvel
 import calculate_star_formation_rate as calc_sfr
 
 import importlib
-importlib.reload(calc_sfr)
+importlib.reload(calc_outvel)
 
 
 
