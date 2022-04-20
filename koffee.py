@@ -815,11 +815,6 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 #for the two gaussian fit
                                 best_fit2_second = kff.fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
 
-                                #fit the one gaussian fit of the emission line
-                                fig3 = plot_fit(masked_lamdas2, flux2, g_model1_second, pars1_second, best_fit1_second, plot_initial=False, include_const=include_const)
-                                fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] fit without outflow')
-                                fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_no_outflow_second_fit_'+str(i)+'_'+str(j))
-                                plt.close(fig3)
 
                                 if plotting == True:
                                     #plot the one gaussian fit of the emission line
@@ -979,6 +974,32 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             elif stat_res == 0:
                                 #assume there's no outflow in hbeta either
                                 statistical_results2[i,j] = 0
+
+                                #fit the hbeta one Gaussian fit
+                                if include_const == True:
+                                    g_model1_second, pars1_second = kff.gaussian1_const(masked_lamdas2, flux2, amp_guess=None, mean_guess=None, sigma_guess=None)
+                                elif include_const == False:
+                                    g_model1_second, pars1_second = kff.gaussian1(masked_lamdas2, flux2, amp_guess=None, mean_guess=None, sigma_guess=None)
+
+
+                                #fit model for 1 Gaussian fit
+                                best_fit1_second = kff.fitter(g_model1_second, pars1_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
+
+                                if plotting == True:
+                                    #plot the one gaussian fit of the emission line
+                                    fig3 = plot_fit(masked_lamdas2, flux2, g_model1_second, pars1_second, best_fit1_second, plot_initial=False, include_const=include_const)
+                                    fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] fit without outflow')
+                                    fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_no_outflow_second_fit_'+str(i)+'_'+str(j))
+                                    plt.close(fig3)
+
+                                #save the results
+                                if include_const == True:
+                                    no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value, best_fit1_second.params['Constant_Continuum_c'].value)
+                                    no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr, best_fit1_second.params['Constant_Continuum_c'].stderr)
+                                elif include_const == False:
+                                    no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value)
+                                    no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
+
                         #-------------------
                         #FIT THE OII DOUBLET
                         #-------------------
