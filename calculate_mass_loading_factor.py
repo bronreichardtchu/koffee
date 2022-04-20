@@ -142,6 +142,78 @@ def calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error,
     return M_out, M_out_max, M_out_min
 
 
+
+def calc_mass_outflow(hbeta_results, hbeta_error, statistical_results, z):
+    """
+    Calculates the mass outflow using the equation:
+        M_out = (1.36m_H)/(gamma_Hbeta n_e) * L_Halpha,broad
+    To convert from Halpha to Hbeta luminosities:
+        L_Halpha/L_Hbeta = 2.87
+    So:
+        M_out = (1.36m_H)/(gamma_Hbeta n_e) * (L_Halpha,broad/L_Hbeta,broad) * L_Hbeta,broad
+
+    Parameters
+    ----------
+    hbeta_results : :obj:'~numpy.ndarray'
+        array of outflow results from KOFFEE for Hbeta line.  Used to calculate
+        the Sigma SFR.  Should be (7, statistical_results.shape)
+
+    hbeta_error : :obj:'~numpy.ndarray'
+        array of the outflow result errors from KOFFEE for Hbeta line
+
+    statistical_results : :obj:'~numpy.ndarray'
+        array of statistical results from KOFFEE.
+
+    z : float
+        redshift
+
+    Returns
+    -------
+    mout : :obj:'~numpy.ndarray'
+        mass outflow in units of solar masses 
+    """
+    #from Calzetti 2001 PASP 113 we have L_Halpha/L_Hbeta = 2.87
+    lum_ratio_alpha_to_beta = 2.87
+
+    #m_H is the atomic mass of Hydrogen (in kg)
+    m_H = m_p
+
+    #gamma_Halpha is the Halpha emissivity at 10^4K (in erg cm^3 s^-1)
+    #gamma_Halpha = 3.56*10**-25 * u.erg * u.cm**3 / u.s
+    #actually we use Hbeta so:
+    gamma_Hbeta = 1.24*10**-25 * u.erg * u.cm**3 / u.s
+
+    #n_e is the local electron density in the outflow
+    #use the same value as Davies et al. for now
+    n_e = 380 * (u.cm)**-3
+
+    #L_Hbeta is the luminosity of the broad line of Hbeta (we want the outflow flux)
+    systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_sfr.calc_flux_from_koffee(hbeta_results, hbeta_error, statistical_results, z, outflow=True)
+    #put the units in erg/s/cm^2
+    outflow_flux = outflow_flux * 10**(-16) * u.erg / (u.s*(u.cm**2))
+    outflow_flux_err = outflow_flux_err * 10**(-16) * u.erg / (u.s*(u.cm**2))
+
+    #now get rid of the cm^2
+    #get the Hubble constant at z=0; this is in km/Mpc/s
+    H_0 = cosmo.H(0)
+    #use d = cz/H0 to find the distance in cm
+    dist = (c*z/H_0).decompose().to('cm')
+    print('distance:', dist)
+    #multiply by 4*pi*d^2 to get rid of the cm
+    L_Hbeta = (outflow_flux*(4*np.pi*(dist**2))).to('erg/s')
+    L_Hbeta_err = (outflow_flux_err*(4*np.pi*(dist**2))).to('erg/s')
+
+    #do the whole calculation
+    mout = (1.36*m_H) / (gamma_Hbeta*n_e) * lum_ratio_alpha_to_beta * L_Hbeta
+    mout_err = (1.36*m_H) / (gamma_Hbeta*n_e) * lum_ratio_alpha_to_beta * L_Hbeta_err
+
+    #decompose the units to kg
+    mout = mout.to(u.solMass)
+    mout_err = mout_err.to(u.solMass)
+
+    return mout, mout_err
+
+
 def calc_mass_loading_factor(OIII_results, OIII_error, hbeta_results, hbeta_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header):
     """
     Calculates the mass loading factor
@@ -383,8 +455,11 @@ def calc_save_as_fits(OIII_results, OIII_error, hbeta_results, hbeta_error, hbet
     -------
     A saved fits file
     """
+    #calculate the mass of the outflow in each spaxel
+    mout, mout_err = calc_mass_outflow(hbeta_results, hbeta_error, statistical_results, z)
+
     #calculate the mass outflow rate
-    M_out, M_out_max, M_out_min = calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error, statistical_results, z)
+    mdotout, mdotout_max, mdotout_min = calc_mass_outflow_rate(OIII_results, OIII_error, hbeta_results, hbeta_error, statistical_results, z)
 
     #calculate the mass loading factor
     mlf, mlf_max, mlf_min = calc_mass_loading_factor(OIII_results, OIII_error, hbeta_results, hbeta_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
@@ -406,7 +481,16 @@ def calc_save_as_fits(OIII_results, OIII_error, hbeta_results, hbeta_error, hbet
     except:
         del new_header['CDELT3']
 
-    #create HDU object for galaxy flux
+    #create HDU object for the mass outflow
+    hdu = fits.PrimaryHDU(mout.value, header=new_header)
+    hdu_error = fits.ImageHDU(mout_err.value, header=new_header)
+
+    #creat HDU list
+    hdul = fits.HDUList([hdu, hdu_error, hdu_error2])
+
+    hdul.writeto(output_folder+gal_name+'_mass_outflow.fits')
+
+    #create HDU object for mass outflow rate
     hdu = fits.PrimaryHDU((M_out.to('M_sun/yr')).value, header=new_header)
     hdu_error = fits.ImageHDU((M_out_max.to('M_sun/yr')).value, name='Mass Outflow Rate with maximum R_out')
     hdu_error2 = fits.ImageHDU((M_out_min.to('M_sun/yr')).value, name='Mass Outflow Rate with minimum R_out')
@@ -417,7 +501,7 @@ def calc_save_as_fits(OIII_results, OIII_error, hbeta_results, hbeta_error, hbet
     #write to file
     hdul.writeto(output_folder+gal_name+'_mass_outflow_rate.fits')
 
-    #create HDU object for galaxy flux
+    #create HDU object for mass loading factor
     hdu = fits.PrimaryHDU(mlf.value, header=new_header)
     hdu_error = fits.ImageHDU(mlf_max.value, name='Mass Loading Factor with maximum R_out')
     hdu_error2 = fits.ImageHDU(mlf_min.value, name='Mass Loading Factor with minimum R_out')
