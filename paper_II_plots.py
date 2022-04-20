@@ -26,6 +26,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.lines import Line2D
 import cmasher as cmr
+import matplotlib.cm as cm
+from matplotlib.colors import Normalize
 
 from astropy.wcs import WCS
 from astropy import units as u
@@ -410,7 +412,7 @@ def plot_compare_pandya21(fire_data, m_out_fits_file, sfr_fits_file, co_fits_fil
         # colour coding labels
         legend_elements = [Line2D([0], [0], color='k', lw=2, ls='-', label=u'Kim+2020'),
                     Line2D([0], [0], color='k', lw=2, ls='--', label=u'Kim+2020 extrapolated'),
-                    Line2D([0], [0], color='w', marker='s', markersize=5, markerfacecolor='dimgrey', label=u'FIRE-2 (Pindya+2022)')]
+                    Line2D([0], [0], color='w', marker='s', markersize=5, markerfacecolor='dimgrey', label=u'FIRE-2 (Pandya+2022)')]
 
         axes[0].legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1.0, 1.0), fontsize=8, frameon=False)
 
@@ -424,6 +426,264 @@ def plot_compare_pandya21(fire_data, m_out_fits_file, sfr_fits_file, co_fits_fil
 
 
         plt.subplots_adjust(left=0.1, right=0.98, top=0.96, bottom=0.17, wspace=0.1, hspace=0.0)
+        #plt.subplots_adjust(left=0.08, right=0.91, top=0.96, bottom=0.17, wspace=0.1, hspace=0.0)
+
+    plt.show()
+
+
+
+def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adjust_FIRE=False, adjust_mout_vel=False):
+    """
+    This plot compares our data to the results from the FIRE-2 simulation found
+    in Pandya et al (2021), Figure 11.  The plot shows the mass loading factor
+    for the warm gas phase plotted against the gas and SFR surface densitites.
+    Thanks to Viraj Pandya for sharing a simpler version of the plotting script
+    for their Figure 11.
+
+    Parameters
+    ----------
+    fire_data : str
+        the location of the data table file from FIRE-2
+        'time_catalog_AllHalos.dat'
+
+    IRAS08_resampled_textfile : str
+        the location of the textfile with the data from the resampled and aligned
+        CO and KCWI data for IRAS08.  Should have columns in the order:
+        'x  y   co	sfr	mout_rate	vout	vcen	evcen	esfr'
+    """
+    #plot x-limits
+    xlim_sigma_mol = [0.49, 3.9]
+    xlim_sigma_sfr = [-4.6, np.log10(5e1)]
+
+    #read in the relevant supplementary appendix Table B4 for Pandya+21
+    fire_table = Table.read(fire_data, format='ascii')
+
+    #read in the resampled IRAS08 data
+    IRAS08_table = Table.read(IRAS08_resampled_textfile, format='ascii')
+
+    #multiply the mass outflow rate by 380 because when I calculated it, I
+    #assumed that n_e = 380 cm^-3; but in this paper we're assuming n_e = 100 cm^-3
+    m_out = IRAS08_table['mout_rate']*380/100
+
+    if adjust_mout_vel == True:
+        #multiply the m_out to adjust it (vout is in the numerator in original
+        #mout from Paper I)
+        #Dee's text file has already adjusted to use vcen instead of vout
+        #so we need to adjust back to use vout by multiplying by vout/vcen
+        m_out = m_out * IRAS08_table['vout']/IRAS08_table['vcen']
+
+        #calculate the error
+        log_mout_err = 0.434*IRAS08_table['esfr']*1.25/m_out + 0.434*IRAS08_table['evcen']/IRAS08_table['vcen']
+        #mout_err = m_out*np.sqrt((IRAS08_table['esfr']*1.25/m_out)**2 + (IRAS08_table['evcen']/IRAS08_table['vcen'])**2 )
+        #log_mout_err = 0.434*mout_err/m_out
+
+    else:
+        #calculate the error
+        log_mout_err = IRAS08_table['esfr']*1.25/m_out + IRAS08_table['evcen']/IRAS08_table['vout']
+        log_mout_err = 0.434*mout_err
+
+    #calculate the mass outflow rate which we would get if we used R_out = 20kpc
+    #instead of R_out = 500pc
+    m_out_20kpc = m_out*500/20000
+
+    #calculate the mout if we had n_e = 300 cm^-3
+    m_out_300 = m_out*1/3
+
+    #calculate the mass loading factor
+    sfr = IRAS08_table['sfr']
+    mlf = m_out/sfr
+    mlf_300 = m_out_300/sfr
+    mlf_20kpc = m_out_20kpc/sfr
+
+    #calculate the error
+    #mlf_err = mlf*np.sqrt((mout_err/m_out)**2 + (IRAS08_table['esfr']/sfr)**2)
+    #log_mlf_err = 0.434*mlf_err/mlf
+    log_mlf_err = np.sqrt(log_mout_err**2 + (0.434*(IRAS08_table['esfr']/sfr))**2)
+
+    #save the median values for the mlf and mlf at 20kpc
+    mlf_median = np.nanmedian(mlf)
+    mlf_20kpc_median = np.nanmedian(mlf_20kpc)
+
+    print('Median mass loading factor:', mlf_median)
+    print('Median mass loading factor error:', np.nanmedian(log_mlf_err))
+    print('Median 20kpc mass loading factor:', mlf_20kpc_median)
+
+
+
+
+    #get the proper distance per arcsecond
+    #proper_dist_kpc = cosmo.kpc_proper_per_arcmin(z).to(u.kpc/u.arcsec)
+    #print(proper_dist_kpc)
+    #proper_dist_pc = cosmo.kpc_proper_per_arcmin(z).to(u.pc/u.arcsec)
+    #print(proper_dist_pc)
+
+    #calculate the sfr surface density
+    sfr_surface_density = sfr/(0.56542*0.526841*(u.kpc)**2)
+
+    #calculate the error
+    sfr_surface_density_err = IRAS08_table['esfr']/(0.56542*0.526841*(u.kpc)**2)
+    log_sfr_surface_density_err = 0.434*sfr_surface_density_err/sfr_surface_density
+
+    print('Median SFR surface density:', np.nanmedian(sfr_surface_density))
+
+    #calculate the molecular mass surface density
+    #first convert CO luminosity to gas mass
+    molgas = IRAS08_table['co'] * 1.06e8/18.68
+
+    molgas_surface_density = molgas/(565.42*526.841*(u.pc)**2)
+
+    #calculate errors
+    molgas_error = 2.56*1.4e-3*2.3553*30.*2.*106000000.0/(565.42*526.841)/18.68*3
+    log_molgas_surface_density_error = 0.434*molgas_error/molgas_surface_density
+
+
+    print('Median molecular gas surface density:', np.nanmedian(molgas_surface_density))
+
+    #calculate the depletion times
+    tdep_sf = molgas/sfr
+    tdep_out = molgas/m_out
+
+    #calculate the efficiencies
+    sf_eff = sfr/molgas
+    out_eff = m_out/molgas
+
+    #calculate the Kim et al. 2020 trends
+    log_sigma_sfr_kim, log_mlf_kim = pf.kim_et_al_2020_sigma_sfr_log(-4, 0)
+    log_sigma_sfr_kim_extrapolate, log_mlf_kim_extrapolate = pf.kim_et_al_2020_sigma_sfr_log(xlim_sigma_sfr[0], xlim_sigma_sfr[1])
+
+    log_sigma_mol_kim, log_mlf_mol_kim = pf.kim_et_al_2020_sigma_mol_log(0, 2)
+    log_sigma_mol_kim_extrapolate, log_mlf_mol_kim_extrapolate = pf.kim_et_al_2020_sigma_mol_log(xlim_sigma_mol[0], xlim_sigma_mol[1])
+
+
+    #create the figure
+    plt.rcParams.update(pf.get_rc_params())
+
+    with plt.rc_context({"xtick.direction": 'out', "xtick.labelsize": 'medium', "xtick.minor.visible": False, "xtick.top": False, "ytick.direction": 'out', "ytick.labelsize": 'medium', "ytick.minor.visible": False, "ytick.right": False}):
+
+        # initialize figure with axes objects
+        fig, axes = plt.subplots(nrows=1,ncols=2,figsize=(8,4),dpi=100, sharey=True)
+
+        #get colors
+        #colours = cmr.take_cmap_colors(cmr.gem, 2, cmap_range=(0.45, 0.85), return_fmt='hex')
+
+        # loop over halo names
+        halo_names = np.unique(fire_table['Halo'])
+        for halo_name in halo_names:
+            # filter the table to select all bursts belonging to current halo
+            thalo = fire_table[fire_table['Halo']==halo_name]
+
+            # use a different color for each halo mass bin/category (same symbols)
+            if 'm10' in halo_name:
+                plt_color = 'dimgrey'
+            elif 'm11' in halo_name:
+                plt_color = 'dimgrey'
+            elif 'm12' in halo_name:
+                plt_color = 'dimgrey'
+            elif 'A' in halo_name:
+                plt_color = 'dimgrey'
+
+            """ NOTE: the y-axis is now showing the warm-phase mass loading factor, log_etaM_warm """
+            # left panel: etaM vs Sigma_gas for each individual burst
+            if adjust_FIRE == False:
+                axes[0].scatter(thalo['log_sigmaGas_weighted'],thalo['log_etaM_warm'],
+                                c=plt_color,marker='s',s=10,alpha=0.5,edgecolor='none')
+
+                # right panel: etaM vs Sigma_SFR
+                axes[1].scatter(thalo['log_sigmaSFR_weighted'], thalo['log_etaM_warm'],
+                                c=plt_color,marker='s',s=10,alpha=0.5,edgecolor='none')
+
+            elif adjust_FIRE == True:
+                axes[0].scatter(thalo['log_sigmaGas_weighted'], thalo['log_etaM_warm']+np.log10(3), c=plt_color, marker='s', s=10, alpha=0.5, edgecolor='none')
+
+                # right panel: etaM vs Sigma_SFR
+                axes[1].scatter(thalo['log_sigmaSFR_weighted'],  thalo['log_etaM_warm']+np.log10(3),  c=plt_color, marker='s', s=10, alpha=0.5, edgecolor='none')
+
+
+        #scatter the kcwi and co data on the plots
+        cmap = cm.cool
+        norm = Normalize(vmin=np.log10(out_eff).min(), vmax=np.log10(out_eff).max())
+        #markers, caps, bars = axes[0].errorbar(np.log10(molgas_surface_density.value), np.log10(mlf.flatten()), yerr=np.log10(mlf_err), fmt='o', c=colours[0], ms=7, alpha=1.0, zorder=8)
+        markers, caps, bars = axes[0].errorbar(np.log10(molgas_surface_density.value), np.log10(mlf.flatten()), yerr=log_mlf_err, xerr=log_molgas_surface_density_error.value, fmt='none', ecolor=cmap(norm(np.log10(out_eff))), ms=7, alpha=1.0, zorder=8)
+        [bar.set_alpha(0.6) for bar in bars]
+        [cap.set_alpha(0.6) for cap in caps]
+        axes[0].scatter(np.log10(molgas_surface_density.value), np.log10(mlf.flatten()), c=cmap(norm(np.log10(out_eff))), s=50, alpha=1.0, zorder=8)
+
+
+        axes[0].scatter(np.log10(molgas_surface_density.value), np.log10(mlf_300.flatten()), c=cmap(norm(np.log10(out_eff))), s=50, alpha=0.2, zorder=8)
+
+        axes[1].scatter(np.log10(sfr_surface_density.value), np.log10(mlf_300), c=cmap(norm(np.log10(out_eff))), s=50, alpha=0.2, zorder=8)
+
+        markers, caps, bars = axes[1].errorbar(np.log10(sfr_surface_density.value), np.log10(mlf), yerr=log_mlf_err, xerr=log_sfr_surface_density_err.value, ecolor=cmap(norm(np.log10(out_eff))), fmt='none', ms=7, alpha=1.0, zorder=8)
+        [bar.set_alpha(0.6) for bar in bars]
+        [cap.set_alpha(0.6) for cap in caps]
+        cbar_colour = axes[1].scatter(np.log10(sfr_surface_density.value), np.log10(mlf.flatten()), c=cmap(norm(np.log10(out_eff))), s=50, alpha=1.0, zorder=8)
+
+        divider = make_axes_locatable(axes[1])
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+
+        cbar = fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)#, cmap=cmap(norm(np.log10(tdep_out))))
+        #cbar.set_label(label='log($t_{dep,out}$ [Gyr])', rotation=270, labelpad=20)
+        cbar.set_label(label='log($\dot{M}_{out}/M_{mol}$ [Gyr$^{-1}$])', rotation=270, labelpad=20)
+
+
+        #add an arrow to show where the mlf would be for an r_out of 20kpc
+        axes[0].arrow(0.8, np.log10(mlf_median), 0, np.log10(mlf_20kpc_median)-np.log10(mlf_median), width=0.04,
+            length_includes_head=True, head_length=0.15, color='k')
+        axes[0].text(0.6, np.log10(mlf_median), '$R_{out}=0.1R_{vir}$', fontsize=8, color='k',
+            rotation='vertical', va='top', weight='bold')
+
+        axes[1].arrow(-3.9, np.log10(mlf_median), 0, np.log10(mlf_20kpc_median)-np.log10(mlf_median), width=0.08,
+            length_includes_head=True, head_length=0.15, color='k')
+        axes[1].text(-4.3, np.log10(mlf_median), '$R_{out}=0.1R_{vir}$', fontsize=8, color='k',
+            rotation='vertical', va='top', weight='bold')
+
+
+
+
+        #put the Kim et al. 2020 trends on the plot
+        axes[0].plot(log_sigma_mol_kim_extrapolate, log_mlf_mol_kim_extrapolate, c='k', lw=2, ls='--')
+        axes[0].plot(log_sigma_mol_kim, log_mlf_mol_kim, c='k', lw=2, ls='-', zorder=1)
+
+        axes[1].plot(log_sigma_sfr_kim_extrapolate, log_mlf_kim_extrapolate, c='k', lw=2, ls='--')
+        axes[1].plot(log_sigma_sfr_kim, log_mlf_kim, c='k', lw=2, ls='-', zorder=1)
+
+
+        # use logscale and set same y-limits for both plots
+        axes[0].set_ylim(-2.5, 2.5)
+
+        # set different xlims for each plot
+        axes[0].set_xlim(xlim_sigma_mol[0], xlim_sigma_mol[1])
+        axes[1].set_xlim(xlim_sigma_sfr[0], xlim_sigma_sfr[1])
+
+        # axis labels
+        axes[0].set_xlabel('log($\Sigma_{mol} [\mathrm{M_\odot pc^{-2}}]$)')
+        axes[1].set_xlabel('log($\Sigma_{SFR} [\mathrm{M_\odot yr^{-1} kpc^{-2}}]$)')
+        axes[0].set_ylabel(r'log($\eta_{\rm ion}$)')
+
+
+        # halo mass bin color-coding label
+        #axes[0].text(0.85,0.95,u'm10',color='black',transform=axes[0].transAxes,fontsize=8)
+        #axes[0].text(0.85,0.9,u'm11',color='dimgrey',transform=axes[0].transAxes,fontsize=8)
+        #axes[0].text(0.85,0.85,u'm12',color='grey',transform=axes[0].transAxes,fontsize=8)
+        #axes[0].text(0.85,0.8,u'm13',color='darkgrey',transform=axes[0].transAxes,fontsize=8)
+
+        # colour coding labels
+        legend_elements = [Line2D([0], [0], color='k', lw=2, ls='-', label=u'Kim+2020'),
+                    Line2D([0], [0], color='k', lw=2, ls='--', label=u'Kim+2020 extrapolated'),
+                    Line2D([0], [0], color='w', marker='s', markersize=5, markerfacecolor='dimgrey', label=u'FIRE-2 (Pandya+2022)')]
+
+        axes[0].legend(handles=legend_elements, loc='lower left', bbox_to_anchor=(0.0, 0.0), fontsize=8, frameon=False)
+
+
+        #axes[1].text(0.98, 0.95, u'solid: Kim+2020', color='k', transform=axes[1].transAxes, fontsize=8, ha='right')
+        #axes[1].text(0.98, 0.9, u'dashed: Kim+2020 extrapolated', color='k', transform=axes[1].transAxes, fontsize=8, ha='right')
+        #axes[1].text(0.98, 0.94, u'FIRE-2 (Pindya+2022)', color='dimgrey', transform=axes[1].transAxes, fontsize=8, ha='right')
+        axes[1].text(0.02, 0.07, u'Solid: $n_e = 100 \mathrm{cm^{-1}}$', color='k', transform=axes[1].transAxes, fontsize=8, ha='left')
+        #axes[1].text(0.98, 0.9, u'Solid: $R_{out}$=0.5kpc', color='k', transform=axes[1].transAxes, fontsize=8, ha='right')
+        axes[1].text(0.02, 0.02, r'Faint: $n_e = 300 \mathrm{cm^{-1}}$', color='k', transform=axes[1].transAxes, fontsize=8, ha='left')
+
+
+        plt.subplots_adjust(left=0.1, right=0.9, top=0.96, bottom=0.17, wspace=0.0, hspace=0.0)
         #plt.subplots_adjust(left=0.08, right=0.91, top=0.96, bottom=0.17, wspace=0.1, hspace=0.0)
 
     plt.show()
