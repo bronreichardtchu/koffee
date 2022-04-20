@@ -645,9 +645,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         continuum = np.median(flux[:10])
                         flux = flux-continuum
 
-                    #only fit if the S/N is greater than 20
-                    if sn_array[i,j] >= 20:
-                        #print('Spaxel '+str(i)+','+str(j)+' has S/N > 20')
+                    #only fit if the S/N is greater than 10
+                    if sn_array[i,j] >= 10:
+                        #print('Spaxel '+str(i)+','+str(j)+' has S/N > 10')
                         #create model for 1 Gaussian fit
                         if include_const == True:
                             g_model1, pars1 = kff.gaussian1_const(masked_lamdas, flux)
