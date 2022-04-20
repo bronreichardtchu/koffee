@@ -712,3 +712,44 @@ def plot_continuum_contours(lamdas, xx, yy, data, z, ax):
     cont_contours = ax.contour(xx, yy, cont_median, colors='black', linewidths=0.7, alpha=0.7, levels=(0.2,0.3,0.4,0.7,1.0,2.0,4.0))
 
     return cont_contours
+
+
+def plot_map(file_string, cbar_label, vmin=None, vmax=None):
+    """
+    Opens the fits file, creates a wcs from the header and plots the log of the
+    contents
+
+    Parameters
+    ----------
+    file_string : string
+        location of the fits datafile to be opened
+
+    cbar_label : string
+        label to put on the colorbar
+
+    vmin : float or None
+        minimum value for the colorbar (Default is None)
+
+    vmax : float or None
+        maximum value for the colorbar (Default is None)
+
+    Returns
+    -------
+    A matplotlib figure mapping the array from the fits file
+    """
+    #open the fits file
+    fits_data, fits_header, fits_wcs = read_in_create_wcs(file_string)
+
+    #create the plot
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,4), subplot_kw={'projection': fits_wcs, 'slices': ('x', 'y')})
+
+    try:
+        im_map = ax.imshow(np.log10(fits_data).T, origin='lower', aspect=fits_header['CD2_1']/fits_header['CD1_2'], vmin=vmin, vmax=vmax)
+    except KeyError:
+        im_map = ax.imshow(np.log10(fits_data).T, origin='lower', aspect=abs(fits_header['CDELT2']/fits_header['CDELT1']), vmin=vmin, vmax=vmax)
+
+    ax.invert_xaxis()
+
+    plt.colorbar(im_map, label=cbar_label)
+
+    plt.show()
