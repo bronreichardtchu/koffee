@@ -40,6 +40,8 @@ import scipy.stats as stats
 from astropy.io import fits
 from astropy.wcs import WCS
 
+import matplotlib.pyplot as plt
+
 
 #===============================================================================
 # DEFINE PLOTTING PARAMETERS
@@ -305,6 +307,64 @@ def fitting_function(x, a, b):
         the outflow velocity
     """
     return a*(x**b)
+
+def power_function(B, x):
+    """
+    My power fitting function for y = a*x^b
+
+    Parameters
+    ----------
+    B : (vector)
+        a vector of the parameters a and b
+
+    x : :obj:'~numpy.ndarray'
+        a vector of the x values.
+
+    Returns
+    -------
+    y : :obj:'~numpy.ndarray'
+        a vector of the y values
+    """
+    return B[0]*x**B[1]
+
+def linear_function(B, x):
+    """
+    My linear fitting function for y = m*x + b
+
+    Parameters
+    ----------
+    B : (vector)
+        a vector of the parameters m and b
+
+    x : :obj:'~numpy.ndarray'
+        a vector of the x values.
+
+    Returns
+    -------
+    y : :obj:'~numpy.ndarray'
+        a vector of the y values
+    """
+    return B[0]*x + B[1]
+
+def quadratic_function(B, x):
+    """
+    My quadratic function for y = ax^2 + bx + c
+
+    Parameters
+    ----------
+    B : (vector)
+        a vector of the parameters a, b and c
+
+    x : :obj:'~numpy.ndarray'
+        a vector of the x values.
+
+    Returns
+    -------
+    y : :obj:'~numpy.ndarray'
+        a vector of the y values
+    """
+    return B[0]*x**2 + B[1]*x + B[2]
+
 
 def running_mean(x, N):
     """
