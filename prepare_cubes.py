@@ -101,7 +101,10 @@ def read_in_data_fits(filename):
     hdu.close()
 
     #create the wavelength vector
-    lamdas = np.arange(header['CRVAL3'], header['CRVAL3']+(header['NAXIS3']*header['CD3_3']), header['CD3_3'])
+    try:
+        lamdas = np.arange(header['CRVAL3'], header['CRVAL3']+(header['NAXIS3']*header['CD3_3']), header['CD3_3'])
+    except KeyError:
+        lamdas = np.arange(header['CRVAL3'], header['CRVAL3']+(header['NAXIS3']*header['CDELT3']), header['CDELT3'])
 
     if 'var' in locals():
         return lamdas, data, var, header
@@ -882,10 +885,12 @@ def data_coords(lamdas, data, header, z, cube_colour, shiftx=None, shifty=None):
     #CD2_2 = DEC degrees per row pixel
 
     #multiply through by header values
-    x = x*header['CD1_2']*60*60
-    y = y*header['CD2_1']*60*60
-    #x = x*header['CDELT1']*60*60
-    #y = y*header['CDELT2']*60*60
+    try:
+        x = x*header['CD1_2']*60*60
+        y = y*header['CD2_1']*60*60
+    except KeyError:
+        x = x*header['CDELT1']*60*60
+        y = y*header['CDELT2']*60*60
 
     print("x shape, y shape:", x.shape, y.shape)
 
@@ -901,11 +906,14 @@ def data_coords(lamdas, data, header, z, cube_colour, shiftx=None, shifty=None):
             cont_mask = (lamdas>3600*(1+z))&(lamdas<3700*(1+z))
         cont_median = np.median(data[cont_mask,:,:], axis=0)
         i, j = np.unravel_index(cont_median.argmax(), cont_median.shape)
-        shiftx = i*header['CD1_2']*60*60
-        shifty = j*header['CD2_1']*60*60
+        try:
+            shiftx = i*header['CD1_2']*60*60
+            shifty = j*header['CD2_1']*60*60
+        except KeyError:
+            shiftx = i*header['CDELT1']*60*60
+            shifty = j*header['CDELT2']*60*60
         #i, j = np.median(np.where(cont_median==np.nanmax(cont_median)),axis=1)
-        #shiftx = i*header['CDELT1']*60*60
-        #shifty = j*header['CDELT2']*60*60
+
         print("shiftx, shifty:", shiftx, shifty)
         x = x - shiftx
         y = y - shifty
