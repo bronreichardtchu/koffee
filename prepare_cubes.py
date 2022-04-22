@@ -166,18 +166,15 @@ def bin_data(lamdas, data, z, bin_size=[3,3], var=None):
     data : :obj:'~numpy.ndarray'
         the data to be binned
 
-    z : int
+    z : float
         the redshift
-
-    other_cubes : list of :obj:'~numpy.ndarray'
-        any other cubes (e.g. the variance) which need to be binned in the
-        exact same way as the data, with the same shifts.
 
     bin_size : int
         the number of spaxels to bin by (Default is [3,3], this will bin 3x3)
 
     var : :obj:'~numpy.ndarray' or None
-        the variance cube to be binned (Default is None)
+        the variance cube which needs to be binned in the exact same way as the
+        data, with the same shifts.(Default is None)
 
     Returns
     -------
@@ -199,6 +196,12 @@ def bin_data(lamdas, data, z, bin_size=[3,3], var=None):
     #create lamda mask for hbeta
     hbeta_mask = (lamdas>4862.68*(1+z)-2.0) & (lamdas<4862.68*(1+z)+2.0)
 
+    #calculate the signal-to-noise ratio of hbeta
+    if var is not None:
+        sn_array = np.nanmedian(data[hbeta_mask,:,:], axis=0)/np.nanmedian(var[hbeta_mask,:,:], axis=0)
+    else:
+        sn_array = np.nanmedian(data[hbeta_mask,:,:], axis=0)/np.nanstd(data[hbeta_mask,:,:], axis=0)
+
     #create counter for x direction
     start_xi = 0
     end_xi = bin_size[0]
@@ -214,50 +217,40 @@ def bin_data(lamdas, data, z, bin_size=[3,3], var=None):
             center_x = int((start_xi+end_xi)/2)
             center_y = int((start_yi+end_yi)/2)
 
-            #find where the peak of the hbeta line is
-            try:
-                hbeta_peak = np.argmax(data[:, center_x, center_y][hbeta_mask])
-            except:
-                hbeta_peak = np.argmax(data[:, start_xi, start_yi][hbeta_mask])
-            #print(data[:, center_x, center_y][hbeta_mask].shape)
-            #print('Hbeta peak for central spaxel:', hbeta_peak)
+            #only need to shift the hbeta peaks if the S/N is greater than 3
+            if sn_array[center_x, center_y] >= 3:
+                #find where the peak of the hbeta line is
+                try:
+                    hbeta_peak = np.argmax(data[:, center_x, center_y][hbeta_mask])
+                except:
+                    hbeta_peak = np.argmax(data[:, start_xi, start_yi][hbeta_mask])
+                #print(data[:, center_x, center_y][hbeta_mask].shape)
+                #print('Hbeta peak for central spaxel:', hbeta_peak)
 
-            #find where the peak of the rest of the spaxels is
-            other_hbeta_peaks = np.argmax(data[:, start_xi:end_xi, start_yi: end_yi][hbeta_mask], axis=0)
-            #print('Other Hbeta peaks', other_hbeta_peaks)
+                #find where the peak of the rest of the spaxels is
+                other_hbeta_peaks = np.argmax(data[:, start_xi:end_xi, start_yi: end_yi][hbeta_mask], axis=0)
+                #print('Other Hbeta peaks', other_hbeta_peaks)
 
-            #find difference between other_hbeta_peaks and hbeta_peak
-            hbeta_peak_diff = other_hbeta_peaks - hbeta_peak
-            #print('Hbeta peak diff', hbeta_peak_diff, '\n\n')
+                #find difference between other_hbeta_peaks and hbeta_peak
+                hbeta_peak_diff = other_hbeta_peaks - hbeta_peak
+                #print('Hbeta peak diff', hbeta_peak_diff, '\n\n')
 
-            #add to list
-            hbeta_peak_diff_list.append(hbeta_peak_diff)
+                #add to list
+                hbeta_peak_diff_list.append(hbeta_peak_diff)
 
-            #iterate through the peak differences
-            for (i,j), diff in np.ndenumerate(hbeta_peak_diff):
-                if diff < 0:
-                    #shift the spectra to the right
-                    data[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
-                    if var is not None:
-                        var[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = var[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
+                #iterate through the peak differences
+                for (i,j), diff in np.ndenumerate(hbeta_peak_diff):
+                    if diff < 0:
+                        #shift the spectra to the right
+                        data[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
+                        if var is not None:
+                            var[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = var[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
 
-                if diff > 0:
-                    #shift the spectra to the left
-                    data[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
-                    if var is not None:
-                        var[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = var[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
-
-            #if there are other cubes, iterate through and shift them
-            if other_cubes:
-                for cube in other_cubes:
-                    for (i,j), diff in np.ndenumerate(hbeta_peak_diff):
-                        if diff < 0:
-                            #shift the spectra to the right
-                            cube[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = cube[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
-
-                        if diff > 0:
-                            #shift the spectra to the left
-                            cube[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = cube[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
+                    if diff > 0:
+                        #shift the spectra to the left
+                        data[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
+                        if var is not None:
+                            var[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = var[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
 
 
             """
@@ -300,14 +293,15 @@ def bin_data(lamdas, data, z, bin_size=[3,3], var=None):
         return binned_data, hbeta_peak_diff_list
 
 
-def save_binned_data(data, header, data_folder, gal_name, bin_size=[3,3], var=None):
+def save_binned_data(data_filepath, data_folder, gal_name, z, bin_size=[3,3], var_filepath=None):
     """
-    Save the binned data or variance cube to a fits file, with the necessary
+    Read in the data from a fits file, bin it by the given binsize, and then
+    save the binned data and/or variance cube to a fits file, with the necessary
     changes to the fits file header.
     Parameters
     ----------
-    data : :obj:'~numpy.ndarray'
-        the binned data or variance cube
+    data_filepath : str
+        the filepath to the data to be binned
 
     header : FITS header object
         the old fits header to be changed for the new file
@@ -319,16 +313,42 @@ def save_binned_data(data, header, data_folder, gal_name, bin_size=[3,3], var=No
         the galaxy name and any other descriptors for the filename.
         E.g. 'cgcg453_red_var' for the red variance cube of cgcg453
 
+    z : float
+        the redshift
+
     bin_size : int
         the number of spaxels the cube was binned by, [x,y].  (Default is [3,3])
 
-    var : :obj:'~numpy.ndarray' or None
-        the variance cube to be binned (Default is None)
+    var_filepath : str or None
+        the filepath to the variance cube to be binned (Default is None)
 
     Returns
     -------
-    Saves the cube and new header to a fits file.
+    Rebins and saves the cube and new header to a fits file.
     """
+    #read in the data
+    data_stuff = read_in_data_fits(data_filepath)
+
+    if len(data_stuff)>3:
+        lamdas, data, var, header = data_stuff
+    else:
+        lamdas, data, header = data_stuff
+
+    #read in the var
+    if var_filepath:
+        var_lamdas, var, var_header = read_in_data_fits(var_filepath)
+
+
+    if var:
+        #give it to the binning function
+        binned_data, binned_var = bin_data(lamdas, data, z, bin_size=bin_size, var=var)
+
+    else:
+        #give it to the binning function
+        binned_data, hbeta_peak_diff_list = bin_data(lamdas, data, z, bin_size=bin_size, var=None)
+
+
+    #copy the header
     new_header = header.copy()
 
     #change the cards to match the binned data
@@ -353,14 +373,13 @@ def save_binned_data(data, header, data_folder, gal_name, bin_size=[3,3], var=No
     new_header['CRPIX2'] = round((header['CRPIX2']/bin_size[0])*2.0)/2.0
 
     #create HDU object
-    hdu = fits.PrimaryHDU(data, header=new_header)
-    if var is not None:
-        hdu_var = fits.ImageHDU(var, header=new_header)
-
-    #create HDU list
-    if var is not None:
+    hdu = fits.PrimaryHDU(binned_data, header=new_header)
+    if var:
+        hdu_var = fits.ImageHDU(binned_var, header=new_header)
+        #create HDU list
         hdul = fits.HDUList([hdu, hdu_var])
     else:
+        #create HDU list 
         hdul = fits.HDUList([hdu])
 
     #write to file
