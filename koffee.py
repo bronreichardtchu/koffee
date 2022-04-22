@@ -47,8 +47,8 @@ from tqdm import tqdm #progress bar module
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from . import prepare_cubes as pc
-from . import koffee_fitting_functions as kff
+import prepare_cubes as pc
+import koffee_fitting_functions as kff
 
 from astropy.modeling import models
 
@@ -165,8 +165,8 @@ def check_blue_chi_square(wavelength, flux, best_fit, g_model, OII_doublet_fit=F
 
     Returns
     -------
-    chi_square : int
-        the chi squared residual of the blue side of the fit
+    chi_square_reduced : int
+        the reduced chi squared residual of the blue side of the fit
     """
     #get the residuals
     residual = best_fit.residual
@@ -192,7 +192,54 @@ def check_blue_chi_square(wavelength, flux, best_fit, g_model, OII_doublet_fit=F
     #calculate the chi squared
     chi_square = np.sum(residual[lam_mask]**2)
 
-    return chi_square
+    #calculate the reduced chi squared by dividing by the degrees of freedom
+    chi_square_reduced = chi_square/best_fit.nfree
+
+    return chi_square_reduced
+
+
+def calc_BIC(wavelength, flux, weights, best_fit):
+    """
+    Calculates the Bayesian Information Criterion for non-gaussian case.
+    BIC = chi^2 + kln(N)
+    where k is the number of parameters, and N is the number of data points
+
+    Parameters
+    ----------
+    wavelength : :obj:'~numpy.ndarray'
+        the wavelength vector
+
+    flux : :obj:'~numpy.ndarray'
+        the data vector
+
+    weights : :obj:'~numpy.ndarray'
+        1/sqrt(var)
+        In the fit_cube() function, this is calculated at the beginning
+
+    best_fit : class
+        the best_fit object
+
+    Returns
+    -------
+    bic : float
+        The BIC value
+    """
+    #first calculate the chi^2 value
+    residual = flux - best_fit.eval(x=wavelength)
+    chi_square = np.nansum(weights**2 * residual**2)
+
+    #get the number of parameters
+    k = best_fit.nvarys
+
+    #get the number of data points
+    n = len(flux)
+
+    #calculate the BIC
+    bic = chi_square + k*np.log(n)
+
+    return bic
+
+
 
 
 
@@ -286,8 +333,8 @@ def plot_fit(wavelength, flux, g_model, pars, best_fit, plot_initial=False, incl
 
 
 #===============================================================================
-#MAIN FUNCTION _ APPLY TO WHOLE CUBE
-def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_line2=None, OII_doublet=False, filename=None, filename2=None, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=False, plotting=True, method='leastsq', correct_bad_spaxels=False, koffee_checks=True):
+#MAIN FUNCTION - APPLY TO WHOLE CUBE
+def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_line2=None, OII_doublet=False, filename=None, filename2=None, var_filename=None, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=False, plotting=True, method='leastsq', correct_bad_spaxels=False, koffee_checks=True, use_lmfit_bic=False):
     """
     Fits the entire cube, and checks whether one or two gaussians fit the
     emission line best.  Must have either the filename to the fits file, or the
@@ -327,6 +374,10 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         cube. If this is not None, the first cube is used to create the S/N mask,
         and this cube is used for fitting.
 
+    var_filename : str or None
+        the filepath to the variance cube, if it's separate to the data cube file
+        and the fit should be weighted.  Default is None.
+
     data_cube_stuff : list of :obj:'~numpy.ndarray'
         [lamdas, data] if the filename is not given
 
@@ -356,6 +407,11 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         test, are applied and the spaxels which fail are refit with different
         prior guesses.  Default is True.
 
+    use_lmfit_bic : bool
+        when True, uses lmfit's Bayesian Information Criterion definition (which
+        is a weird definition).  When False, uses the definition from the function
+        written to calculate the BIC above.  Default is False.
+
     Returns
     -------
     outflow_results : :obj:'~numpy.ndarray' object
@@ -378,8 +434,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         array with 0 where one gaussian gave a better BIC value, and 1 where two
         gaussians gave a better BIC value.
 
-    chi_square :obj:'~numpy.ndarray' object
-        array with the chi square values for the [single gaussian, double gaussian]
+    bic :obj:'~numpy.ndarray' object
+        array with the BIC values for the [single gaussian, double gaussian]
         fits in the same spatial shape as the input data array
 
     outflow_results2 : :obj:'~numpy.ndarray' object
@@ -402,8 +458,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         spatial shape as the input data array for the second emission line fit,
         if emission_line2 is not None.
 
-    chi_square2 :obj:'~numpy.ndarray' object
-        array with the chi square values for the [single gaussian, double gaussian]
+    bic2 :obj:'~numpy.ndarray' object
+        array with the BIC values for the [single gaussian, double gaussian]
         fits in the same spatial shape as the input data array for the second
         emission line fit, if emission_line2 is not None.
 
@@ -427,8 +483,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         spatial shape as the input data array for the OII doublet line fit, if
         OII_doublet is True.
 
-    chi_square3 :obj:'~numpy.ndarray' object
-        array with the chi square values for the [single gaussian, double gaussian]
+    bic3 :obj:'~numpy.ndarray' object
+        array with the BIC values for the [single gaussian, double gaussian]
         fits in the same spatial shape as the input data array for the OII doublet
         line fit, if OII_doublet is True.
     """
@@ -437,6 +493,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         fits_stuff = pc.load_data(filename, mw_correction=False)
         if len(fits_stuff) > 3:
             lamdas, data, var, header = fits_stuff
+            all_weights = 1/np.sqrt(var)
         else:
             lamdas, data, header = fits_stuff
     elif data_cube_stuff:
@@ -444,6 +501,11 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
     else:
         print('Data input not understood.  Need either a fits file path or the [lamdas, data] in data_cube_stuff.')
         return
+
+    if var_filename:
+        _, var, var_header = pc.load_data(var_filename, mw_correction=False)
+        all_weights = 1/np.sqrt(var)
+
 
     #create filepath to output folder
     output_folder_loc = output_folder_loc+galaxy_name+'koffee_results_'+emission_line+'_'+str(date.today())+'/'
@@ -471,6 +533,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
     #save the blue chi squared values check
     blue_chi_square = np.empty_like(data[0,:,:])
 
+    #save the BIC values for single and double gaussian fits
+    bic = np.empty_like(data[:2,:,:])
+
     #save the chi squared values for single and double gaussian fits
     chi_square = np.empty_like(data[:2,:,:])
 
@@ -488,11 +553,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         fits_stuff = pc.load_data(filename2, mw_correction=False)
         if len(fits_stuff) > 3:
             lamdas, data, var, header = fits_stuff
+            all_weights = 1/np.sqrt(var)
         else:
             lamdas, data, header = fits_stuff
         print('Second filename being used for koffee fits')
         #recreate mask to choose emission line wavelength range with new lamdas
-        mask_lam = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
+        mask_lam = (lamdas > em_observed-13.) & (lamdas < em_observed+13.)
 
     #if fitting a second emission line, create the wavelength mask
     if emission_line2:
@@ -502,7 +568,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         em_observed = em_rest2*(1+redshift)
 
         #create mask to choose emission line wavelength range
-        mask_lam2 = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
+        mask_lam2 = (lamdas > em_observed-13.) & (lamdas < em_observed+13.)
 
         #create arrays to save results in
         if include_const == True:
@@ -516,7 +582,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
             no_outflow_results2 = np.empty_like(data[:3,:,:])
             no_outflow_error2 = np.empty_like(data[:3,:,:])
 
-        chi_square2 = np.empty_like(data[:2,:,:])
+        bic2 = np.empty_like(data[:2,:,:])
+        #1 for outflow, 0 for no outflow
+        statistical_results2 = np.empty_like(data[0,:,:])
 
     #if fitting the OII doublet, create the wavelength mask
     if OII_doublet == True:
@@ -526,7 +594,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         em_observed = em_rest3*(1+redshift)
 
         #create mask to choose emission line wavelength range
-        mask_lam3 = (lamdas > em_observed-20.) & (lamdas < em_observed+20.)
+        mask_lam3 = (lamdas > em_observed-13.) & (lamdas < em_observed+13.)
 
         #create arrays to save results in - always use a constant when fitting OII doublet
         outflow_results3 = np.empty_like(data[:13,:,:])
@@ -535,7 +603,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         no_outflow_results3 = np.empty_like(data[:7,:,:])
         no_outflow_error3 = np.empty_like(data[:7,:,:])
 
-        chi_square3 = np.empty_like(data[:2,:,:])
+        bic3 = np.empty_like(data[:2,:,:])
 
     if correct_bad_spaxels == True and emission_line == 'OIII_4':
         #get the OIII_3 emission line and redshift it
@@ -543,7 +611,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         em_obs_OIII_3 = em_rest_OIII_3*(1+redshift)
 
         #use OIII_3 to make the mask
-        mask_lam_OIII_3 = (lamdas > em_obs_OIII_3-20.) & (lamdas < em_obs_OIII_3+20.)
+        mask_lam_OIII_3 = (lamdas > em_obs_OIII_3-13.) & (lamdas < em_obs_OIII_3+13.)
 
     #loop through cube
     with tqdm(total=data.shape[1]*data.shape[2]) as pbar:
@@ -557,15 +625,18 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             masked_lamdas = lamdas[mask_lam_OIII_3]
                             #apply the mask to the data
                             flux = data[:,i,j][mask_lam_OIII_3]
+                            weights = all_weights[:,i,j][mask_lam_OIII_3]
                             print('Using [OIII] '+str(em_rest_OIII_3)+' for spaxel '+str(i)+','+str(j))
 
                         else:
                             flux = data[:,i,j][mask_lam]
+                            weights = all_weights[:,i,j][mask_lam]
                             #apply mask to lamdas
                             masked_lamdas = lamdas[mask_lam]
 
                     elif correct_bad_spaxels == False:
                         flux = data[:,i,j][mask_lam]
+                        weights = all_weights[:,i,j][mask_lam]
                         #apply mask to lamdas
                         masked_lamdas = lamdas[mask_lam]
 
@@ -574,9 +645,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         continuum = np.median(flux[:10])
                         flux = flux-continuum
 
-                    #only fit if the S/N is greater than 20
-                    if sn_array[i,j] >= 20:
-                        #print('Spaxel '+str(i)+','+str(j)+' has S/N > 20')
+                    #only fit if the S/N is greater than 10
+                    if sn_array[i,j] >= 10:
+                        #print('Spaxel '+str(i)+','+str(j)+' has S/N > 10')
                         #create model for 1 Gaussian fit
                         if include_const == True:
                             g_model1, pars1 = kff.gaussian1_const(masked_lamdas, flux)
@@ -584,7 +655,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             g_model1, pars1 = kff.gaussian1(masked_lamdas, flux)
 
                         #fit model for 1 Gaussian fit
-                        best_fit1 = kff.fitter(g_model1, pars1, masked_lamdas, flux, method=method, verbose=False)
+                        best_fit1 = kff.fitter(g_model1, pars1, masked_lamdas, flux, weights=weights, method=method, verbose=False)
 
                         #create and fit model for 2 Gaussian fit, using 1 Gaussian fit as first guess for the mean
                         if include_const == True:
@@ -593,19 +664,34 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             g_model2, pars2 = kff.gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=None, sigma_guess=None)
 
                         #fit model for 2 gaussian fit
-                        best_fit2 = kff.fitter(g_model2, pars2, masked_lamdas, flux, method=method, verbose=False)
+                        best_fit2 = kff.fitter(g_model2, pars2, masked_lamdas, flux, weights=weights, method=method, verbose=False)
 
 
-                        if best_fit2.bic < (best_fit1.bic-10):
-                            stat_res = 1
-                            #print('2 Gaussian fit better, BIC_diff=', str(best_fit1.bic-best_fit2.bic))
-                            #save blue chi square
-                            blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit2, g_model2)
-                        else:
-                            stat_res = 0
-                            #print('1 Gaussian fit better, BIC_diff=', str(best_fit1.bic-best_fit2.bic))
-                            #save blue chi square
-                            blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit1, g_model1)
+                        if use_lmfit_bic == True:
+                            if best_fit2.bic < (best_fit1.bic-10):
+                                stat_res = 1
+                                #print('2 Gaussian fit better, BIC_diff=', str(best_fit1.bic-best_fit2.bic))
+                                #save blue chi square
+                                blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit2, g_model2)
+                            else:
+                                stat_res = 0
+                                #print('1 Gaussian fit better, BIC_diff=', str(best_fit1.bic-best_fit2.bic))
+                                #save blue chi square
+                                blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit1, g_model1)
+
+                        elif use_lmfit_bic == False:
+                            if calc_BIC(masked_lamdas, flux, weights, best_fit2) < (calc_BIC(masked_lamdas, flux, weights, best_fit1)-500):
+                                stat_res = 1
+                                #print('2 Gaussian fit better, BIC_diff=', str(best_fit1.bic-best_fit2.bic))
+                                #save blue chi square
+                                blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit2, g_model2)
+                            else:
+                                stat_res = 0
+                                #print('1 Gaussian fit better, BIC_diff=', str(best_fit1.bic-best_fit2.bic))
+                                #save blue chi square
+                                blue_chi_square[i,j] = check_blue_chi_square(masked_lamdas, flux, best_fit1, g_model1)
+
+                        print('Blue chi squared residual for [OIII] spaxel', str(i), str(j), str(blue_chi_square[i,j]))
 
 
 
@@ -634,19 +720,32 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
 
                         if koffee_checks == True:
-                            if blue_chi_square[i,j] > 0.1:
+                            if blue_chi_square[i,j] > 1.5:
                                 if include_const == True:
                                     g_model2_refit, pars2_refit = kff.gaussian2_const(masked_lamdas, flux, amplitude_guess=None, mean_guess=[masked_lamdas[flux.argmax()], masked_lamdas[flux.argmax()]-4.0], sigma_guess=[1.0,8.0])
                                 elif include_const == False:
                                     g_model2_refit, pars2_refit = kff.gaussian2(masked_lamdas, flux, amplitude_guess=None, mean_guess=[masked_lamdas[flux.argmax()], masked_lamdas[flux.argmax()]-4.0], sigma_guess=[1.0,8.0])
-                                best_fit2_refit = kff.fitter(g_model2_refit, pars2_refit, masked_lamdas, flux, method=method, verbose=False)
+                                best_fit2_refit = kff.fitter(g_model2_refit, pars2_refit, masked_lamdas, flux, weights=weights, method=method, verbose=False)
 
                                 print('Refit 2 gaussians for spaxel', str(i), str(j))
 
-                                #force it to take the new fit if it is a better BIC
-                                if (best_fit2_refit.bic < (best_fit1.bic-10)) and (best_fit2_refit.bic < (best_fit2.bic-10)) :
-                                    stat_res = 2
-                                    #print('Refit 2 Gaussians fit better, BIC_diff=', str(best_fit2_refit.bic-best_fit2.bic))
+                                #recheck the blue chi squared residual
+                                new_blue_chi_square = check_blue_chi_square(masked_lamdas, flux, best_fit2_refit, g_model2_refit)
+
+
+                                #force it to take the new fit if it has improved the blue side chi squared residual
+                                #AND the new two gaussian fit has a lower BIC value than the single gaussian fit
+                                if use_lmfit_bic == True:
+                                    if (new_blue_chi_square < blue_chi_square[i,j]) and (best_fit2_refit.bic < best_fit1.bic):
+                                        stat_res = 2
+                                        print('Refit 2 Gaussians fit better, old chi square: ', str(blue_chi_square[i,j]), ' new chi square: ', str(new_blue_chi_square))
+                                        #print('Refit 2 Gaussians fit better, BIC_diff=', str(best_fit2_refit.bic-best_fit2.bic))
+
+                                elif use_lmfit_bic == False:
+                                    if (new_blue_chi_square < blue_chi_square[i,j]) and (calc_BIC(masked_lamdas, flux, weights, best_fit2_refit) < calc_BIC(masked_lamdas, flux, weights, best_fit1)):
+                                        stat_res = 2
+                                        print('Refit 2 Gaussians fit better, old chi square: ', str(blue_chi_square[i,j]), ' new chi square: ', str(new_blue_chi_square))
+                                        #print('Refit 2 Gaussians fit better, BIC_diff=', str(best_fit2_refit.bic-best_fit2.bic))
 
                                 if plotting == True:
                                     fig2 = plot_fit(masked_lamdas, flux, g_model2_refit, pars2_refit, best_fit2_refit, plot_initial=False, include_const=include_const)
@@ -681,9 +780,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         if emission_line2:
                             #only want to fit hbeta where there is an outflow
                             if stat_res > 0:
+                                #first assume we can fit an outflow
+                                statistical_results2[i,j] = 1
                                 #mask the lamdas and data
                                 masked_lamdas2 = lamdas[mask_lam2]
                                 flux2 = data[:,i,j][mask_lam2]
+                                weights2 = all_weights[:,i,j][mask_lam2]
                                 #get the guess values from the previous fits
                                 if stat_res == 1:
                                     mean_diff = best_fit2.params['Galaxy_mean'].value - best_fit2.params['Flow_mean'].value
@@ -691,6 +793,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 elif stat_res == 2:
                                     mean_diff = best_fit2_refit.params['Galaxy_mean'].value - best_fit2_refit.params['Flow_mean'].value
                                     sigma_guess = [best_fit2_refit.params['Galaxy_sigma'].value, best_fit2_refit.params['Flow_sigma'].value]
+
                                 #create the fitting objects
                                 if include_const == True:
                                     #for the one gaussian fit
@@ -698,6 +801,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                                     #for the two gaussian fit
                                     g_model2_second, pars2_second = kff.gaussian2_const(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.5], sigma_variations=1.5)
+
                                 elif include_const == False:
                                     #for the one gaussian fit
                                     g_model1_second, pars1_second = kff.gaussian1(masked_lamdas2, flux2, amp_guess=None, mean_guess=None, sigma_guess=None)
@@ -706,16 +810,11 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                                 #do the fit
                                 #for the one gaussian fit
-                                best_fit1_second = kff.fitter(g_model1_second, pars1_second, masked_lamdas2, flux2, method=method, verbose=False)
+                                best_fit1_second = kff.fitter(g_model1_second, pars1_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
 
                                 #for the two gaussian fit
-                                best_fit2_second = kff.fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, method=method, verbose=False)
+                                best_fit2_second = kff.fitter(g_model2_second, pars2_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
 
-                                #fit the one gaussian fit of the emission line
-                                fig3 = plot_fit(masked_lamdas2, flux2, g_model1_second, pars1_second, best_fit1_second, plot_initial=False, include_const=include_const)
-                                fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] fit without outflow')
-                                fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_no_outflow_second_fit_'+str(i)+'_'+str(j))
-                                plt.close(fig3)
 
                                 if plotting == True:
                                     #plot the one gaussian fit of the emission line
@@ -735,17 +834,23 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                     #check the fit using the blue-side-residual test
                                     blue_chi_square_check = check_blue_chi_square(masked_lamdas2, flux2, best_fit2_second, g_model2_second)
 
-                                    if blue_chi_square_check > 0.2:
+                                    print('This spaxel had', emission_line2, 'blue_chi_square_check ', str(blue_chi_square_check))
+
+                                    if blue_chi_square_check > 1.5:
                                         #refit using...
                                         print('Refitting', emission_line2, 'fit for spaxel ', str(i), str(j))
-                                        print('This spaxel had blue_chi_square_check ', str(blue_chi_square_check))
+
                                         #create the fitting objects
                                         if include_const == True:
                                             g_model2_refit_second, pars2_refit_second = kff.gaussian2_const(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.5], sigma_variations=0.5)
                                         elif include_const == False:
                                             g_model2_refit_second, pars2_refit_second = kff.gaussian2(masked_lamdas2, flux2, amplitude_guess=None, mean_guess=[masked_lamdas2[flux2.argmax()], masked_lamdas2[flux2.argmax()]-mean_diff], sigma_guess=sigma_guess, mean_diff=[mean_diff, 0.5], sigma_variations=0.5)
                                         #do the fit
-                                        best_fit2_refit_second = kff.fitter(g_model2_refit_second, pars2_refit_second, masked_lamdas2, flux2, method=method, verbose=False)
+                                        best_fit2_refit_second = kff.fitter(g_model2_refit_second, pars2_refit_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
+
+                                        blue_chi_square_check_refit = check_blue_chi_square(masked_lamdas2, flux2, best_fit2_refit_second, g_model2_refit_second)
+
+                                        print(emission_line2, 'refitted blue_chi_square_check ', blue_chi_square_check_refit)
 
                                         print(emission_line2, 'fit blue-chi-squared-fit chi squared value: ', best_fit2_refit_second.bic)
                                         print(emission_line2, 'fit original chi squared value: ', best_fit2_second.bic)
@@ -758,51 +863,63 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                             plt.close(fig4)
                                             #print('plotted hbeta refit')
 
-                                        g_model2_second = g_model2_refit_second
-                                        pars2_second = pars2_refit_second
-                                        best_fit2_second = best_fit2_refit_second
+                                        #accept the refit if it has a better blue side residual
+                                        #AND the new two gaussian fit has a lower BIC value than the single gaussian fit
+                                        if use_lmfit_bic == True:
+                                            if (blue_chi_square_check_refit < blue_chi_square_check) and (best_fit2_refit_second.bic < best_fit1_second.bic):
+                                                g_model2_second = g_model2_refit_second
+                                                pars2_second = pars2_refit_second
+                                                best_fit2_second = best_fit2_refit_second
+                                                #make the stat_res=2 to signify a refit
+                                                statistical_results2[i,j] = 2
+                                        elif use_lmfit_bic == False:
+                                            if (blue_chi_square_check_refit < blue_chi_square_check) and (calc_BIC(masked_lamdas2, flux2, weights2, best_fit2_refit_second) < calc_BIC(masked_lamdas2, flux2, weights2, best_fit1_second)):
+                                                g_model2_second = g_model2_refit_second
+                                                pars2_second = pars2_refit_second
+                                                best_fit2_second = best_fit2_refit_second
+                                                #make the stat_res=2 to signify a refit
+                                                statistical_results2[i,j] = 2
 
 
                                     #check that a single gaussian fit wouldn't be better if the flow amplitude
                                     #is greater than 90% of the galaxy amplitude
                                     if best_fit2_second.params['Flow_amp'].value > 0.9*best_fit2_second.params['Galaxy_amp'].value:
-                                        print('Doing one Gaussian hbeta fit for spaxel ', str(i), str(j))
-                                        #create the fitting objects
-                                        if include_const == True:
-                                            g_model1_refit_second, pars1_refit_second = kff.gaussian1_const(masked_lamdas2, flux2)#, amp_guess=None, mean_guess=masked_lamdas2[flux2.argmax()])#, sigma_guess=sigma_guess[0])
-                                        elif include_const == False:
-                                            g_model1_refit_second, pars1_refit_second = kff.gaussian1(masked_lamdas2, flux2)#, amp_guess=None, mean_guess=masked_lamdas2[flux2.argmax()], sigma_guess=sigma_guess[0])
+                                        print('Checking one Gaussian hbeta fit for spaxel ', str(i), str(j))
 
-                                        #do the fit
-                                        best_fit1_refit_second = kff.fitter(g_model1_refit_second, pars1_refit_second, masked_lamdas2, flux2, method=method, verbose=False)
 
                                         #do the BIC test
                                         #if the 2 gaussian fit has a lower BIC by 10 or more, it's the better fit
-                                        print('One Gaussian fit BIC: ', str(best_fit1_refit_second.bic))
-                                        print('Two Gaussian fit BIC: ', str(best_fit2_second.bic))
-                                        print('Difference: ', str(best_fit2_second.bic - best_fit1_refit_second.bic))
+                                        if use_lmfit_bic == True:
+                                            print('One Gaussian fit BIC: ', str(best_fit1_second.bic))
+                                            print('Two Gaussian fit BIC: ', str(best_fit2_second.bic))
+                                            print('Difference: ', str(best_fit2_second.bic - best_fit1_second.bic))
+                                        elif use_lmfit_bic == False:
+                                            print('One Gaussian fit BIC: ', str(calc_BIC(masked_lamdas2, flux2, weights2, best_fit1_second)))
+                                            print('Two Gaussian fit BIC: ', str(calc_BIC(masked_lamdas2, flux2, weights2, best_fit2_second)))
+                                            print('Difference: ', str(calc_BIC(masked_lamdas2, flux2, weights2, best_fit2_second) - calc_BIC(masked_lamdas2, flux2, weights2, best_fit1_second)))
 
-                                        if plotting == True:
-                                            #plot the refit
-                                            fig4 = plot_fit(masked_lamdas2, flux2, g_model1_refit_second, pars1_refit_second, best_fit1_refit_second, plot_initial=False, include_const=include_const)
-                                            fig4.suptitle(emission_line2+' ['+str(em_rest2)+'] BIC test Refit')
-                                            fig4.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_outflow_second_fit_'+str(i)+'_'+str(j)+'_BIC_test_refit')
-                                            plt.close(fig4)
 
+                                        #if the flow amp is more than 98% of the amplitude of the galaxy amp,
+                                        #then force the one gaussian fit
                                         if best_fit2_second.params['Flow_amp'].value > 0.98*best_fit2_second.params['Galaxy_amp'].value:
                                             print('Using one Gaussian fit for spaxel ', str(i), str(j))
 
-                                            g_model2_second = g_model1_refit_second
-                                            pars2_second = pars1_refit_second
-                                            best_fit2_second = best_fit1_refit_second
+                                            #g_model2_second = g_model1_second
+                                            #pars2_second = pars1_second
+                                            #best_fit2_second = best_fit1_second
+                                            statistical_results2[i,j] = 0
 
+                                        #only use the one gaussian fit if it's seriously better than the two gaussian fit
                                         else:
-                                            if best_fit1_refit_second.bic < best_fit2_second.bic+50:
-                                                #print('One Gaussian fit better for spaxel ', str(i), str(j))
+                                            if use_lmfit_bic == True:
+                                                if best_fit1_second.bic < best_fit2_second.bic+50:
+                                                    #print('One Gaussian fit better for spaxel ', str(i), str(j))
 
-                                                g_model2_second = g_model1_refit_second
-                                                pars2_second = pars1_refit_second
-                                                best_fit2_second = best_fit1_refit_second
+                                                    statistical_results2[i,j] = 0
+                                            elif use_lmfit_bic == False:
+                                                if calc_BIC(masked_lamdas2, flux2, weights2, best_fit1_second) < calc_BIC(masked_lamdas2, flux2, weights2, best_fit2_second)+500:
+
+                                                    statistical_results2[i,j] = 0
 
 
                                 #plot final fits
@@ -815,8 +932,11 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         #print('plotted final hbeta fit')
 
                                 #put the results into the array to be saved
-                                chi_square2[:,i,j] = (best_fit1_second.bic, best_fit2_second.bic)
-                                #print('saved hbeta fit chi_square values')
+                                if use_lmfit_bic == True:
+                                    bic2[:,i,j] = (best_fit1_second.bic, best_fit2_second.bic)
+                                elif use_lmfit_bic == False:
+                                    bic2[:,i,j] = (calc_BIC(masked_lamdas2, flux2, weights2, best_fit1_second), calc_BIC(masked_lamdas2, flux2, weights2, best_fit2_second))
+                                #print('saved hbeta fit bic values')
 
                                 try:
                                     #try to save the results
@@ -834,22 +954,51 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
                                         #print('saved hbeta fit for spaxel', str(i), str(j))
                                 except:
+                                    print('Really did need that hbeta exception thing')
                                     #if that doesn't work, then the one gaussian fit was better
-                                    if include_const == True:
-                                        outflow_results2[:,i,j] = (best_fit2_second.params['gauss_sigma'].value, best_fit2_second.params['gauss_mean'].value, best_fit2_second.params['gauss_amp'].value, np.nan, np.nan, np.nan, best_fit2_second.params['Constant_Continuum_c'].value)
-                                        outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit2_second.params['gauss_mean'].stderr, best_fit2_second.params['gauss_amp'].stderr, np.nan, np.nan, np.nan, best_fit2_second.params['Constant_Continuum_c'].stderr)
+                                    #if include_const == True:
+                                    #    outflow_results2[:,i,j] = (best_fit2_second.params['gauss_sigma'].value, best_fit2_second.params['gauss_mean'].value, best_fit2_second.params['gauss_amp'].value, np.nan, np.nan, np.nan, best_fit2_second.params['Constant_Continuum_c'].value)
+                                    #    outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit2_second.params['gauss_mean'].stderr, best_fit2_second.params['gauss_amp'].stderr, np.nan, np.nan, np.nan, best_fit2_second.params['Constant_Continuum_c'].stderr)
 
-                                        no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value, best_fit1_second.params['Constant_Continuum_c'].value)
-                                        no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr, best_fit1_second.params['Constant_Continuum_c'].stderr)
-                                    elif include_const == False:
-                                        outflow_results2[:,i,j] = (best_fit2_second.params['gauss_sigma'].value, best_fit2_second.params['gauss_mean'].value, best_fit2_second.params['gauss_amp'].value, np.nan, np.nan, np.nan)
-                                        outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit2_second.params['gauss_mean'].stderr, best_fit2_second.params['gauss_amp'].stderr, np.nan, np.nan, np.nan)
+                                    #    no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value, best_fit1_second.params['Constant_Continuum_c'].value)
+                                    #    no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr, best_fit1_second.params['Constant_Continuum_c'].stderr)
+                                    #elif include_const == False:
+                                    #    outflow_results2[:,i,j] = (best_fit2_second.params['gauss_sigma'].value, best_fit2_second.params['gauss_mean'].value, best_fit2_second.params['gauss_amp'].value, np.nan, np.nan, np.nan)
+                                    #    outflow_error2[:,i,j] = (best_fit2_second.params['gauss_sigma'].stderr, best_fit2_second.params['gauss_mean'].stderr, best_fit2_second.params['gauss_amp'].stderr, np.nan, np.nan, np.nan)
 
-                                        no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value)
-                                        no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
-                                        print('saved hbeta fit for spaxel', str(i), str(j), 'exception')
+                                    #    no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value)
+                                    #    no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
+                                    #    print('saved hbeta fit for spaxel', str(i), str(j), 'exception')
 
                                 #print('saved hbeta fit for spaxel', str(i), str(j))
+                            elif stat_res == 0:
+                                #assume there's no outflow in hbeta either
+                                statistical_results2[i,j] = 0
+
+                                #fit the hbeta one Gaussian fit
+                                if include_const == True:
+                                    g_model1_second, pars1_second = kff.gaussian1_const(masked_lamdas2, flux2, amp_guess=None, mean_guess=None, sigma_guess=None)
+                                elif include_const == False:
+                                    g_model1_second, pars1_second = kff.gaussian1(masked_lamdas2, flux2, amp_guess=None, mean_guess=None, sigma_guess=None)
+
+
+                                #fit model for 1 Gaussian fit
+                                best_fit1_second = kff.fitter(g_model1_second, pars1_second, masked_lamdas2, flux2, weights=weights2, method=method, verbose=False)
+
+                                if plotting == True:
+                                    #plot the one gaussian fit of the emission line
+                                    fig3 = plot_fit(masked_lamdas2, flux2, g_model1_second, pars1_second, best_fit1_second, plot_initial=False, include_const=include_const)
+                                    fig3.suptitle(emission_line2+' ['+str(em_rest2)+'] fit without outflow')
+                                    fig3.savefig(output_folder_loc+galaxy_name+'_best_fit_'+emission_line2+'_no_outflow_second_fit_'+str(i)+'_'+str(j))
+                                    plt.close(fig3)
+
+                                #save the results
+                                if include_const == True:
+                                    no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value, best_fit1_second.params['Constant_Continuum_c'].value)
+                                    no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr, best_fit1_second.params['Constant_Continuum_c'].stderr)
+                                elif include_const == False:
+                                    no_outflow_results2[:,i,j] = (best_fit1_second.params['gauss_sigma'].value, best_fit1_second.params['gauss_mean'].value, best_fit1_second.params['gauss_amp'].value)
+                                    no_outflow_error2[:,i,j] = (best_fit1_second.params['gauss_sigma'].stderr, best_fit1_second.params['gauss_mean'].stderr, best_fit1_second.params['gauss_amp'].stderr)
 
                         #-------------------
                         #FIT THE OII DOUBLET
@@ -860,6 +1009,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 #mask the lamdas and data
                                 masked_lamdas3 = lamdas[mask_lam3]
                                 flux3 = data[:,i,j][mask_lam3]
+                                weights3 = all_weights[:,i,j][mask_lam3]
                                 #get the guess values from the previous fits
                                 if stat_res == 1:
                                     mean_diff = best_fit2.params['Galaxy_mean'].value - best_fit2.params['Flow_mean'].value
@@ -872,7 +1022,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 g_model1_third, pars1_third = kff.gaussian1_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=[masked_lamdas3[np.argmax(flux3)]+1.0], sigma_guess=sigma_guess, sigma_variations=1.5)
 
                                 #do the fit
-                                best_fit1_third = kff.fitter(g_model1_third, pars1_third, masked_lamdas3, flux3, method=method, verbose=False)
+                                best_fit1_third = kff.fitter(g_model1_third, pars1_third, masked_lamdas3, flux3, weights=weights3, method=method, verbose=False)
 
                                 if plotting == True:
                                     #plot the fit
@@ -885,7 +1035,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 g_model2_third, pars2_third = kff.gaussian2_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=None, sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.5], sigma_variations=1.5)
 
                                 #do the fit
-                                best_fit2_third = kff.fitter(g_model2_third, pars2_third, masked_lamdas3, flux3, method=method, verbose=False)
+                                best_fit2_third = kff.fitter(g_model2_third, pars2_third, masked_lamdas3, flux3, weights=weights3, method=method, verbose=False)
 
                                 if plotting == True:
                                     #plot the fit
@@ -907,10 +1057,14 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                         g_model2_refit_third, pars2_refit_third = kff.gaussian2_OII_doublet(masked_lamdas3, flux3, amplitude_guess=None, mean_guess=[masked_lamdas3[np.argmax(flux3)]+1.0], sigma_guess=sigma_guess, mean_diff=[mean_diff, 1.0], sigma_variations=0.25)
 
                                         #do the fit
-                                        best_fit2_refit_third = kff.fitter(g_model2_refit_third, pars2_refit_third, masked_lamdas3, flux3, method=method, verbose=False)
+                                        best_fit2_refit_third = kff.fitter(g_model2_refit_third, pars2_refit_third, masked_lamdas3, flux3, weights=weights3, method=method, verbose=False)
 
-                                        print('OII doublet fit blue-chi-squared-fit chi squared value: ', best_fit2_refit_third.bic)
-                                        print('OII doublet fit original chi squared value: ', best_fit2_third.bic)
+                                        if use_lmfit_bic == True:
+                                            print('OII doublet fit blue-chi-squared-fit chi squared value: ', best_fit2_refit_third.bic)
+                                            print('OII doublet fit original chi squared value: ', best_fit2_third.bic)
+                                        elif use_lmfit_bic == False:
+                                            print('OII doublet fit blue-chi-squared-fit chi squared value: ', calc_BIC(masked_lamdas3, flux3, weights3, best_fit2_refit_third))
+                                            print('OII doublet fit original chi squared value: ', calc_BIC(masked_lamdas3, flux3, weights3, best_fit2_third))
 
                                         if plotting == True:
                                             #plot the refit
@@ -934,7 +1088,10 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
 
                                 #put the results into the array to be saved
-                                chi_square3[:,i,j] = (best_fit1_third.bic, best_fit2_third.bic)
+                                if use_lmfit_bic == True:
+                                    bic3[:,i,j] = (best_fit1_third.bic, best_fit2_third.bic)
+                                elif use_lmfit_bic == False:
+                                    bic3[:,i,j] = (calc_BIC(masked_lamdas3, flux3, weights3, best_fit1_third), calc_BIC(masked_lamdas3, flux3, weights3, best_fit2_third))
 
                                 no_outflow_results3[:,i,j] = (best_fit1_third.params['Galaxy_blue_sigma'].value, best_fit1_third.params['Galaxy_blue_mean'].value, best_fit1_third.params['Galaxy_blue_amp'].value, best_fit1_third.params['Galaxy_red_sigma'].value, best_fit1_third.params['Galaxy_red_mean'].value, best_fit1_third.params['Galaxy_red_amp'].value, best_fit1_third.params['Constant_Continuum_c'].value)
                                 no_outflow_error3[:,i,j] = (best_fit1_third.params['Galaxy_blue_sigma'].stderr, best_fit1_third.params['Galaxy_blue_mean'].stderr, best_fit1_third.params['Galaxy_blue_amp'].stderr, best_fit1_third.params['Galaxy_red_sigma'].stderr, best_fit1_third.params['Galaxy_red_mean'].stderr, best_fit1_third.params['Galaxy_red_amp'].stderr, best_fit1_third.params['Constant_Continuum_c'].stderr)
@@ -948,7 +1105,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
                         #emission and outflow
                         if statistical_results[i,j] == 2:
-                            chi_square[:,i,j] = (best_fit1.bic, best_fit2_refit.bic)
+                            if use_lmfit_bic == True:
+                                bic[:,i,j] = (best_fit1.bic, best_fit2_refit.bic)
+                            elif use_lmfit_bic == False:
+                                bic[:,i,j] = (calc_BIC(masked_lamdas, flux, weights, best_fit1), calc_BIC(masked_lamdas, flux, weights, best_fit2_refit))
+                            chi_square[:,i,j] = (best_fit1.chisqr, best_fit2_refit.chisqr)
+
                             if include_const == True:
                                 outflow_results[:,i,j] = (best_fit2_refit.params['Galaxy_sigma'].value, best_fit2_refit.params['Galaxy_mean'].value, best_fit2_refit.params['Galaxy_amp'].value, best_fit2_refit.params['Flow_sigma'].value, best_fit2_refit.params['Flow_mean'].value, best_fit2_refit.params['Flow_amp'].value, best_fit2_refit.params['Constant_Continuum_c'].value)
                                 outflow_error[:,i,j] = (best_fit2_refit.params['Galaxy_sigma'].stderr, best_fit2_refit.params['Galaxy_mean'].stderr, best_fit2_refit.params['Galaxy_amp'].stderr, best_fit2_refit.params['Flow_sigma'].stderr, best_fit2_refit.params['Flow_mean'].stderr, best_fit2_refit.params['Flow_amp'].stderr, best_fit2_refit.params['Constant_Continuum_c'].stderr)
@@ -957,7 +1119,12 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 outflow_error[:,i,j] = (best_fit2_refit.params['Galaxy_sigma'].stderr, best_fit2_refit.params['Galaxy_mean'].stderr, best_fit2_refit.params['Galaxy_amp'].stderr, best_fit2_refit.params['Flow_sigma'].stderr, best_fit2_refit.params['Flow_mean'].stderr, best_fit2_refit.params['Flow_amp'].stderr)
 
                         else:
-                            chi_square[:,i,j] = (best_fit1.bic, best_fit2.bic)
+                            if use_lmfit_bic == True:
+                                bic[:,i,j] = (best_fit1.bic, best_fit2.bic)
+                            elif use_lmfit_bic == False:
+                                bic[:,i,j] = (calc_BIC(masked_lamdas, flux, weights, best_fit1), calc_BIC(masked_lamdas, flux, weights, best_fit2))
+                            chi_square[:,i,j] = (best_fit1.chisqr, best_fit2.chisqr)
+
                             if include_const == True:
                                 outflow_results[:,i,j] = (best_fit2.params['Galaxy_sigma'].value, best_fit2.params['Galaxy_mean'].value, best_fit2.params['Galaxy_amp'].value, best_fit2.params['Flow_sigma'].value, best_fit2.params['Flow_mean'].value, best_fit2.params['Flow_amp'].value, best_fit2.params['Constant_Continuum_c'].value)
                                 outflow_error[:,i,j] = (best_fit2.params['Galaxy_sigma'].stderr, best_fit2.params['Galaxy_mean'].stderr, best_fit2.params['Galaxy_amp'].stderr, best_fit2.params['Flow_sigma'].stderr, best_fit2.params['Flow_mean'].stderr, best_fit2.params['Flow_amp'].stderr, best_fit2.params['Constant_Continuum_c'].stderr)
@@ -982,6 +1149,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         statistical_results[i,j] = -1
 
                         #chi squared for the fits
+                        bic[:,i,j] = (np.nan, np.nan)
                         chi_square[:,i,j] = (np.nan, np.nan)
 
                         #blue chi square
@@ -1007,7 +1175,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             no_outflow_error[:,i,j] = (np.nan, np.nan, np.nan)
 
                         if emission_line2:
-                            chi_square2[:,i,j] = (np.nan, np.nan)
+                            #statistical results have no outflow
+                            statistical_results2[i,j] = -1
+                            bic2[:,i,j] = (np.nan, np.nan)
                             #emission and outflow
                             if include_const == True:
                                 outflow_results2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
@@ -1021,7 +1191,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                                 no_outflow_error2[:,i,j] = (np.nan, np.nan, np.nan)
 
                         if OII_doublet == True:
-                            chi_square3[:,i,j] = (np.nan, np.nan)
+                            bic3[:,i,j] = (np.nan, np.nan)
                             #emission and outflow
                             outflow_results3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
                             outflow_error3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
@@ -1038,6 +1208,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                     statistical_results[i,j] = np.nan
 
                     #chi squared for the fits
+                    bic[:,i,j] = (np.nan, np.nan)
                     chi_square[:,i,j] = (np.nan, np.nan)
 
                     #blue chi square
@@ -1063,7 +1234,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                         no_outflow_error[:,i,j] = (np.nan, np.nan, np.nan)
 
                     if emission_line2:
-                        chi_square2[:,i,j] = (np.nan, np.nan)
+                        #statistical results obviously no outflow
+                        statistical_results2[i,j] = np.nan
+                        bic2[:,i,j] = (np.nan, np.nan)
                         #emission and outflow
                         if include_const == True:
                             outflow_results2[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
@@ -1077,7 +1250,7 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
                             no_outflow_error2[:,i,j] = (np.nan, np.nan, np.nan)
 
                     if OII_doublet == True:
-                        chi_square3[:,i,j] = (np.nan, np.nan)
+                        bic3[:,i,j] = (np.nan, np.nan)
                         #emission and outflow
                         outflow_results3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
                         outflow_error3[:,i,j] = (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
@@ -1105,7 +1278,9 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
         np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line+'.txt', np.reshape(no_outflow_error, (3, -1)))
 
     np.savetxt(output_folder_loc+galaxy_name+'_stat_results_'+emission_line+'.txt', np.reshape(statistical_results, (1, -1)))
+    np.savetxt(output_folder_loc+galaxy_name+'_bic_'+emission_line+'.txt', np.reshape(bic, (2,-1)))
     np.savetxt(output_folder_loc+galaxy_name+'_chi_squared_'+emission_line+'.txt', np.reshape(chi_square, (2,-1)))
+    np.savetxt(output_folder_loc+galaxy_name+'_blue_chi_squared_'+emission_line+'.txt', np.reshape(blue_chi_square, (-1)))
 
     if emission_line2:
         if include_const == True:
@@ -1118,7 +1293,8 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
             np.savetxt(output_folder_loc+galaxy_name+'_outflow_error_'+emission_line2+'.txt', np.reshape(outflow_error2, (6, -1)))
             np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_results_'+emission_line2+'.txt', np.reshape(outflow_results2, (3, -1)))
             np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_'+emission_line2+'.txt', np.reshape(outflow_error2, (3, -1)))
-        np.savetxt(output_folder_loc+galaxy_name+'_chi_squared_'+emission_line2+'.txt', np.reshape(chi_square2, (2,-1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_bic_'+emission_line2+'.txt', np.reshape(bic2, (2,-1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_stat_results_'+emission_line2+'.txt', np.reshape(statistical_results2, (1, -1)))
 
     if OII_doublet == True:
         np.savetxt(output_folder_loc+galaxy_name+'_outflow_results_OII_doublet.txt', np.reshape(outflow_results3, (13, -1)))
@@ -1126,19 +1302,19 @@ def fit_cube(galaxy_name, redshift, emission_line, output_folder_loc, emission_l
 
         np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_results_OII_doublet.txt', np.reshape(no_outflow_results3, (7, -1)))
         np.savetxt(output_folder_loc+galaxy_name+'_no_outflow_error_OII_doublet.txt', np.reshape(no_outflow_error3, (7, -1)))
-        np.savetxt(output_folder_loc+galaxy_name+'_chi_squared_OII_doublet.txt', np.reshape(chi_square3, (2, -1)))
+        np.savetxt(output_folder_loc+galaxy_name+'_bic_OII_doublet.txt', np.reshape(bic3, (2, -1)))
 
 
 
 
     if OII_doublet==False and emission_line2:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, chi_square2
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, bic, chi_square, blue_chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, bic2
 
     if OII_doublet==True and emission_line2:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, chi_square2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, chi_square3
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, bic, chi_square, blue_chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, bic2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, bic3
 
     else:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, blue_chi_square
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, bic, chi_square, blue_chi_square
 
 
 
@@ -1204,8 +1380,8 @@ def read_output_files(output_folder, galaxy_name, spatial_shape=[67,24], include
         array with 0 where one gaussian gave a better BIC value, and 1 where two
         gaussians gave a better BIC value.
 
-    chi_square :obj:'~numpy.ndarray' object
-        array with the chi square values for the [single gaussian, double gaussian]
+    bic :obj:'~numpy.ndarray' object
+        array with the BIC values for the [single gaussian, double gaussian]
         fits in the same spatial shape as the input data array
 
     outflow_results2 : :obj:'~numpy.ndarray' object
@@ -1228,8 +1404,8 @@ def read_output_files(output_folder, galaxy_name, spatial_shape=[67,24], include
         spatial shape as the input data array for the second emission line fit,
         if emission_line2 is not None.
 
-    chi_square2 :obj:'~numpy.ndarray' object
-        array with the chi square values for the [single gaussian, double gaussian]
+    bic2 :obj:'~numpy.ndarray' object
+        array with the BIC values for the [single gaussian, double gaussian]
         fits in the same spatial shape as the input data array for the second
         emission line fit, if emission_line2 is not None.
 
@@ -1253,8 +1429,8 @@ def read_output_files(output_folder, galaxy_name, spatial_shape=[67,24], include
         spatial shape as the input data array for the OII doublet line fit, if
         OII_doublet is True.
 
-    chi_square3 :obj:'~numpy.ndarray' object
-        array with the chi square values for the [single gaussian, double gaussian]
+    bic3 :obj:'~numpy.ndarray' object
+        array with the BIC values for the [single gaussian, double gaussian]
         fits in the same spatial shape as the input data array for the OII doublet
         line fit, if OII_doublet is True.
     """
@@ -1265,25 +1441,25 @@ def read_output_files(output_folder, galaxy_name, spatial_shape=[67,24], include
     no_outflow_results = np.loadtxt(output_folder+galaxy_name+'_no_outflow_results_'+emission_line1+'.txt')
     no_outflow_error = np.loadtxt(output_folder+galaxy_name+'_no_outflow_error_'+emission_line1+'.txt')
 
-    chi_square = np.loadtxt(output_folder+galaxy_name+'_chi_squared_'+emission_line1+'.txt')
+    bic = np.loadtxt(output_folder+galaxy_name+'_bic_'+emission_line1+'.txt')
     statistical_results = np.loadtxt(output_folder+galaxy_name+'_stat_results_'+emission_line1+'.txt')
 
     #reshape arrays
     if include_const == True:
-        outflow_results = outflow_results.reshape(7, spatial_shape[0], spatial_shape[1])
-        outflow_error = outflow_error.reshape(7, spatial_shape[0], spatial_shape[1])
-        no_outflow_results = no_outflow_results.reshape(4, spatial_shape[0], spatial_shape[1])
-        no_outflow_error = no_outflow_error.reshape(4, spatial_shape[0], spatial_shape[1])
-        chi_square = chi_square.reshape(2, spatial_shape[0], spatial_shape[1])
-        statistical_results = statistical_results.reshape(spatial_shape[0], spatial_shape[1])
+        outflow_results = outflow_results.reshape(7, data_shape[0], data_shape[1])
+        outflow_error = outflow_error.reshape(7, data_shape[0], data_shape[1])
+        no_outflow_results = no_outflow_results.reshape(4, data_shape[0], data_shape[1])
+        no_outflow_error = no_outflow_error.reshape(4, data_shape[0], data_shape[1])
+        bic = bic.reshape(2, data_shape[0], data_shape[1])
+        statistical_results = statistical_results.reshape(data_shape[0], data_shape[1])
 
     elif include_const == False:
-        outflow_results = outflow_results.reshape(6, spatial_shape[0], spatial_shape[1])
-        outflow_error = outflow_error.reshape(6, spatial_shape[0], spatial_shape[1])
-        no_outflow_results = no_outflow_results.reshape(3, spatial_shape[0], spatial_shape[1])
-        no_outflow_error = no_outflow_error.reshape(3, spatial_shape[0], spatial_shape[1])
-        chi_square = chi_square.reshape(2, spatial_shape[0], spatial_shape[1])
-        statistical_results = statistical_results.reshape(spatial_shape[0], spatial_shape[1])
+        outflow_results = outflow_results.reshape(6, data_shape[0], data_shape[1])
+        outflow_error = outflow_error.reshape(6, data_shape[0], data_shape[1])
+        no_outflow_results = no_outflow_results.reshape(3, data_shape[0], data_shape[1])
+        no_outflow_error = no_outflow_error.reshape(3, data_shape[0], data_shape[1])
+        bic = bic.reshape(2, data_shape[0], data_shape[1])
+        statistical_results = statistical_results.reshape(data_shape[0], data_shape[1])
 
     #second emission line files = Hbeta
     if emission_line2:
@@ -1293,22 +1469,42 @@ def read_output_files(output_folder, galaxy_name, spatial_shape=[67,24], include
         no_outflow_results2 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_results_'+emission_line2+'.txt')
         no_outflow_error2 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_error_'+emission_line2+'.txt')
 
-        chi_square2 = np.loadtxt(output_folder+galaxy_name+'_chi_squared_'+emission_line2+'.txt')
+        bic2 = np.loadtxt(output_folder+galaxy_name+'_bic_'+emission_line2+'.txt')
 
         #reshape arrays
         if include_const == True:
-            outflow_results2 = outflow_results2.reshape(7, spatial_shape[0], spatial_shape[1])
-            outflow_error2 = outflow_error2.reshape(7, spatial_shape[0], spatial_shape[1])
-            no_outflow_results2 = no_outflow_results2.reshape(4, spatial_shape[0], spatial_shape[1])
-            no_outflow_error2 = no_outflow_error2.reshape(4, spatial_shape[0], spatial_shape[1])
-            chi_square2 = chi_square2.reshape(2, spatial_shape[0], spatial_shape[1])
+            outflow_results2 = outflow_results2.reshape(7, data_shape[0], data_shape[1])
+            outflow_error2 = outflow_error2.reshape(7, data_shape[0], data_shape[1])
+            no_outflow_results2 = no_outflow_results2.reshape(4, data_shape[0], data_shape[1])
+            no_outflow_error2 = no_outflow_error2.reshape(4, data_shape[0], data_shape[1])
+            bic2 = bic2.reshape(2, data_shape[0], data_shape[1])
 
         elif include_const == False:
-            outflow_results2 = outflow_results2.reshape(6, spatial_shape[0], spatial_shape[1])
-            outflow_error2 = outflow_error2.reshape(6, spatial_shape[0], spatial_shape[1])
-            no_outflow_results2 = no_outflow_results2.reshape(3, spatial_shape[0], spatial_shape[1])
-            no_outflow_error2 = no_outflow_error2.reshape(3, spatial_shape[0], spatial_shape[1])
-            chi_square2 = chi_square2.reshape(2, spatial_shape[0], spatial_shape[1])
+            outflow_results2 = outflow_results2.reshape(6, data_shape[0], data_shape[1])
+            outflow_error2 = outflow_error2.reshape(6, data_shape[0], data_shape[1])
+            no_outflow_results2 = no_outflow_results2.reshape(3, data_shape[0], data_shape[1])
+            no_outflow_error2 = no_outflow_error2.reshape(3, data_shape[0], data_shape[1])
+            bic2 = bic2.reshape(2, data_shape[0], data_shape[1])
+
+        try:
+            statistical_results2 = np.loadtxt(output_folder+galaxy_name+'_stat_results_'+emission_line2+'.txt')
+            #reshape
+            statistical_results2 = statistical_results2.reshape(data_shape[0], data_shape[1])
+
+        except:
+            #because stat_res2 was not created in the original koffee
+            statistical_results2 = np.full_like(statistical_results, np.nan, dtype=np.double)
+            #check which spaxels have better BICs
+            BIC_diff2 = bic2[1,:,:]-bic2[0,:,:]
+            statistical_results2[BIC_diff2<-10] = 1
+            #check which spaxels didn't have high enough S/N
+            statistical_results2[statistical_results==-1] = -1
+            #check which spaxels had S/N>20 but no outflow in OIII
+            statistical_results2[statistical_results==0] = 0
+            #the remaining spaxels with nan values are those that had an outflow
+            #in OIII but don't have one resolved in the second emission line
+            statistical_results2[np.isnan(statistical_results2)] = 0
+
 
     #second emission line files = Hbeta
     if OII_doublet == True:
@@ -1318,23 +1514,23 @@ def read_output_files(output_folder, galaxy_name, spatial_shape=[67,24], include
         no_outflow_results3 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_results_OII_doublet.txt')
         no_outflow_error3 = np.loadtxt(output_folder+galaxy_name+'_no_outflow_error_OII_doublet.txt')
 
-        chi_square3 = np.loadtxt(output_folder+galaxy_name+'_chi_squared_OII_doublet.txt')
+        bic3 = np.loadtxt(output_folder+galaxy_name+'_bic_OII_doublet.txt')
 
         #reshape arrays
-        outflow_results3 = outflow_results3.reshape(13, spatial_shape[0], spatial_shape[1])
-        outflow_error3 = outflow_error3.reshape(13, spatial_shape[0], spatial_shape[1])
-        no_outflow_results3 = no_outflow_results3.reshape(7, spatial_shape[0], spatial_shape[1])
-        no_outflow_error3 = no_outflow_error3.reshape(7, spatial_shape[0], spatial_shape[1])
-        chi_square3 = chi_square3.reshape(2, spatial_shape[0], spatial_shape[1])
+        outflow_results3 = outflow_results3.reshape(13, data_shape[0], data_shape[1])
+        outflow_error3 = outflow_error3.reshape(13, data_shape[0], data_shape[1])
+        no_outflow_results3 = no_outflow_results3.reshape(7, data_shape[0], data_shape[1])
+        no_outflow_error3 = no_outflow_error3.reshape(7, data_shape[0], data_shape[1])
+        bic3 = bic3.reshape(2, data_shape[0], data_shape[1])
 
     if OII_doublet==False and emission_line2:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, chi_square2
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, bic, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, bic2
 
     if OII_doublet==True and emission_line2:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, chi_square2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, chi_square3
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, bic, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, bic2, outflow_results3, outflow_error3, no_outflow_results3, no_outflow_error3, bic3
 
     else:
-        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, chi_square
+        return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, bic
 
 
 
@@ -1350,8 +1546,9 @@ if __name__ == '__main__':
 	#outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results = fit_cube(galaxy_name='IRAS08', redshift=0.018950, emission_line='OIII_4', output_folder_loc='/fred/oz088/Duvet/Bron/koffee_results/', filename=None, data_cube_stuff=[lamdas, data], emission_dict=all_the_lines, cont_subtract=False, plotting=True)
 
     #filename = '/fred/oz088/Duvet/nnielsen/IRAS08339/Combine/metacube.fits'
-    filename1 = '../../data/IRAS08_red_cubes/IRAS08339_metacube.fits'
-    filename2 = '../../code_outputs/IRAS08_ppxf_25June2020/IRAS08339_cont_subtracted_unnormalised_cube.fits'
+    filename1 = '../../data/IRAS08/IRAS08_red_cubes/IRAS08339_metacube.fits'
+    filename2 = '../../data/IRAS08/IRAS08_combined_metacube_all_corrections.fits'
+    #filename2 = '../../code_outputs/IRAS08_ppxf_25June2020/IRAS08339_cont_subtracted_unnormalised_cube.fits'
 
     outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, blue_chi_square, outflow_results2, outflow_error2 = fit_cube(galaxy_name='IRAS08', redshift=0.018950, emission_line='OIII_4', output_folder_loc='../../code_outputs/koffee_results_IRAS08/', emission_line2='Hbeta', filename=filename1, filename2=filename2, data_cube_stuff=None, emission_dict=all_the_lines, cont_subtract=False, include_const=True, plotting=True, method='leastsq', correct_bad_spaxels=True)
 

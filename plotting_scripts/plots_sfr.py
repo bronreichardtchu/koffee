@@ -47,13 +47,13 @@ from astropy.constants import c
 from astropy import units as u
 from astropy.io import fits
 
-from . import prepare_cubes as pc
-from . import plotting_functions as pf
-from . import calculate_outflow_velocity as calc_outvel
-from . import calculate_star_formation_rate as calc_sfr
-from . import calculate_mass_loading_factor as calc_mlf
-from . import brons_display_pixels_kcwi as bdpk
-from . import koffee
+import prepare_cubes as pc
+import plotting_functions as pf
+import calculate_outflow_velocity as calc_outvel
+import calculate_star_formation_rate as calc_sfr
+import calculate_mass_loading_factor as calc_mlf
+import brons_display_pixels_kcwi as bdpk
+import koffee
 
 
 

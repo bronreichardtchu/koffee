@@ -42,13 +42,13 @@ from scipy.optimize import curve_fit
 
 from astropy import units as u
 
-from . import plotting_functions as pf
-from . import calculate_outflow_velocity as calc_outvel
-from . import calculate_star_formation_rate as calc_sfr
-from . import calculate_mass_loading_factor as calc_mlf
-from . import calculate_equivalent_width as calc_ew
-from . import brons_display_pixels_kcwi as bdpk
-from . import koffee
+import plotting_functions as pf
+import calculate_outflow_velocity as calc_outvel
+import calculate_star_formation_rate as calc_sfr
+import calculate_mass_loading_factor as calc_mlf
+import calculate_equivalent_width as calc_ew
+import brons_display_pixels_kcwi as bdpk
+import koffee
 
 
 
@@ -2043,7 +2043,7 @@ def plot_radius_mlf(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_resu
 
 
 
-def plot_flux_mlf(flux_outflow_results, flux_outflow_error, OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, flux_ratio_line='Hbeta', weighted_average=True):
+def plot_flux_mlf(flux_outflow_results, flux_outflow_error, OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, BIC_outflow, BIC_no_outflow, statistical_results, z, radius, header, flux_ratio_line='Hbeta', weighted_average=True):
     """
     Plots the broad-to-narrow flux ratio against the mass loading factor.
 
@@ -2103,7 +2103,7 @@ def plot_flux_mlf(flux_outflow_results, flux_outflow_error, OIII_outflow_results
 
     """
     #calculate the mass loading factor
-    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z)
+    mlf, mlf_max, mlf_min = calc_mlf.calc_mass_loading_factor(OIII_outflow_results, OIII_outflow_error, hbeta_outflow_results, hbeta_outflow_error, hbeta_no_outflow_results, hbeta_no_outflow_error, statistical_results, z, header)
 
     #calculate the flux for systematic and flow gaussians
     systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_sfr.calc_flux_from_koffee(flux_outflow_results, flux_outflow_error, statistical_results, z, outflow=True)
@@ -2155,7 +2155,7 @@ def plot_flux_mlf(flux_outflow_results, flux_outflow_error, OIII_outflow_results
 
     #create BIC diff
     BIC_diff = BIC_outflow - BIC_no_outflow
-    BIC_diff_strong = (BIC_diff < -50)
+    BIC_diff_strong = (BIC_diff < -2000)
 
     #physical limits mask -
     #for the radius mask 6.1" is the 90% radius
@@ -2163,20 +2163,20 @@ def plot_flux_mlf(flux_outflow_results, flux_outflow_error, OIII_outflow_results
     physical_mask = (radius < 6.1) & (vel_disp>51)
 
     #do the calculations for all the bins
-    num_bins = 4
+    num_bins = 3
     min_bin = None #-0.05
     max_bin = None #0.6
 
     if weighted_average == False:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(flux_ratio, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(flux_ratio[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(flux_ratio[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(flux_ratio, mlf, num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(flux_ratio[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(flux_ratio[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=None, min_bin=min_bin, max_bin=max_bin)
 
 
     elif weighted_average == True:
-        bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all = pf.binned_median_quantile_lin(flux_ratio, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical = pf.binned_median_quantile_lin(flux_ratio[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
-        bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong = pf.binned_median_quantile_lin(flux_ratio[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_all, bin_center_all, mlf_bin_medians_all, mlf_bin_lower_q_all, mlf_bin_upper_q_all, mlf_bin_stdev_all = pf.binned_median_quantile_lin(flux_ratio, mlf, num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_physical, bin_center_physical, mlf_bin_medians_physical, mlf_bin_lower_q_physical, mlf_bin_upper_q_physical, mlf_bin_stdev_physical = pf.binned_median_quantile_lin(flux_ratio[physical_mask], mlf[physical_mask], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
+        linspace_strong, bin_center_strong, mlf_bin_medians_strong, mlf_bin_lower_q_strong, mlf_bin_upper_q_strong, mlf_bin_stdev_strong = pf.binned_median_quantile_lin(flux_ratio[BIC_diff_strong], mlf[BIC_diff_strong], num_bins=num_bins, weights=[vel_out_err], min_bin=min_bin, max_bin=max_bin)
 
 
     #calculate the r value for the median values

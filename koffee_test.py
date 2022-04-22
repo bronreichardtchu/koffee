@@ -20,7 +20,7 @@ MODIFICATION HISTORY:
 
 """
 
-from . import koffee
+import koffee
 
 import pickle
 import numpy as np

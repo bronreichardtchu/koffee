@@ -188,7 +188,7 @@ def calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z
     if outflow == True:
         flow_flux = np.sqrt(2*np.pi) * flow_sigma * outflow_results[5,:,:][flow_mask]
 
-        flow_flux_err = sys_flux * np.sqrt(2*np.pi) * np.sqrt((outflow_error[3,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2)
+        flow_flux_err = flow_flux * np.sqrt(2*np.pi) * np.sqrt((outflow_error[3,:,:][flow_mask]/systemic_sigma)**2 + (outflow_error[5,:,:][flow_mask]/outflow_results[5,:,:][flow_mask])**2)
 
         #save to array
         outflow_flux[flow_mask] = flow_flux
@@ -694,6 +694,11 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
         error[:,~flow_mask] = no_outflow_error[:3, ~flow_mask]
         error[:,flow_mask] = outflow_error[:3, flow_mask]
 
+        #create a new statistical_results for the array, since we also want the
+        #spaxels where there is no outflow to be calculated
+        stat_res_new = np.full_like(statistical_results, np.nan, dtype=np.double)
+        stat_res_new[statistical_results>-1] = 1
+
     elif include_outflow == True:
         results[:3,~flow_mask] = no_outflow_results[:3, ~flow_mask]
         results[3:,~flow_mask] = np.zeros((3, outflow_results.shape[1], outflow_results.shape[2]))[:,~flow_mask]
@@ -707,7 +712,8 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     #this does sqrt(2*pi)*amp*sigma
     #so the units are now 10^-16 erg/s/cm^2
     if include_outflow == False:
-        h_beta_integral, h_beta_integral_err = calc_flux_from_koffee(results, error, statistical_results, z, outflow=False)
+        h_beta_integral, h_beta_integral_err = calc_flux_from_koffee(results, error, stat_res_new, z, outflow=False)
+
     elif include_outflow == True:
         systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_flux_from_koffee(results, error, statistical_results, z, outflow=True)
         h_beta_integral = np.nansum((systemic_flux, outflow_flux), axis=0)
@@ -762,7 +768,7 @@ def calc_sfr_koffee(outflow_results, outflow_error, no_outflow_results, no_outfl
     return sfr.value, sfr_err.value, total_sfr.value, sfr_surface_density.value, sfr_surface_density_err.value
 
 
-def calc_save_as_fits(outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, z, header, gal_name, output_folder, include_extinction=True, include_outflow=False):
+def calc_save_as_fits(outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, z, header, gal_name, output_folder, include_extinction=True, include_outflow=False, shift=None):
     """
     Calculates the outflow velocity and saves the results into a fits file.
 
@@ -827,6 +833,10 @@ def calc_save_as_fits(outflow_results, outflow_error, no_outflow_results, no_out
         If false, uses only the narrow component to calculate flux.  Default is
         False.
 
+    shift : list or None
+        how to alter the header if the wcs is going to be wrong.
+        e.g. ['CRPIX2', 32.0] will change the header value of CRPIX2 to 32.0
+
     Returns
     -------
     A saved fits file
@@ -851,15 +861,33 @@ def calc_save_as_fits(outflow_results, outflow_error, no_outflow_results, no_out
     except:
         del new_header['CDELT3']
 
+    if shift:
+        new_header[shift[0]] = shift[1]
+
     #create HDU object for star formation rate
     hdu = fits.PrimaryHDU(sfr, header=new_header)
-    hdu_error = fits.ImageHDU(sfr_err, name='Error')
+    #hdu_error = fits.ImageHDU(sfr_err, name='Error')
 
     #create HDU list
-    hdul = fits.HDUList([hdu, hdu_error])
+    hdul = fits.HDUList([hdu])
 
     #write to file
-    hdul.writeto(output_folder+gal_name+'_star_formation_rate.fits')
+    if shift:
+        hdul.writeto(output_folder+gal_name+'_star_formation_rate_shifted.fits')
+    else:
+        hdul.writeto(output_folder+gal_name+'_star_formation_rate.fits')
+
+    #create HDU object for star formation rate error
+    hdu_error = fits.PrimaryHDU(sfr_err, header=new_header)
+
+    #create HDU list
+    hdul = fits.HDUList([hdu_error])
+
+    #write to file
+    if shift:
+        hdul.writeto(output_folder+gal_name+'_star_formation_rate_error_shifted.fits')
+    else:
+        hdul.writeto(output_folder+gal_name+'_star_formation_rate_error.fits')
 
     #create HDU object for star formation rate surface density
     hdu = fits.PrimaryHDU(sig_sfr, header=new_header)
@@ -869,4 +897,112 @@ def calc_save_as_fits(outflow_results, outflow_error, no_outflow_results, no_out
     hdul = fits.HDUList([hdu, hdu_error])
 
     #write to file
-    hdul.writeto(output_folder+gal_name+'_star_formation_rate_surface_density.fits')
+    if shift:
+        hdul.writeto(output_folder+gal_name+'_star_formation_rate_surface_density_shifted.fits')
+    else:
+        hdul.writeto(output_folder+gal_name+'_star_formation_rate_surface_density.fits')
+
+
+
+def calc_save_flux_as_fits(outflow_results, outflow_error, statistical_results, z, header, gal_name, emission_line_name, output_folder):
+    """
+    Calculates the flux and broad-to-narrow flux ratio and saves the results
+    into a fits file.
+
+    Parameters
+    ----------
+    outflow_results : :obj:'~numpy.ndarray'
+        Array containing the outflow results found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    outflow_error : :obj:'~numpy.ndarray'
+        Array containing the outflow errors found in koffee fits.  This will have
+        either shape [6, i, j] or [7, i, j] depending on whether a constant was
+        included in the koffee fit.  Either way, the flow and galaxy parameters
+        are in the same shape.
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp], i, j]
+        [[gal_sigma, gal_mean, gal_amp, flow_sigma, flow_mean, flow_amp, continuum_const], i, j]
+
+    statistical_results : :obj:'~numpy.ndarray'
+        Array containing the statistical results from koffee.  This has 0 if no
+        flow was found, 1 if a flow was found, 2 if an outflow was found using a
+        forced second fit due to the blue chi square test.
+
+    z : float
+        The redshift of the galaxy
+
+    header : FITS file object
+        The header of the data fits file, to be used in the new fits file
+
+    gal_name : str
+        the name of the galaxy, and whatever descriptor to be used in the saving
+        (e.g. IRAS08_binned_2_by_1)
+
+    emission_line_name : str
+        the name of the emission line the results are from
+        (e.g. OIII, hbeta, etc.)
+
+    output_folder : str
+        where to save the fits file
+
+    Returns
+    -------
+    A saved fits file
+    """
+    #calculate the flux
+    systemic_flux, systemic_flux_err, outflow_flux, outflow_flux_err = calc_flux_from_koffee(outflow_results, outflow_error, statistical_results, z, outflow=True)
+
+    #calculate the flux ratios
+    broad_to_narrow = outflow_flux/systemic_flux
+    broad_to_narrow_err = broad_to_narrow * (outflow_flux_err/outflow_flux + systemic_flux_err/systemic_flux)
+
+    #copy the header and change the keywords so it's just 2 axes
+    new_header = header.copy()
+
+    new_header['NAXIS'] = 2
+
+    del new_header['NAXIS3']
+    del new_header['CNAME3']
+    del new_header['CRPIX3']
+    del new_header['CRVAL3']
+    del new_header['CTYPE3']
+    del new_header['CUNIT3']
+
+    try:
+        del new_header['CD3_3']
+    except:
+        del new_header['CDELT3']
+
+    #create HDU object for galaxy flux
+    hdu = fits.PrimaryHDU(systemic_flux, header=new_header)
+    hdu_error = fits.ImageHDU(systemic_flux_err, name='Error')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_'+emission_line_name+'_narrow_flux.fits')
+
+    #create HDU object for outflow flux
+    hdu = fits.PrimaryHDU(outflow_flux, header=new_header)
+    hdu_error = fits.ImageHDU(outflow_flux_err, name='Error')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_'+emission_line_name+'_broad_flux.fits')
+
+    #create HDU object for broad to narrow flux ratio
+    hdu = fits.PrimaryHDU(broad_to_narrow, header=new_header)
+    hdu_error = fits.ImageHDU(broad_to_narrow_err, name='Error')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_'+emission_line_name+'_broad_to_narrow_flux_ratio.fits')

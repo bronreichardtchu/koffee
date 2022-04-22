@@ -40,6 +40,8 @@ import scipy.stats as stats
 from astropy.io import fits
 from astropy.wcs import WCS
 
+import matplotlib.pyplot as plt
+
 
 #===============================================================================
 # DEFINE PLOTTING PARAMETERS
@@ -183,9 +185,9 @@ def davies_et_al_2019(sfr_surface_density_min, sfr_surface_density_max):
 
     return sfr_surface_density, vel_disp
 
-def kim_et_al_2020(sfr_surface_density_min, sfr_surface_density_max, scale_factor=1):
+def kim_et_al_2020_sigma_sfr(sfr_surface_density_min, sfr_surface_density_max, scale_factor=1):
     """
-    The trendline from Kim et al. (2020) where mass the loading factor is proportional
+    The trendline from Kim et al. (2020) where the mass loading factor is proportional
     to (SFR surface density)^-0.44
 
     Parameters
@@ -216,6 +218,72 @@ def kim_et_al_2020(sfr_surface_density_min, sfr_surface_density_max, scale_facto
 
     return sfr_surface_density, mlf
 
+def kim_et_al_2020_sigma_sfr_log(log_sfr_surface_density_min, log_sfr_surface_density_max, height_500pc=False):
+    """
+    The trendline from Kim et al. (2020) where the mass loading factor is proportional
+    to (SFR surface density)^-0.44
+    log(eta) = -0.44 log(sigma_sfr) - 0.07
+
+    Parameters
+    ----------
+    log_sfr_surface_density_min : float
+        The minimum value of the logarithmic SFR surface density
+
+    log_sfr_surface_density_max : float
+        The maximum value of the logarithmic SFR surface density
+
+    Returns
+    -------
+    log_sfr_surface_density : :obj:'~numpy.ndarray'
+        vector of log SFR surface densities
+
+    log_mlf : :obj:'~numpy.ndarray'
+        vector of logarithmic mass loading factors following the trend
+    """
+    #create a vector for sfr surface density
+    log_sfr_surface_density = np.linspace(log_sfr_surface_density_min, log_sfr_surface_density_max, num=1000)
+
+    #use the relationship to predict the v_out
+    if height_500pc == True:
+        log_mlf = -0.48*log_sfr_surface_density - 0.26
+    else:
+        log_mlf = -0.44*log_sfr_surface_density - 0.07
+
+    return log_sfr_surface_density, log_mlf
+
+def kim_et_al_2020_sigma_mol_log(log_sigma_mol_min, log_sigma_mol_max, height_500pc=False):
+    """
+    The trendline from Kim et al. (2020) where the mass loading factor is proportional
+    to (molecular surface density)^-1.16
+    log(eta) = -0.16 log(sigma_mol) + 2.17
+
+    Parameters
+    ----------
+    log_sigma_mol_min : float
+        The minimum value of the logarithmic molecular surface density
+
+    log_sigma_mol_max : float
+        The maximum value of the logarithmic molecular surface density
+
+    Returns
+    -------
+    log_mol_surface_density : :obj:'~numpy.ndarray'
+        vector of log molecular surface densities
+
+    log_mlf : :obj:'~numpy.ndarray'
+        vector of logarithmic mass loading factors following the trend
+    """
+    #create a vector for sfr surface density
+    log_mol_surface_density = np.linspace(log_sigma_mol_min, log_sigma_mol_max, num=1000)
+
+    #use the relationship to predict the v_out
+    if height_500pc == True:
+        log_mlf = -1.27*log_mol_surface_density + 2.18
+    else:
+        log_mlf = -1.16*log_mol_surface_density + 2.17
+
+    return log_mol_surface_density, log_mlf
+
 
 #===============================================================================
 # USEFUL LITTLE FUNCTIONS
@@ -239,6 +307,64 @@ def fitting_function(x, a, b):
         the outflow velocity
     """
     return a*(x**b)
+
+def power_function(B, x):
+    """
+    My power fitting function for y = a*x^b
+
+    Parameters
+    ----------
+    B : (vector)
+        a vector of the parameters a and b
+
+    x : :obj:'~numpy.ndarray'
+        a vector of the x values.
+
+    Returns
+    -------
+    y : :obj:'~numpy.ndarray'
+        a vector of the y values
+    """
+    return B[0]*x**B[1]
+
+def linear_function(B, x):
+    """
+    My linear fitting function for y = m*x + b
+
+    Parameters
+    ----------
+    B : (vector)
+        a vector of the parameters m and b
+
+    x : :obj:'~numpy.ndarray'
+        a vector of the x values.
+
+    Returns
+    -------
+    y : :obj:'~numpy.ndarray'
+        a vector of the y values
+    """
+    return B[0]*x + B[1]
+
+def quadratic_function(B, x):
+    """
+    My quadratic function for y = ax^2 + bx + c
+
+    Parameters
+    ----------
+    B : (vector)
+        a vector of the parameters a, b and c
+
+    x : :obj:'~numpy.ndarray'
+        a vector of the x values.
+
+    Returns
+    -------
+    y : :obj:'~numpy.ndarray'
+        a vector of the y values
+    """
+    return B[0]*x**2 + B[1]*x + B[2]
+
 
 def running_mean(x, N):
     """
@@ -451,7 +577,8 @@ def binned_median_quantile_lin(x, y, num_bins, weights=None, min_bin=None, max_b
 
 def pearson_correlation(x, y):
     """
-    Calculate the Pearson correlation coefficient and p-value
+    Calculate the Pearson correlation coefficient and p-value.  This is a measure
+    of the linear correlation between two sets of data.
 
     Parameters
     ----------
@@ -470,6 +597,37 @@ def pearson_correlation(x, y):
         Two-tailed p-value
     """
     r, p_value = stats.pearsonr(x, y)
+
+    return r, p_value
+
+
+def spearman_coefficient(x, y):
+    """
+    Calculate Spearman's rank correlation coefficient and p-value.  This is a
+    nonparametric measure of the strength and direction of association that
+    exists between two variables.
+
+    Parameters
+    ----------
+    x : :obj:'~numpy.ndarray'
+        Input array - x values
+
+    y : :obj:'~numpy.ndarray'
+        Input array - y values
+
+    Returns
+    -------
+    r : float
+        Spearman correlation coefficient
+
+    p_value : float
+        Two-tailed p-value
+    """
+    #make sure the arrays are 1D, not 2D
+    x = np.ravel(x)
+    y = np.ravel(y)
+
+    r, p_value = stats.spearmanr(x, y, nan_policy='omit')
 
     return r, p_value
 
@@ -554,3 +712,44 @@ def plot_continuum_contours(lamdas, xx, yy, data, z, ax):
     cont_contours = ax.contour(xx, yy, cont_median, colors='black', linewidths=0.7, alpha=0.7, levels=(0.2,0.3,0.4,0.7,1.0,2.0,4.0))
 
     return cont_contours
+
+
+def plot_map(file_string, cbar_label, vmin=None, vmax=None):
+    """
+    Opens the fits file, creates a wcs from the header and plots the log of the
+    contents
+
+    Parameters
+    ----------
+    file_string : string
+        location of the fits datafile to be opened
+
+    cbar_label : string
+        label to put on the colorbar
+
+    vmin : float or None
+        minimum value for the colorbar (Default is None)
+
+    vmax : float or None
+        maximum value for the colorbar (Default is None)
+
+    Returns
+    -------
+    A matplotlib figure mapping the array from the fits file
+    """
+    #open the fits file
+    fits_data, fits_header, fits_wcs = read_in_create_wcs(file_string)
+
+    #create the plot
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,4), subplot_kw={'projection': fits_wcs, 'slices': ('x', 'y')})
+
+    try:
+        im_map = ax.imshow(np.log10(fits_data).T, origin='lower', aspect=fits_header['CD2_1']/fits_header['CD1_2'], vmin=vmin, vmax=vmax)
+    except KeyError:
+        im_map = ax.imshow(np.log10(fits_data).T, origin='lower', aspect=abs(fits_header['CDELT2']/fits_header['CDELT1']), vmin=vmin, vmax=vmax)
+
+    ax.invert_xaxis()
+
+    plt.colorbar(im_map, label=cbar_label)
+
+    plt.show()

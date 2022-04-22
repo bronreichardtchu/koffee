@@ -28,7 +28,7 @@ import numpy as np
 from astropy.io import fits
 
 
-def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
+def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z, sigma_lsf=41.9):
     """
     Calculates the outflow velocity
 
@@ -57,6 +57,10 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
 
     z : float
         The redshift of the galaxy
+
+    sigma_lsf : float
+        The velocity line spread function to convolve the velocity with, in km/s
+        (Default is 40 km/s)
 
     Returns
     -------
@@ -116,11 +120,17 @@ def calc_outflow_vel(outflow_results, outflow_error, statistical_results, z):
     #calculate the error on velocity dispersion
     vel_disp_calc_err = vel_disp_calc * np.sqrt((outflow_error[3,:,:][flow_mask]/flow_sigma)**2 + (outflow_error[1,:,:][flow_mask]/systemic_mean)**2)
 
+    #convolve the dispersion with the lsf
+    vel_disp_convolved = np.sqrt(vel_disp_calc**2 - sigma_lsf**2)
+
+    #calculate the error on the convolved velocity dispersion
+    vel_disp_convolved_err = np.sqrt((vel_disp_calc/vel_disp_convolved)**2 * vel_disp_calc_err**2 + (sigma_lsf/vel_disp_convolved)**2 * 0.0)
+
     #now doing 2*c*flow_sigma/lam_gal + vel_diff
-    v_out = 2*vel_disp_calc + vel_diff_calc
+    v_out = 2*vel_disp_convolved + vel_diff_calc
 
     #calculate the error on v_out
-    v_out_err = np.sqrt(vel_disp_calc_err**2 + vel_diff_calc_err**2)
+    v_out_err = np.sqrt(4*vel_disp_convolved_err**2 + vel_diff_calc_err**2)
 
     #and put it into the array
     vel_diff[flow_mask] = vel_diff_calc

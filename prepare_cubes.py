@@ -154,7 +154,7 @@ def read_in_data_pickle(filename):
 #BINNING
 #====================================================================================================
 
-def bin_data(lamdas, data, z, other_cubes=None, bin_size=[3,3]):
+def bin_data(lamdas, data, z, bin_size=[3,3], var=None):
     """
     Bins the input data
 
@@ -176,21 +176,25 @@ def bin_data(lamdas, data, z, other_cubes=None, bin_size=[3,3]):
     bin_size : int
         the number of spaxels to bin by (Default is [3,3], this will bin 3x3)
 
+    var : :obj:'~numpy.ndarray' or None
+        the variance cube to be binned (Default is None)
+
     Returns
     -------
     binned_data : :obj:'~numpy.ndarray'
         the binned data
+
+    binned_var : :obj:'~numpy.ndarray'
+        the binned variance (if var not None)
     """
     #create empty array to put binned data in
     binned_data = np.empty([data.shape[0], math.ceil(data.shape[1]/bin_size[0]), math.ceil(data.shape[2]/bin_size[1])])
 
-    #if there are other cubes, create empty arrays to put binned data in
-    if other_cubes:
-        binned_other_cubes = []
-        for cube in other_cubes:
-            binned_cube = np.empty([cube.shape[0], math.ceil(cube.shape[1]/bin_size[0]), math.ceil(cube.shape[2]/bin_size[1])])
-            #append the empty cube to the array
-            binned_other_cubes.append(binned_cube)
+    #create list to add hbeta peak differences to
+    hbeta_peak_diff_list = []
+
+    if var is not None:
+        binned_var = np.empty_like(binned_data)
 
     #create lamda mask for hbeta
     hbeta_mask = (lamdas>4862.68*(1+z)-2.0) & (lamdas<4862.68*(1+z)+2.0)
@@ -226,15 +230,22 @@ def bin_data(lamdas, data, z, other_cubes=None, bin_size=[3,3]):
             hbeta_peak_diff = other_hbeta_peaks - hbeta_peak
             #print('Hbeta peak diff', hbeta_peak_diff, '\n\n')
 
+            #add to list
+            hbeta_peak_diff_list.append(hbeta_peak_diff)
+
             #iterate through the peak differences
             for (i,j), diff in np.ndenumerate(hbeta_peak_diff):
                 if diff < 0:
                     #shift the spectra to the right
                     data[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
+                    if var is not None:
+                        var[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = var[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
 
                 if diff > 0:
                     #shift the spectra to the left
                     data[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
+                    if var is not None:
+                        var[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = var[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
 
             #if there are other cubes, iterate through and shift them
             if other_cubes:
@@ -271,10 +282,9 @@ def bin_data(lamdas, data, z, other_cubes=None, bin_size=[3,3]):
             #bin the data
             binned_data[:, int(x), int(y)] = np.nansum(data[:, start_xi:end_xi, start_yi:end_yi], axis=(1,2))
 
-            #bin the other cubes
-            if other_cubes:
-                for cube_num, cube in enumerate(other_cubes):
-                    binned_other_cubes[cube_num][:, int(x), int(y)] = np.nansum(cube[:, start_xi:end_xi, start_yi:end_yi], axis=(1,2))
+            #bin the variance
+            if var is not None:
+                binned_var[:, int(x), int(y)] = np.nansum(var[:, start_xi:end_xi, start_yi:end_yi], axis=(1,2))
 
             #increase y counters
             start_yi += bin_size[1]
@@ -284,14 +294,13 @@ def bin_data(lamdas, data, z, other_cubes=None, bin_size=[3,3]):
         start_xi += bin_size[0]
         end_xi += bin_size[0]
 
-    if other_cubes:
-        return binned_data, binned_other_cubes
-
+    if var is not None:
+        return binned_data, binned_var
     else:
-        return binned_data
+        return binned_data, hbeta_peak_diff_list
 
 
-def save_binned_data(data, header, data_folder, gal_name, bin_size=[3,3]):
+def save_binned_data(data, header, data_folder, gal_name, bin_size=[3,3], var=None):
     """
     Save the binned data or variance cube to a fits file, with the necessary
     changes to the fits file header.
@@ -312,6 +321,9 @@ def save_binned_data(data, header, data_folder, gal_name, bin_size=[3,3]):
 
     bin_size : int
         the number of spaxels the cube was binned by, [x,y].  (Default is [3,3])
+
+    var : :obj:'~numpy.ndarray' or None
+        the variance cube to be binned (Default is None)
 
     Returns
     -------
@@ -342,9 +354,14 @@ def save_binned_data(data, header, data_folder, gal_name, bin_size=[3,3]):
 
     #create HDU object
     hdu = fits.PrimaryHDU(data, header=new_header)
+    if var is not None:
+        hdu_var = fits.ImageHDU(var, header=new_header)
 
     #create HDU list
-    hdul = fits.HDUList([hdu])
+    if var is not None:
+        hdul = fits.HDUList([hdu, hdu_var])
+    else:
+        hdul = fits.HDUList([hdu])
 
     #write to file
     hdul.writeto(data_folder+gal_name+'_binned_'+str(bin_size[0])+'_by_'+str(bin_size[1])+'.fits')
