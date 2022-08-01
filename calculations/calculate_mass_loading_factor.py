@@ -31,8 +31,8 @@ from astropy.constants import m_p
 from astropy import units as u
 from astropy.io import fits
 
-import calculate_outflow_velocity as calc_outvel
-import calculate_star_formation_rate as calc_sfr
+from calculations import calculate_outflow_velocity as calc_outvel
+from calculations import calculate_star_formation_rate as calc_sfr
 
 import importlib
 importlib.reload(calc_outvel)
