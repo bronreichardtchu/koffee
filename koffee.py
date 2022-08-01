@@ -1446,20 +1446,20 @@ def read_output_files(output_folder, galaxy_name, spatial_shape=[67,24], include
 
     #reshape arrays
     if include_const == True:
-        outflow_results = outflow_results.reshape(7, data_shape[0], data_shape[1])
-        outflow_error = outflow_error.reshape(7, data_shape[0], data_shape[1])
-        no_outflow_results = no_outflow_results.reshape(4, data_shape[0], data_shape[1])
-        no_outflow_error = no_outflow_error.reshape(4, data_shape[0], data_shape[1])
-        bic = bic.reshape(2, data_shape[0], data_shape[1])
-        statistical_results = statistical_results.reshape(data_shape[0], data_shape[1])
+        outflow_results = outflow_results.reshape(7, spatial_shape[0], spatial_shape[1])
+        outflow_error = outflow_error.reshape(7, spatial_shape[0], spatial_shape[1])
+        no_outflow_results = no_outflow_results.reshape(4, spatial_shape[0], spatial_shape[1])
+        no_outflow_error = no_outflow_error.reshape(4, spatial_shape[0], spatial_shape[1])
+        bic = bic.reshape(2, spatial_shape[0], spatial_shape[1])
+        statistical_results = statistical_results.reshape(spatial_shape[0], spatial_shape[1])
 
     elif include_const == False:
-        outflow_results = outflow_results.reshape(6, data_shape[0], data_shape[1])
-        outflow_error = outflow_error.reshape(6, data_shape[0], data_shape[1])
-        no_outflow_results = no_outflow_results.reshape(3, data_shape[0], data_shape[1])
-        no_outflow_error = no_outflow_error.reshape(3, data_shape[0], data_shape[1])
-        bic = bic.reshape(2, data_shape[0], data_shape[1])
-        statistical_results = statistical_results.reshape(data_shape[0], data_shape[1])
+        outflow_results = outflow_results.reshape(6, spatial_shape[0], spatial_shape[1])
+        outflow_error = outflow_error.reshape(6, spatial_shape[0], spatial_shape[1])
+        no_outflow_results = no_outflow_results.reshape(3, spatial_shape[0], spatial_shape[1])
+        no_outflow_error = no_outflow_error.reshape(3, spatial_shape[0], spatial_shape[1])
+        bic = bic.reshape(2, spatial_shape[0], spatial_shape[1])
+        statistical_results = statistical_results.reshape(spatial_shape[0], spatial_shape[1])
 
     #second emission line files = Hbeta
     if emission_line2:
@@ -1473,23 +1473,23 @@ def read_output_files(output_folder, galaxy_name, spatial_shape=[67,24], include
 
         #reshape arrays
         if include_const == True:
-            outflow_results2 = outflow_results2.reshape(7, data_shape[0], data_shape[1])
-            outflow_error2 = outflow_error2.reshape(7, data_shape[0], data_shape[1])
-            no_outflow_results2 = no_outflow_results2.reshape(4, data_shape[0], data_shape[1])
-            no_outflow_error2 = no_outflow_error2.reshape(4, data_shape[0], data_shape[1])
-            bic2 = bic2.reshape(2, data_shape[0], data_shape[1])
+            outflow_results2 = outflow_results2.reshape(7, spatial_shape[0], spatial_shape[1])
+            outflow_error2 = outflow_error2.reshape(7, spatial_shape[0], spatial_shape[1])
+            no_outflow_results2 = no_outflow_results2.reshape(4, spatial_shape[0], spatial_shape[1])
+            no_outflow_error2 = no_outflow_error2.reshape(4, spatial_shape[0], spatial_shape[1])
+            bic2 = bic2.reshape(2, spatial_shape[0], spatial_shape[1])
 
         elif include_const == False:
-            outflow_results2 = outflow_results2.reshape(6, data_shape[0], data_shape[1])
-            outflow_error2 = outflow_error2.reshape(6, data_shape[0], data_shape[1])
-            no_outflow_results2 = no_outflow_results2.reshape(3, data_shape[0], data_shape[1])
-            no_outflow_error2 = no_outflow_error2.reshape(3, data_shape[0], data_shape[1])
-            bic2 = bic2.reshape(2, data_shape[0], data_shape[1])
+            outflow_results2 = outflow_results2.reshape(6, spatial_shape[0], spatial_shape[1])
+            outflow_error2 = outflow_error2.reshape(6, spatial_shape[0], spatial_shape[1])
+            no_outflow_results2 = no_outflow_results2.reshape(3, spatial_shape[0], spatial_shape[1])
+            no_outflow_error2 = no_outflow_error2.reshape(3, spatial_shape[0], spatial_shape[1])
+            bic2 = bic2.reshape(2, spatial_shape[0], spatial_shape[1])
 
         try:
             statistical_results2 = np.loadtxt(output_folder+galaxy_name+'_stat_results_'+emission_line2+'.txt')
             #reshape
-            statistical_results2 = statistical_results2.reshape(data_shape[0], data_shape[1])
+            statistical_results2 = statistical_results2.reshape(spatial_shape[0], spatial_shape[1])
 
         except:
             #because stat_res2 was not created in the original koffee
@@ -1517,11 +1517,11 @@ def read_output_files(output_folder, galaxy_name, spatial_shape=[67,24], include
         bic3 = np.loadtxt(output_folder+galaxy_name+'_bic_OII_doublet.txt')
 
         #reshape arrays
-        outflow_results3 = outflow_results3.reshape(13, data_shape[0], data_shape[1])
-        outflow_error3 = outflow_error3.reshape(13, data_shape[0], data_shape[1])
-        no_outflow_results3 = no_outflow_results3.reshape(7, data_shape[0], data_shape[1])
-        no_outflow_error3 = no_outflow_error3.reshape(7, data_shape[0], data_shape[1])
-        bic3 = bic3.reshape(2, data_shape[0], data_shape[1])
+        outflow_results3 = outflow_results3.reshape(13, spatial_shape[0], spatial_shape[1])
+        outflow_error3 = outflow_error3.reshape(13, spatial_shape[0], spatial_shape[1])
+        no_outflow_results3 = no_outflow_results3.reshape(7, spatial_shape[0], spatial_shape[1])
+        no_outflow_error3 = no_outflow_error3.reshape(7, spatial_shape[0], spatial_shape[1])
+        bic3 = bic3.reshape(2, spatial_shape[0], spatial_shape[1])
 
     if OII_doublet==False and emission_line2:
         return outflow_results, outflow_error, no_outflow_results, no_outflow_error, statistical_results, bic, outflow_results2, outflow_error2, no_outflow_results2, no_outflow_error2, statistical_results2, bic2
