@@ -1299,7 +1299,7 @@ def hgamma_hbeta_ratio(lamdas, data, z):
 #COMBINE DATA
 #====================================================================================================
 
-def combine_results(lamdas, data_flat, final_shape, results_folder, galaxy_name, header_file, unnormalised=False):
+def combine_results(lamdas, data_flat, final_shape, results_folder, galaxy_name, header_file, unnormalised=False, em_lines=True):
     """
     Combine the results from the continuum subtraction
 
@@ -1326,11 +1326,15 @@ def combine_results(lamdas, data_flat, final_shape, results_folder, galaxy_name,
                 with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_bestfit'.format(i), 'rb') as f:
                     bestfit = pickle.load(f)
                 f.close()
-                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_gas_bestfit'.format(i), 'rb') as f:
-                    gas_bestfit = pickle.load(f)
-                f.close()
-                #create the continuum
-                continuum = bestfit - gas_bestfit
+                if em_lines == True:
+                    with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_gas_bestfit'.format(i), 'rb') as f:
+                        gas_bestfit = pickle.load(f)
+                    f.close()
+                    #create the continuum
+                    continuum = bestfit - gas_bestfit
+                elif em_lines == False:
+                    #create the continuum
+                    continuum = bestfit
                 #interpolate the continuum
                 continuum = np.interp(lamdas, lam, continuum)
                 #save the continuum subtracted spectrum to the array
@@ -1357,7 +1361,22 @@ def combine_results(lamdas, data_flat, final_shape, results_folder, galaxy_name,
                 cont_subtracted[:,i] = data_flat[:,i] - continuum
 
             except IOError:
-                print('Could not open file for spectrum '+str(i))
+                #it might have been a low S/N spectrum, which has a different name
+                try:
+                    with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_low_sn_normalised_continuum_value'.format(i), 'rb') as f:
+                        normalised_continuum, gal_norm = pickle.load(f)
+                    f.close()
+
+                    #create the continuum
+                    continuum = normalised_continuum
+
+                    #save the continuum subtracted spectrum to the array
+                    cont_subtracted[:,i] = data_flat[:,i]/gal_norm - continuum
+
+                except Exception as ex:
+                    print('Exception for spectrum '+str(i))
+                    print(ex)
+                    print('')
 
     elif unnormalised == True:
         for i in range(data_flat.shape[1]):
@@ -1369,11 +1388,15 @@ def combine_results(lamdas, data_flat, final_shape, results_folder, galaxy_name,
                 with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_bestfit'.format(i), 'rb') as f:
                     bestfit = pickle.load(f)
                 f.close()
-                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_gas_bestfit'.format(i), 'rb') as f:
-                    gas_bestfit = pickle.load(f)
-                f.close()
-                #create the continuum
-                continuum = (bestfit - gas_bestfit)*gal_norm
+                if em_lines == True:
+                    with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_gas_bestfit'.format(i), 'rb') as f:
+                        gas_bestfit = pickle.load(f)
+                    f.close()
+                    #create the continuum
+                    continuum = (bestfit - gas_bestfit)*gal_norm
+                elif em_lines == False:
+                    #create the continuum
+                    continuum = (bestfit)*gal_norm
                 #interpolate the continuum
                 continuum = np.interp(lamdas, lam, continuum)
                 #save the continuum subtracted spectrum to the array
@@ -1399,7 +1422,22 @@ def combine_results(lamdas, data_flat, final_shape, results_folder, galaxy_name,
                 cont_subtracted[:,i] = data_flat[:,i] - continuum
 
             except IOError:
-                print('Could not open file for spectrum '+str(i))
+                #it might have been a low S/N spectrum, which has a different name
+                try:
+                    with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_low_sn_normalised_continuum_value'.format(i), 'rb') as f:
+                        normalised_continuum, gal_norm = pickle.load(f)
+                    f.close()
+
+                    #create the continuum
+                    continuum = normalised_continuum*gal_norm
+
+                    #save the continuum subtracted spectrum to the array
+                    cont_subtracted[:,i] = data_flat[:,i] - continuum
+
+                except Exception as ex:
+                    print('Exception for spectrum '+str(i))
+                    print(ex)
+                    print('')
 
     #reshape array
     cont_subtracted = cont_subtracted.reshape(final_shape)
