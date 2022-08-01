@@ -218,39 +218,44 @@ def bin_data(lamdas, data, z, bin_size=[3,3], var=None):
             center_y = int((start_yi+end_yi)/2)
 
             #only need to shift the hbeta peaks if the S/N is greater than 3
-            if sn_array[center_x, center_y] >= 3:
-                #find where the peak of the hbeta line is
-                try:
-                    hbeta_peak = np.argmax(data[:, center_x, center_y][hbeta_mask])
-                except:
-                    hbeta_peak = np.argmax(data[:, start_xi, start_yi][hbeta_mask])
-                #print(data[:, center_x, center_y][hbeta_mask].shape)
-                #print('Hbeta peak for central spaxel:', hbeta_peak)
+            try:
+                if sn_array[center_x, center_y] >= 3:
+                    #find where the peak of the hbeta line is
+                    try:
+                        hbeta_peak = np.argmax(data[:, center_x, center_y][hbeta_mask])
+                    except:
+                        hbeta_peak = np.argmax(data[:, start_xi, start_yi][hbeta_mask])
+                    #print(data[:, center_x, center_y][hbeta_mask].shape)
+                    #print('Hbeta peak for central spaxel:', hbeta_peak)
 
-                #find where the peak of the rest of the spaxels is
-                other_hbeta_peaks = np.argmax(data[:, start_xi:end_xi, start_yi: end_yi][hbeta_mask], axis=0)
-                #print('Other Hbeta peaks', other_hbeta_peaks)
+                    #find where the peak of the rest of the spaxels is
+                    other_hbeta_peaks = np.argmax(data[:, start_xi:end_xi, start_yi: end_yi][hbeta_mask], axis=0)
+                    #print('Other Hbeta peaks', other_hbeta_peaks)
 
-                #find difference between other_hbeta_peaks and hbeta_peak
-                hbeta_peak_diff = other_hbeta_peaks - hbeta_peak
-                #print('Hbeta peak diff', hbeta_peak_diff, '\n\n')
+                    #find difference between other_hbeta_peaks and hbeta_peak
+                    hbeta_peak_diff = other_hbeta_peaks - hbeta_peak
+                    #print('Hbeta peak diff', hbeta_peak_diff, '\n\n')
 
-                #add to list
-                hbeta_peak_diff_list.append(hbeta_peak_diff)
+                    #add to list
+                    hbeta_peak_diff_list.append(hbeta_peak_diff)
 
-                #iterate through the peak differences
-                for (i,j), diff in np.ndenumerate(hbeta_peak_diff):
-                    if diff < 0:
-                        #shift the spectra to the right
-                        data[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
-                        if var is not None:
-                            var[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = var[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
+                    #iterate through the peak differences
+                    for (i,j), diff in np.ndenumerate(hbeta_peak_diff):
+                        if diff < 0:
+                            #shift the spectra to the right
+                            data[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
+                            if var is not None:
+                                var[:, start_xi:end_xi, start_yi: end_yi][abs(diff):, i, j] = var[:, start_xi:end_xi, start_yi: end_yi][:diff, i, j]
 
-                    if diff > 0:
-                        #shift the spectra to the left
-                        data[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
-                        if var is not None:
-                            var[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = var[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
+                        if diff > 0:
+                            #shift the spectra to the left
+                            data[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = data[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
+                            if var is not None:
+                                var[:, start_xi:end_xi, start_yi: end_yi][:-diff, i, j] = var[:, start_xi:end_xi, start_yi: end_yi][diff:, i, j]
+
+            #if that doesn't work, then it's on the edge of the cube, don't need to shift anything
+            except IndexError:
+                continue
 
 
             """
@@ -339,13 +344,16 @@ def save_binned_data(data_filepath, data_folder, gal_name, z, bin_size=[3,3], va
         var_lamdas, var, var_header = read_in_data_fits(var_filepath)
 
 
-    if var:
+    if 'var' in locals():
         #give it to the binning function
         binned_data, binned_var = bin_data(lamdas, data, z, bin_size=bin_size, var=var)
+        print('Binned data shape:', binned_data.shape)
+        print('Binned var shape:', binned_var.shape)
 
     else:
         #give it to the binning function
         binned_data, hbeta_peak_diff_list = bin_data(lamdas, data, z, bin_size=bin_size, var=None)
+        print('Binned data shape:', binned_data.shape)
 
 
     #copy the header
@@ -374,12 +382,12 @@ def save_binned_data(data_filepath, data_folder, gal_name, z, bin_size=[3,3], va
 
     #create HDU object
     hdu = fits.PrimaryHDU(binned_data, header=new_header)
-    if var:
+    if 'var' in locals():
         hdu_var = fits.ImageHDU(binned_var, header=new_header)
         #create HDU list
         hdul = fits.HDUList([hdu, hdu_var])
     else:
-        #create HDU list 
+        #create HDU list
         hdul = fits.HDUList([hdu])
 
     #write to file
@@ -1402,6 +1410,7 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
 
     if len(fits_stuff) > 3:
         lamdas, data, var, header = fits_stuff
+        var_lamdas = lamdas.copy()
     else:
         lamdas, data, header = fits_stuff
 
@@ -1417,6 +1426,7 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
             var_lamdas = var_lamdas[lam_mask]
             var = var[lam_mask, :, :]
 
+    if 'var' in locals():
         #check that the variance is always positive
         if np.all((var>0.0) & (np.isfinite(var))) == False:
             print('The variance is not always positive!!!')
@@ -1425,6 +1435,8 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
             if np.any(var==0.0):
                 print('Replacing 0.0 with 0.00000001 in variance')
                 var[np.where(var==0.0)] = 0.00000001
+
+        print('Checked var for negative values')
 
     #create data coordinates
     xx, yy, rad = data_coords(lamdas, data, header, z, cube_colour=cube_colour, shiftx=None, shifty=None)
@@ -1451,7 +1463,7 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
         var = var[var_lamda_crop_mask,:,:]
 
     #flatten the cubes
-    if var_filepath != None:
+    if 'var' in locals():
         xx_flat, yy_flat, rad_flat, data_flat, var_flat = flatten_cube(xx, yy, rad, data, var=var)
 
         #pickle the output
