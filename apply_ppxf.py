@@ -1084,7 +1084,7 @@ def smoothing(fwhm1, fwhm2, input_spectrum, cdelt):
     return input_spectrum
 
 
-def median_continuum(spectrum, window=30, smooth_sigma=10):
+def median_continuum_convolution(spectrum, window=30, smooth_sigma=10):
     """
     Calculates the median along the spectrum and then smooths it using a gaussian
     convolution as an alternative continuum.
@@ -1114,6 +1114,55 @@ def median_continuum(spectrum, window=30, smooth_sigma=10):
     continuum = ndimage.gaussian_filter1d(continuum, smooth_sigma)
 
     return continuum
+
+
+def subtract_median_continuum(lamdas, data, var, header, z, output_folder, gal_name):
+    """
+    Finds the median continuum value between Hbeta and OIII and subtracts this
+    from the spectrum.
+
+    Parameters
+    ----------
+    lamdas : :obj: '~numpy.ndarray'
+        the linear wavelength array
+
+    data : :obj: '~numpy.ndarray'
+        the data cube in linear, non-normalised space
+
+    header : FITS file header
+        the data header
+
+    z : float
+        the redshift
+
+    Returns
+    -------
+    Saves the continuum subtracted cube to a new fits file
+
+    subtracted_data : :obj: '~numpy.ndarray'
+        the median continuum subtracted data
+    """
+    #create the mask
+    cont_mask = (lamdas>4890*(1+z)) & (lamdas<4930*(1+z))
+
+    #calculate the median
+    median_cont = np.nanmedian(data[cont_mask,:,:], axis=0)
+
+    #subtract it from the cube
+    subtracted_data = data - median_cont
+
+    #save to fits file
+    #create HDU object for galaxy
+    hdu = fits.PrimaryHDU(subtracted_data, header=header)
+    hdu_error = fits.ImageHDU(var, name='Variance')
+
+    #create HDU list
+    hdul = fits.HDUList([hdu, hdu_error])
+
+    #write to file
+    hdul.writeto(output_folder+gal_name+'_cont_subtracted_median_fixed.fits')
+
+    return subtracted_data
 
 
 #====================================================================================================
