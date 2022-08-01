@@ -493,6 +493,22 @@ def emission_lines(logLam_temp, lamRange_gal, FWHM_gal, pixel=True,
         line_names = np.append(line_names, names)
         line_wave = np.append(line_wave, wave)
 
+        #extra Fe lines
+        #taken from physics.nist.gov
+        #       --FeI-------FeI---------FeI---------FeI-------FeI----
+        wave = [4375.9302, 4383.5449, 4404.7505, 4415.1226, 4427.2979,
+            4461.6528, 4920.5029, 4957.5967, 5167.4883, 5171.5962,
+            5227.1509, 5269.5376, 5270.3564, 5328.0386, 5328.5317]  # air wavelengths
+        if vacuum:
+            wave = air_to_vac(wave)
+        names = ['FeI4375', 'FeI4383', 'FeI4404', 'FeI4415', 'FeI4427',
+            'FeI4461', 'FeI4920', 'FeI4957', 'FeI5167', 'FeI5171',
+            'FeI5227', 'FeI5269', 'FeI5270', 'FeI5328a', 'FeI5328b']
+        gauss = gaussian(logLam_temp, wave, FWHM_gal, pixel)
+        emission_lines = np.column_stack([emission_lines, gauss])
+        line_names = np.append(line_names, names)
+        line_wave = np.append(line_wave, wave)
+
         #and a few more extra emission lines that we find in our KCWI data
         #       -[NeIII]----HeI--------HeI-----HeII----
         #wave = [3868.760, 4143.761, 4471.479, 4685.710]  # air wavelengths
