@@ -2114,7 +2114,7 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
 
 
 
-def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, results_folder, galaxy_name, cube_colour, fwhm_gal=2, fwhm_temp=2.0, cdelt_temp=1.0, em_lines=True, fwhm_emlines=2.0, gas_reddening=0.13, reddening=0.13, degree=4, mdegree=0, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True):
+def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, results_folder, galaxy_name, cube_colour, sn_cut=3, fwhm_gal=2, fwhm_temp=2.0, cdelt_temp=1.0, em_lines=True, fwhm_emlines=2.0, gas_reddening=0.13, reddening=0.13, degree=4, mdegree=0, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True):
     """
     Parallelising the main() function
 
@@ -2232,152 +2232,168 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
     for i in np.arange(0+rank, num_spectra[0], size):
         print('Fit '+str(i+1)+' of '+str(gal_velscale.shape[0]))
 
-        if em_lines == True:
-            if cube_colour == 'blue':
-                #run normally if S/N of [OII] doublet is > 3
-                #if OII_sn_array[i] >= 3:
-                pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
-
-                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
-                    pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-(pp.bestfit-pp.gas_bestfit))], f)
-                f.close()
-
-                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
-                    pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-(pp.bestfit-pp.gas_bestfit))*gal_norm[i]], f)
-                f.close()
-
-                #otherwise only run with the stellar templates, no gas templates
-                #using gas_component as a mask, since it is True for all gas templates
-                """
-                elif OII_sn_array[i] < 3:
-                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates[:,~gas_component], ssp_lamrange, dv, z, em_lines=False, component=False, gas_component=False, gas_names=False, gas_reddening=None, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+        # if the spectrum has a high enough S/N, fit with ppxf
+        if sn_array[i] >= sn_cut:
+            if em_lines == True:
+                if cube_colour == 'blue':
+                    #run normally if S/N of [OII] doublet is > 3
+                    #if OII_sn_array[i] >= 3:
+                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
 
                     with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
-                        pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-pp.bestfit)], f)
+                        pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-(pp.bestfit-pp.gas_bestfit))], f)
                     f.close()
 
                     with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
-                        pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-pp.bestfit)*gal_norm[i]], f)
+                        pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-(pp.bestfit-pp.gas_bestfit))*gal_norm[i]], f)
                     f.close()
-                """
+
+                    #otherwise only run with the stellar templates, no gas templates
+                    #using gas_component as a mask, since it is True for all gas templates
+                    """
+                    elif OII_sn_array[i] < 3:
+                        pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates[:,~gas_component], ssp_lamrange, dv, z, em_lines=False, component=False, gas_component=False, gas_names=False, gas_reddening=None, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+
+                        with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
+                            pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-pp.bestfit)], f)
+                        f.close()
+
+                        with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
+                            pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-pp.bestfit)*gal_norm[i]], f)
+                        f.close()
+                    """
 
 
-            elif cube_colour == 'red':
-                #fit the cube
-                pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+                elif cube_colour == 'red':
+                    #fit the cube
+                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+
+                    #get the flux ratio if fitting the red cube
+                    cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z)
+                    print('original ratio: ', gal_flux_ratio[i], 'cont subtracted ratio: ', cont_subt_flux_ratio)
+                    if abs(cont_subt_flux_ratio-gal_flux_ratio[i]) > 0.5:
+                        print('Continuum subtraction overdoing it')
+                    else:
+                        print('Continuum subtraction within flux ratio bounds')
+
+                    with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_flux_ratio'.format(i), 'wb') as f:
+                        pickle.dump([gal_flux_ratio[i], cont_subt_flux_ratio, cont_subt_flux_ratio-gal_flux_ratio[i]], f)
+                    f.close()
+
+                    with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
+                        pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-(pp.bestfit-pp.gas_bestfit))], f)
+                    f.close()
+
+                    with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
+                    	pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-(pp.bestfit-pp.gas_bestfit))*gal_norm[i]], f)
+                    f.close()
+
+                #save the results
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_solutions_errors'.format(i), 'wb') as f:
+                    pickle.dump([pp.sol, pp.error], f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_weights'.format(i), 'wb') as f:
+                    pickle.dump(pp.weights, f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_bestfit'.format(i), 'wb') as f:
+                    pickle.dump(pp.bestfit, f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_chi2'.format(i), 'wb') as f:
+                    pickle.dump(pp.chi2, f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_gas_bestfit'.format(i), 'wb') as f:
+                    pickle.dump(pp.gas_bestfit, f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_gas_reddening'.format(i), 'wb') as f:
+                    pickle.dump(pp.gas_reddening, f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_reddening'.format(i), 'wb') as f:
+                    pickle.dump(pp.reddening, f)
+                f.close()
+
+
+
+                #save the figures
+                plot_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+
+                plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+
+                plot_continuum_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+
+                plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+
+            else:
+                pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=False, gas_component=False, gas_names=False, gas_reddening=None, reddening=reddening, degree=degree, goodpixels=goodpixels, mdegree=mdegree, plot=plot, quiet=quiet)
 
                 #get the flux ratio if fitting the red cube
-                cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z)
-                print('original ratio: ', gal_flux_ratio[i], 'cont subtracted ratio: ', cont_subt_flux_ratio)
-                if abs(cont_subt_flux_ratio-gal_flux_ratio[i]) > 0.5:
-                    print('Continuum subtraction overdoing it')
-                else:
-                    print('Continuum subtraction within flux ratio bounds')
+                if cube_colour == 'red':
+                    cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit), z)
+                    print('original ratio: ', gal_flux_ratio[i], 'cont subtracted ratio: ', cont_subt_flux_ratio)
+                    if abs(cont_subt_flux_ratio-gal_flux_ratio[i]) > 0.5:
+                        print('Continuum subtraction overdoing it')
+                    else:
+                        print('Continuum subtraction within flux ratio bounds')
 
-                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_flux_ratio'.format(i), 'wb') as f:
-                    pickle.dump([gal_flux_ratio[i], cont_subt_flux_ratio, cont_subt_flux_ratio-gal_flux_ratio[i]], f)
+                    with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_flux_ratio'.format(i), 'wb') as f:
+                        pickle.dump([gal_flux_ratio[i], cont_subt_flux_ratio, cont_subt_flux_ratio-gal_flux_ratio[i]], f)
+
+                #save the results
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_solutions_errors'.format(i), 'wb') as f:
+                    pickle.dump([pp.sol, pp.error], f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_weights'.format(i), 'wb') as f:
+                    pickle.dump(pp.weights, f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_bestfit'.format(i), 'wb') as f:
+                    pickle.dump(pp.bestfit, f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_chi2'.format(i), 'wb') as f:
+                    pickle.dump(pp.chi2, f)
+                f.close()
+
+                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_reddening'.format(i), 'wb') as f:
+                    pickle.dump(pp.reddening, f)
                 f.close()
 
                 with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
-                    pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-(pp.bestfit-pp.gas_bestfit))], f)
+                    pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-pp.bestfit)], f)
                 f.close()
 
                 with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
-                	pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-(pp.bestfit-pp.gas_bestfit))*gal_norm[i]], f)
+                    pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-pp.bestfit)*gal_norm[i]], f)
                 f.close()
 
-            #save the results
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_solutions_errors'.format(i), 'wb') as f:
-                pickle.dump([pp.sol, pp.error], f)
+                #save the figures
+                plot_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+
+                plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+
+                plot_continuum_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+
+                plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+
+        #if the spectrum has a low S/N, then fit the continuum with a straight line
+        elif sn_array[i] < sn_cut:
+            print('Fitting with median continuum value')
+
+            #normalise the spectrum before fitting the continuum
+            #this is to stay in line with the ppxf fitting, which is done to
+            #the normalised cube
+            normalised_continuum = np.nanmedian(data_flat[cont_mask,i]/gal_norm[i])
+
+            #save the number in a file for later
+            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_low_sn_normalised_continuum_value'.format(i), 'wb') as f:
+                pickle.dump([normalised_continuum, gal_norm[i]], f)
             f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_weights'.format(i), 'wb') as f:
-                pickle.dump(pp.weights, f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_bestfit'.format(i), 'wb') as f:
-                pickle.dump(pp.bestfit, f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_chi2'.format(i), 'wb') as f:
-                pickle.dump(pp.chi2, f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_gas_bestfit'.format(i), 'wb') as f:
-                pickle.dump(pp.gas_bestfit, f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_gas_reddening'.format(i), 'wb') as f:
-                pickle.dump(pp.gas_reddening, f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_reddening'.format(i), 'wb') as f:
-                pickle.dump(pp.reddening, f)
-            f.close()
-
-
-
-            #save the figures
-            plot_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
-
-            plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
-
-            plot_continuum_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
-
-            plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
-
-        else:
-            pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=False, gas_component=False, gas_names=False, gas_reddening=None, reddening=reddening, degree=degree, goodpixels=goodpixels, mdegree=mdegree, plot=plot, quiet=quiet)
-
-            #get the flux ratio if fitting the red cube
-            if cube_colour == 'red':
-                cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z)
-                print('original ratio: ', gal_flux_ratio[i], 'cont subtracted ratio: ', cont_subt_flux_ratio)
-                if abs(cont_subt_flux_ratio-gal_flux_ratio[i]) > 0.5:
-                    print('Continuum subtraction overdoing it')
-                else:
-                    print('Continuum subtraction within flux ratio bounds')
-
-                with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_flux_ratio'.format(i), 'wb') as f:
-                    pickle.dump([gal_flux_ratio[i], cont_subt_flux_ratio, cont_subt_flux_ratio-gal_flux_ratio[i]], f)
-
-            #save the results
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_solutions_errors'.format(i), 'wb') as f:
-                pickle.dump([pp.sol, pp.error], f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_weights'.format(i), 'wb') as f:
-                pickle.dump(pp.weights, f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_bestfit'.format(i), 'wb') as f:
-                pickle.dump(pp.bestfit, f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_chi2'.format(i), 'wb') as f:
-                pickle.dump(pp.chi2, f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_reddening'.format(i), 'wb') as f:
-                pickle.dump(pp.reddening, f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
-                pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-pp.bestfit)], f)
-            f.close()
-
-            with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
-                pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-pp.bestfit)*gal_norm[i]], f)
-            f.close()
-
-            #save the figures
-            plot_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
-
-            plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
-
-            plot_continuum_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
-
-            plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
     print('==========FINISHED==========')
 
