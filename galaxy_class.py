@@ -17,6 +17,9 @@ PURPOSE:
 """
 import prepare_cubes as pc
 
+import importlib
+importlib.reload(pc)
+
 #define the galaxy class
 class Galaxy:
     """
@@ -100,7 +103,7 @@ class Galaxy:
         self.header = data_header
 
     #ppxf variables
-    def set_ppxf_variables(self, fwhm_gal, fwhm_temp, cdelt_temp, em_lines, fwhm_emlines, gas_reddening, reddening, degree, mdegree, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True, unnormalised=True):
+    def set_ppxf_variables(self, fwhm_gal, fwhm_temp, cdelt_temp, em_lines, fwhm_emlines, gas_reddening, reddening, degree, mdegree, sn_cut=3, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True, unnormalised=True):
         """
         Sets the variables you need to run the ppxf continuum subtraction
 
@@ -152,6 +155,12 @@ class Galaxy:
             - IMPORTANT: Multiplicative polynomials cannot be used when the
             REDDENING keyword is set, as they are degenerate with the reddening.
 
+        sn_cut : int
+            the signal-to-noise ratio at which we consider there is a continuum
+            to fit.  If the continuum is below this value, a straight line is
+            subtracted during continuum fitting rather than fitting using pPXF.
+            (default=3)
+
         vacuum : boolean
             whether to make wavelengths in vacuum or air wavelengths
             (default=True, default in ppxf is False)
@@ -184,6 +193,8 @@ class Galaxy:
 
         self.degree = degree
         self.mdegree = mdegree
+
+        self.sn_cut = sn_cut
 
         self.vacuum = vacuum
         self.extra_em_lines = extra_em_lines
