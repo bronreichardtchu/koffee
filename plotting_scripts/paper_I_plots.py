@@ -72,11 +72,7 @@ importlib.reload(calc_outvel)
 def plot_compare_fits(lamdas, data, var, spaxels, z, use_lmfit_bic=False):
     """
     Plots the normalised single and double gaussian fits for the OIII 5007 line
-<<<<<<< HEAD:plotting_scripts/paper_I_plots.py
-    using a list of spaxels.  (Used spaxels [[19, 7], [26, 8], [36, 10]] for the
-=======
     using a list of spaxels.  (Used spaxels [[35, 12], [28, 12], [35, 10]] for the
->>>>>>> master:paper_I_plots.py
     paper.)
 
     Parameters
@@ -139,18 +135,6 @@ def plot_compare_fits(lamdas, data, var, spaxels, z, use_lmfit_bic=False):
         bestfit2 = kff.fitter(gmodel2, pars2, lam_OIII, flux, weights=weights, verbose=False)
 
         #find the significance level using the BIC difference
-<<<<<<< HEAD:plotting_scripts/paper_I_plots.py
-        BIC_diff = bestfit1.bic - bestfit2.bic
-        print(BIC_diff)
-        if 10 < BIC_diff <= 30:
-            significance_level = 'weakly likely\n10 < $\delta_{BIC}$ < 30'
-        elif 30 < BIC_diff <= 50:
-            significance_level = 'moderately likely\n30 < $\delta_{BIC}$ < 50'
-        elif 50 < BIC_diff:
-            significance_level = 'strongly likely\n$\delta_{BIC}$ > 50'
-        else:
-            significance_level = str(BIC_diff)
-=======
         if use_lmfit_bic == True:
             BIC_diff = bestfit1.bic - bestfit2.bic
             print(BIC_diff)
@@ -173,7 +157,6 @@ def plot_compare_fits(lamdas, data, var, spaxels, z, use_lmfit_bic=False):
                 significance_level = 'strongly likely\n$\delta_{BIC}$ > 2000'
             else:
                 significance_level = str(BIC_diff)
->>>>>>> master:paper_I_plots.py
 
         #get the value to normalise by
         max_value = np.nanmax(flux)
