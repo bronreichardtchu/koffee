@@ -170,7 +170,7 @@ def calc_mass_outflow(hbeta_results, hbeta_error, statistical_results, z):
     Returns
     -------
     mout : :obj:'~numpy.ndarray'
-        mass outflow in units of solar masses 
+        mass outflow in units of solar masses
     """
     #from Calzetti 2001 PASP 113 we have L_Halpha/L_Hbeta = 2.87
     lum_ratio_alpha_to_beta = 2.87
@@ -486,14 +486,14 @@ def calc_save_as_fits(OIII_results, OIII_error, hbeta_results, hbeta_error, hbet
     hdu_error = fits.ImageHDU(mout_err.value, header=new_header)
 
     #creat HDU list
-    hdul = fits.HDUList([hdu, hdu_error, hdu_error2])
+    hdul = fits.HDUList([hdu, hdu_error])
 
     hdul.writeto(output_folder+gal_name+'_mass_outflow.fits')
 
     #create HDU object for mass outflow rate
-    hdu = fits.PrimaryHDU((M_out.to('M_sun/yr')).value, header=new_header)
-    hdu_error = fits.ImageHDU((M_out_max.to('M_sun/yr')).value, name='Mass Outflow Rate with maximum R_out')
-    hdu_error2 = fits.ImageHDU((M_out_min.to('M_sun/yr')).value, name='Mass Outflow Rate with minimum R_out')
+    hdu = fits.PrimaryHDU((mdotout.to('M_sun/yr')).value, header=new_header)
+    hdu_error = fits.ImageHDU((mdotout_max.to('M_sun/yr')).value, name='Mass Outflow Rate with maximum R_out')
+    hdu_error2 = fits.ImageHDU((mdotout_min.to('M_sun/yr')).value, name='Mass Outflow Rate with minimum R_out')
 
     #create HDU list
     hdul = fits.HDUList([hdu, hdu_error, hdu_error2])
