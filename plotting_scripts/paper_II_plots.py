@@ -484,6 +484,7 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
 
     #multiply the mass outflow rate by 380 because when I calculated it, I
     #assumed that n_e = 380 cm^-3; but in this paper we're assuming n_e = 100 cm^-3
+    print('Total ionised gas mass outflow rate (n_e=380):', np.nansum(IRAS08_table['mout_rate']))
     m_out = IRAS08_table['mout_rate']*380/100
 
     if adjust_mout_vel == True:
@@ -510,11 +511,16 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
     #calculate the mout if we had n_e = 300 cm^-3
     m_out_300 = m_out*1/3
 
+    print('Total ionised gas mass outflow rate (n_e=100):', np.nansum(m_out))
+    print('Total ionised gas mass outflow rate (n_e=300):', np.nansum(m_out_300))
+    print('')
+
     #calculate the mass loading factor
     sfr = IRAS08_table['sfr']
     mlf = m_out/sfr
     mlf_300 = m_out_300/sfr
     mlf_20kpc = m_out_20kpc/sfr
+    mlf_300_20kpc = (m_out_300*500/20000)/sfr
 
     #calculate the error
     #mlf_err = mlf*np.sqrt((mout_err/m_out)**2 + (IRAS08_table['esfr']/sfr)**2)
@@ -525,9 +531,15 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
     mlf_median = np.nanmedian(mlf)
     mlf_20kpc_median = np.nanmedian(mlf_20kpc)
 
+    print('Total SFR:', np.nansum(sfr))
+    print('Total mass loading factor:', np.nansum(m_out)/np.nansum(sfr))
+    print('')
     print('Median mass loading factor:', mlf_median)
     print('Median mass loading factor error:', np.nanmedian(log_mlf_err))
     print('Median 20kpc mass loading factor:', mlf_20kpc_median)
+    print('')
+
+
 
 
 
@@ -574,6 +586,16 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
 
     log_sigma_mol_kim, log_mlf_mol_kim = pf.kim_et_al_2020_sigma_mol_log(0, 2)
     log_sigma_mol_kim_extrapolate, log_mlf_mol_kim_extrapolate = pf.kim_et_al_2020_sigma_mol_log(xlim_sigma_mol[0], xlim_sigma_mol[1])
+
+
+    print('Pearson R, p-value log(Sigma_sfr)-log(eta):', pf.pearson_correlation(np.log10(sfr_surface_density.value), np.log10(mlf)))
+    print('Pearson R, p-value Sigma_sfr-eta:', pf.pearson_correlation(sfr_surface_density, mlf))
+
+    print('Pearson R, p-value log(Sigma_sfr)-log(eta) below 0.3:', pf.pearson_correlation(np.log10(sfr_surface_density[np.log10(sfr_surface_density.value)<-0.5].value), np.log10(mlf[np.log10(sfr_surface_density.value)<-0.5])))
+    print('Pearson R, p-value Sigma_sfr-eta below 0.3:', pf.pearson_correlation(sfr_surface_density[np.log10(sfr_surface_density.value)<-0.5], mlf[np.log10(sfr_surface_density.value)<-0.5]))
+
+    print('Pearson R, p-value log(Sigma_mol)-log(eta):', pf.pearson_correlation(np.log10(molgas_surface_density.value), np.log10(mlf)))
+    print('Pearson R, p-value Sigma_mol-eta:', pf.pearson_correlation(molgas_surface_density.value, mlf))
 
 
     #create the figure
