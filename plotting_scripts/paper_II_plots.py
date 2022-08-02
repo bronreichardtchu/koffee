@@ -646,15 +646,20 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
         cmap = cm.cool
         norm = Normalize(vmin=np.log10(out_eff).min(), vmax=np.log10(out_eff).max())
         #markers, caps, bars = axes[0].errorbar(np.log10(molgas_surface_density.value), np.log10(mlf.flatten()), yerr=np.log10(mlf_err), fmt='o', c=colours[0], ms=7, alpha=1.0, zorder=8)
+
+        axes[0].scatter(np.log10(molgas_surface_density.value), np.log10(mlf_300.flatten()), facecolors='none', edgecolors='k', s=30, alpha=0.9, zorder=8)
+
         markers, caps, bars = axes[0].errorbar(np.log10(molgas_surface_density.value), np.log10(mlf.flatten()), yerr=log_mlf_err, xerr=log_molgas_surface_density_error.value, fmt='none', ecolor=cmap(norm(np.log10(out_eff))), ms=7, alpha=1.0, zorder=8)
         [bar.set_alpha(0.6) for bar in bars]
         [cap.set_alpha(0.6) for cap in caps]
         axes[0].scatter(np.log10(molgas_surface_density.value), np.log10(mlf.flatten()), c=cmap(norm(np.log10(out_eff))), s=50, alpha=1.0, zorder=8)
 
 
-        axes[0].scatter(np.log10(molgas_surface_density.value), np.log10(mlf_300.flatten()), c=cmap(norm(np.log10(out_eff))), s=50, alpha=0.2, zorder=8)
+        #axes[0].scatter(np.log10(molgas_surface_density.value), np.log10(mlf_300.flatten()), c=cmap(norm(np.log10(out_eff))), s=50, alpha=0.2, zorder=8)
 
-        axes[1].scatter(np.log10(sfr_surface_density.value), np.log10(mlf_300), c=cmap(norm(np.log10(out_eff))), s=50, alpha=0.2, zorder=8)
+        #axes[1].scatter(np.log10(sfr_surface_density.value), np.log10(mlf_300), c=cmap(norm(np.log10(out_eff))), s=50, alpha=0.2, zorder=8)
+
+        axes[1].scatter(np.log10(sfr_surface_density.value), np.log10(mlf_300), facecolors='none', edgecolors='k', s=30, alpha=0.9, zorder=8)
 
         markers, caps, bars = axes[1].errorbar(np.log10(sfr_surface_density.value), np.log10(mlf), yerr=log_mlf_err, xerr=log_sfr_surface_density_err.value, ecolor=cmap(norm(np.log10(out_eff))), fmt='none', ms=7, alpha=1.0, zorder=8)
         [bar.set_alpha(0.6) for bar in bars]
@@ -666,7 +671,7 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
 
         cbar = fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)#, cmap=cmap(norm(np.log10(tdep_out))))
         #cbar.set_label(label='log($t_{dep,out}$ [Gyr])', rotation=270, labelpad=20)
-        cbar.set_label(label='log($\dot{M}_{out}/M_{mol}$ [Gyr$^{-1}$])', rotation=270, labelpad=20)
+        cbar.set_label(label='log($\dot{\Sigma}_{out}/\Sigma_{mol}$ [yr$^{-1}$])', rotation=270, labelpad=20)
 
 
         #add an arrow to show where the mlf would be for an r_out of 20kpc
@@ -675,10 +680,18 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
         axes[0].text(0.6, np.log10(mlf_median), '$R_{out}=0.1R_{vir}$', fontsize=8, color='k',
             rotation='vertical', va='top', weight='bold')
 
+        axes[0].arrow(0.9, np.log10(np.nanmedian(mlf_300)), 0, np.log10(np.nanmedian(mlf_300_20kpc))-np.log10(np.nanmedian(mlf_300)), width=0.04,
+            length_includes_head=True, head_length=0.15, ec='k', fc='none', alpha=0.5)
+        #axes[0].text(1.0, np.log10(np.nanmedian(mlf_300)), '$R_{out}=0.1R_{vir}$', fontsize=8, color='k',
+            #rotation='vertical', va='top', weight='bold')
+
         axes[1].arrow(-3.9, np.log10(mlf_median), 0, np.log10(mlf_20kpc_median)-np.log10(mlf_median), width=0.08,
             length_includes_head=True, head_length=0.15, color='k')
         axes[1].text(-4.3, np.log10(mlf_median), '$R_{out}=0.1R_{vir}$', fontsize=8, color='k',
             rotation='vertical', va='top', weight='bold')
+
+        axes[1].arrow(-3.7, np.log10(np.nanmedian(mlf_300)), 0, np.log10(np.nanmedian(mlf_300_20kpc))-np.log10(np.nanmedian(mlf_300)), width=0.08,
+            length_includes_head=True, head_length=0.15, ec='k', fc='none', alpha=0.5)
 
 
 
@@ -723,7 +736,7 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
         #axes[1].text(0.98, 0.94, u'FIRE-2 (Pindya+2022)', color='dimgrey', transform=axes[1].transAxes, fontsize=8, ha='right')
         axes[1].text(0.02, 0.07, u'Solid: $n_e = 100 \mathrm{cm^{-1}}$', color='k', transform=axes[1].transAxes, fontsize=8, ha='left')
         #axes[1].text(0.98, 0.9, u'Solid: $R_{out}$=0.5kpc', color='k', transform=axes[1].transAxes, fontsize=8, ha='right')
-        axes[1].text(0.02, 0.02, r'Faint: $n_e = 300 \mathrm{cm^{-1}}$', color='k', transform=axes[1].transAxes, fontsize=8, ha='left')
+        axes[1].text(0.02, 0.02, r'Open: $n_e = 300 \mathrm{cm^{-1}}$', color='k', transform=axes[1].transAxes, fontsize=8, ha='left')
 
 
         plt.subplots_adjust(left=0.1, right=0.9, top=0.96, bottom=0.17, wspace=0.0, hspace=0.0)
