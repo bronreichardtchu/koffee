@@ -38,15 +38,18 @@ from astropy.table import Table
 from scipy.signal import argrelextrema
 
 import prepare_cubes as pc
-import plotting_functions as pf
 import koffee_fitting_functions as kff
-import calculate_outflow_velocity as calc_outvel
-import calculate_star_formation_rate as calc_sfr
-import calculate_mass_loading_factor as calc_mlf
-import calculate_energy_loading_factor as calc_elf
-import calculate_equivalent_width as calc_ew
 import brons_display_pixels_kcwi as bdpk
 import koffee
+
+from plotting_scripts import plotting_functions as pf
+
+from calculations import calculate_outflow_velocity as calc_outvel
+from calculations import calculate_star_formation_rate as calc_sfr
+from calculations import calculate_mass_loading_factor as calc_mlf
+from calculations import calculate_energy_loading_factor as calc_elf
+from calculations import calculate_equivalent_width as calc_ew
+
 
 import importlib
 importlib.reload(pf)
