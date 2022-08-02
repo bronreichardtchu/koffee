@@ -58,7 +58,7 @@ importlib.reload(calc_sfr)
 
 
 
-def maps_of_IRAS08(halpha_fits_file, m_out_fits_file, radius):
+def maps_of_IRAS08(halpha_fits_file, m_out_fits_file, radius, z):
     """
     Maps the HST image and mass outflow rate results for IRAS08 from fits files
 
@@ -74,6 +74,9 @@ def maps_of_IRAS08(halpha_fits_file, m_out_fits_file, radius):
     radius : :obj:'~numpy.ndarray'
         array of galaxy radius values
 
+    z : float
+        the redshift
+
     Returns
     -------
     A two-panel figure with a map of flux, and a map of the results from KOFFEE
@@ -87,7 +90,22 @@ def maps_of_IRAS08(halpha_fits_file, m_out_fits_file, radius):
     #assumed that n_e = 380 cm^-3; but in this paper we're assuming n_e = 100 cm^-3
     m_out = m_out*380/100
 
-    #take the log of the velocity and the flux ratio
+    #we want the mass outflow rate per kpc^2
+    #get the proper distance per arcsecond
+    proper_dist = cosmo.kpc_proper_per_arcmin(z).to(u.kpc/u.arcsec)
+
+    try:
+        x = m_out_header['CD1_2']*60*60
+        y = m_out_header['CD2_1']*60*60
+
+    except:
+        x = (-m_out_header['CDELT2']*np.sin(m_out_header['CROTA2'])) *60*60
+        y = (m_out_header['CDELT1']*np.sin(m_out_header['CROTA2'])) *60*60
+
+    m_out = m_out/((x*y)*(proper_dist**2))
+    m_out = m_out.value
+
+    #take the log of the mass outflow rate
     m_out = np.log10(m_out)
 
     #creating the x and y limits
@@ -155,7 +173,7 @@ def maps_of_IRAS08(halpha_fits_file, m_out_fits_file, radius):
     #create the figure
     plt.rcParams.update(pf.get_rc_params())
 
-    plt.figure(figsize=(8,4))#constrained_layout=True)
+    plt.figure(figsize=(7,3))#, constrained_layout=True)
 
     ax1 = plt.subplot(121, projection=halpha_wcs)
     ax1.set_facecolor('black')
@@ -185,7 +203,7 @@ def maps_of_IRAS08(halpha_fits_file, m_out_fits_file, radius):
 
     ax2 = plt.subplot(122, projection=m_out_wcs, slices=('y', 'x'))
     #m_out_spax = bdpk.display_pixels(xx_flat_out, yy_flat_out, m_out, angle=360, axes=ax8, cmap=cmr.gem, vmin=-3.2, vmax=-0.9)
-    m_out_spax = ax2.imshow(m_out.T, origin='lower', aspect=m_out_header['CD2_1']/m_out_header['CD1_2'], cmap=cmr.gem, vmin=-3.0, vmax=0.0)
+    m_out_spax = ax2.imshow(m_out.T, origin='lower', aspect=m_out_header['CD2_1']/m_out_header['CD1_2'], cmap=cmr.gem, vmin=-2.0, vmax=1.5)
     #ax8.hlines(ymin+0.75, xmin+4, xmin+4+10, colors='black')
     #ax8.arrow(m_out_peak_pixel[0][0]+5, m_out_peak_pixel[0][1]-2, -5, 2, width=0.2, length_includes_head=True, color='k')
     ax2.grid(False)
@@ -200,11 +218,11 @@ def maps_of_IRAS08(halpha_fits_file, m_out_fits_file, radius):
     ax2.set_xlim(ylim[0], ylim[1])
     ax2.set_ylim(xlim[0], xlim[1])
     ax2.invert_xaxis()
-    ax2.set_title(r'Log($\dot{M}_{out}$) ')
+    ax2.set_title(r'Log($\dot{\Sigma}_{out}$) ')
     cbar = plt.colorbar(m_out_spax, ax=ax2, shrink=0.8)
-    cbar.set_label(r'Log(M$_\odot$ yr$^{-1}$)')
+    cbar.set_label(r'Log($\dot{\Sigma}_{out}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$])')
 
-    #plt.subplots_adjust(left=0.0, right=0.96, top=0.99, bottom=0.0, wspace=0.1, hspace=0.0)
+    plt.subplots_adjust(left=0.0, right=0.95, top=0.91, bottom=0.02, wspace=0.1, hspace=0.0)
 
     plt.show()
 
