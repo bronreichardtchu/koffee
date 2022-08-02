@@ -55,3 +55,13 @@ def main(galaxy_dict, run_cont_subtraction=True):
 
 
     return gal
+
+
+#======================================================================================================
+
+if __name__ == '__main__':
+    #get the galaxy info
+    from galaxy_info import NGC0695
+
+    #run the continuum subtraction
+    ngc695_class = main(NGC0695.ngc0695_red)
