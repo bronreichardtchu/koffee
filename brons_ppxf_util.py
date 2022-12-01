@@ -509,16 +509,27 @@ def emission_lines(logLam_temp, lamRange_gal, FWHM_gal, pixel=True,
         line_names = np.append(line_names, names)
         line_wave = np.append(line_wave, wave)
 
-        #and a few more extra emission lines that we find in our KCWI data
-        #       -[NeIII]----HeI--------HeI-----HeII----
-        #wave = [3868.760, 4143.761, 4471.479, 4685.710]  # air wavelengths
+        #       --FeII-----FeII--
+        #wave = [4923.927, 5018.44]
         #if vacuum:
         #    wave = air_to_vac(wave)
-        #names = ['[NeIII]3868', 'HeI4143', 'HeI4471', 'HeII4685']
+        #names = ['FeII4923', 'FeII5018']
         #gauss = gaussian(logLam_temp, wave, FWHM_gal, pixel)
         #emission_lines = np.column_stack([emission_lines, gauss])
         #line_names = np.append(line_names, names)
         #line_wave = np.append(line_wave, wave)
+
+
+        #and a few more extra emission lines that we find in our KCWI data
+        #       -[NeIII]----HeI--------HeI-----HeII------HeI---
+        wave = [3868.760, 4143.761, 4471.479, 4685.710, 5015.68]  # air wavelengths
+        if vacuum:
+            wave = air_to_vac(wave)
+        names = ['[NeIII]3868', 'HeI4143', 'HeI4471', 'HeII4685', 'HeI5015']
+        gauss = gaussian(logLam_temp, wave, FWHM_gal, pixel)
+        emission_lines = np.column_stack([emission_lines, gauss])
+        line_names = np.append(line_names, names)
+        line_wave = np.append(line_wave, wave)
 
     # Only include lines falling within the estimated fitted wavelength range.
     # This is important to avoid instabilities in the pPXF system solution
