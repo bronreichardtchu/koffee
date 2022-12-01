@@ -598,6 +598,19 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
     print('Pearson R, p-value Sigma_mol-eta:', pf.pearson_correlation(molgas_surface_density.value, mlf))
 
 
+    #Set some average errors for the average error bars
+    y_pos = 1.8
+    x_pos1 = 3.5
+    x_pos2 = 1.1
+    avg_sigma_mol_err = np.nanmean(log_molgas_surface_density_error.value)
+    avg_sigma_sfr_err = np.nanmean(log_sfr_surface_density_err)
+    avg_mlf_err = np.nanmean(log_mlf_err)
+    print('average sigma mol err:', avg_sigma_mol_err)
+    print('average sigma sfr err:', avg_sigma_sfr_err)
+    print('average mlf err:', avg_mlf_err)
+    avg_sigma_mol_err = 0.06
+    avg_sigma_sfr_err = 0.09
+
     #create the figure
     plt.rcParams.update(pf.get_rc_params())
 
@@ -642,6 +655,9 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
                 axes[1].scatter(thalo['log_sigmaSFR_weighted'],  thalo['log_etaM_warm']+np.log10(3),  c=plt_color, marker='s', s=10, alpha=0.5, edgecolor='none')
 
 
+        #add an average error bar
+        axes[0].errorbar(x_pos1, y_pos, xerr=avg_sigma_mol_err, yerr=avg_mlf_err, ecolor='k', linewidth=1, linestyle='None', alpha=0.8)
+
         #scatter the kcwi and co data on the plots
         cmap = cm.cool
         norm = Normalize(vmin=np.log10(out_eff).min(), vmax=np.log10(out_eff).max())
@@ -656,6 +672,9 @@ def plot_compare_pandya21_textfile(fire_data, IRAS08_resampled_textfile, z, adju
 
 
         #axes[0].scatter(np.log10(molgas_surface_density.value), np.log10(mlf_300.flatten()), c=cmap(norm(np.log10(out_eff))), s=50, alpha=0.2, zorder=8)
+
+        #add an average error bar
+        axes[1].errorbar(x_pos2, y_pos, xerr=avg_sigma_sfr_err, yerr=avg_mlf_err, ecolor='k', linewidth=1, linestyle='None', alpha=0.8)
 
         #axes[1].scatter(np.log10(sfr_surface_density.value), np.log10(mlf_300), c=cmap(norm(np.log10(out_eff))), s=50, alpha=0.2, zorder=8)
 
