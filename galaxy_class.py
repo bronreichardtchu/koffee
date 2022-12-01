@@ -15,6 +15,8 @@ PURPOSE:
 	Written on MacOS Mojave 10.14.5, with Python 3.7
 
 """
+from astropy.io import fits
+
 import prepare_cubes as pc
 
 import importlib
@@ -101,6 +103,11 @@ class Galaxy:
         self.data_flat = data_flat
         self.variance_flat = var_flat
         self.header = data_header
+
+        # update the mw_correction variable - now that we've read the data in
+        # and corrected for any reddening from the MW, we don't need to do that
+        # again
+        self.mw_correction = False
 
     #ppxf variables
     def set_ppxf_variables(self, fwhm_gal, fwhm_temp, cdelt_temp, em_lines, fwhm_emlines, gas_reddening, reddening, degree, mdegree, sn_cut=3, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True, unnormalised=True):
@@ -202,3 +209,72 @@ class Galaxy:
         self.plot = plot
         self.quiet = quiet
         self.unnormalised = unnormalised
+
+
+    #read in the newly continuum subtracted cube and extinction correct it
+    def extinction_correction(filename=None, sn_cut=0):
+        """
+        Reads in the files created by the ppxf continuum subtraction and corrects
+        for extinction.
+
+        Parameters
+        ----------
+        filename : str or None
+            the filepath of the data to read in.  Expecting a fits file.
+            If this is None (default), then the fits file created by combine_results
+            is used.
+
+        sn_cut : float 
+            the signal-to-noise ratio of the Hgamma line above which the extinction
+            correction is calculated.  E.g. if sn_cut=3, then the extinction
+            is only calculated for spaxels with Hgamma emission with S/N>=3.  For
+            all other spaxels, Av = 0.  Default is 0
+
+        Returns
+        -------
+
+        """
+        #see if the user has input a particular filename to use
+        if filename is not None:
+            fits_stuff = pc.load_data(filename, mw_correction=self.mw_correction)
+
+        elif filename is None:
+            #read in the file saved by combine_results
+            if self.unnormalised == True:
+                fits_stuff = pc.load_data(self.results_folder+self.galaxy_name+'_cont_subtracted_unnormalised_cube.fits', mw_correction=self.mw_correction)
+            elif self.unnormalised == False:
+                fits_stuff = pc.load_data(self.results_folder+self.galaxy_name+'_cont_subtracted_cube.fits', mw_correction=self.mw_correction)
+
+        #get the different components out of fits_stuff
+        if len(fits_stuff) > 3:
+            lamdas, data, var, header = fits_stuff
+        else:
+            lamdas, data, header = fits_stuff
+            var = self.var
+
+        #apply an extinction correction to it
+        Av, A_lam, data = pc.hbeta_extinction_correction(lamdas, data, var, self.redshift, sn_cut=sn_cut)
+
+        #save the corrected data to a fits file
+        #create the hdu
+        hdu = fits.PrimaryHDU(data, header=header)
+        hdu_err = fits.ImageHDU(var, name='Variance')
+
+        #put it into an hdu list
+        hdul = fits.HDUList([hdu, hdu_err])
+
+        #write to file
+        if self.unnormalised == True:
+            hdul.writeto(self.results_folder+self.galaxy_name+'_cont_subtracted_unnormalised_all_corrections_cube.fits')
+        elif self.unnormalised == False:
+            hdul.writeto(self.results_folder+self.galaxy_name+'_cont_subtracted_all_corrections_cube.fits')
+
+        #keep these in the galaxy class
+        self.Av = Av
+        self.a_lam = A_lam
+
+        #update the data variables
+        self.data = data
+        self.variance = var
+        self.data_flat = data.reshape(data.shape[0], -1)
+        self.variance_flat = var.reshape(var.shape[0], -1)
