@@ -501,7 +501,7 @@ def milky_way_extinction_correction(lamdas, data):
     return data
 
 
-def hbeta_extinction_correction(lamdas, data, z):
+def hbeta_extinction_correction(lamdas, data, var, z, sn_cut=0):
     """
     Corrects for the extinction caused by light travelling through the dust and
     gas of the galaxy, as described in Cardelli et al. 1989. Uses Hbeta/Hgamma
@@ -515,14 +515,28 @@ def hbeta_extinction_correction(lamdas, data, z):
     data : :obj:'~numpy.ndarray'
         3D cube of data
 
+    var : :obj:'~numpy.ndarray'
+        3D cube of variance
+
     z : float
         redshift
+
+    sn_cut : float
+        the signal-to-noise ratio of the Hgamma line above which the extinction
+        correction is calculated.  E.g. if sn_cut=3, then the extinction
+        is only calculated for spaxels with Hgamma emission with S/N>=3.  For
+        all other spaxels, Av = 0.  Default is 0
 
     Returns
     -------
     data : :obj:'~numpy.ndarray'
         the data corrected for extinction
     """
+    #create the S/N array
+    hgamma_mask = (lamdas>(4341.68*(1+z)-5)) & (lamdas<(4341.68*(1+z)+5))
+
+    hgamma_sn = np.trapz(data[hgamma_mask,:,:], dx=0.5, axis=0)/np.trapz(np.sqrt(abs(var)), dx=0.5, axis=0)
+
     #use the hbeta/hgamma ratio to calculate EBV
     ebv = calculate_EBV_from_hbeta_hgamma_ratio(lamdas, data, z)
 
@@ -531,6 +545,9 @@ def hbeta_extinction_correction(lamdas, data, z):
 
     #use that to calculate Av
     Av = ebv * Rv
+
+    #replace the Av with 0 where the S/N is less than the sn_cut
+    Av[hgamma_sn < sn_cut] = 0
 
     #convert lamdas from Angstroms into micrometers
     lamdas = lamdas/10000
@@ -544,11 +561,11 @@ def hbeta_extinction_correction(lamdas, data, z):
     a_x = np.tile(a_x, [data.shape[2], data.shape[1], 1]).T
     b_x = np.tile(b_x, [data.shape[2], data.shape[1], 1]).T
 
-    print('median a_x:', np.nanmedian(a_x))
-    print('a_x shape:', a_x.shape)
+    #print('median a_x:', np.nanmedian(a_x))
+    #print('a_x shape:', a_x.shape)
 
-    print('median b_x:', np.nanmedian(b_x))
-    print('b_x shape:', b_x.shape)
+    #print('median b_x:', np.nanmedian(b_x))
+    #print('b_x shape:', b_x.shape)
 
     #find A(lambda)
     A_lam = (a_x + b_x/Rv)*Av
