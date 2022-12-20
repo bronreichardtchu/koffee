@@ -354,8 +354,8 @@ def calc_hbeta_hgamma_amps(lamdas, spectrum, z, cont_subtract=False):
         hgamma_amp = np.nanmax(spectrum[(lamdas>=hgamma_left_limit)&(lamdas<=hgamma_right_limit),], axis=0)
         hbeta_amp = np.nanmax(spectrum[(lamdas>=hbeta_left_limit)&(lamdas<=hbeta_right_limit),], axis=0)
 
-    print('Hgamma amplitudes:', hgamma_amp)
-    print('Hbeta amplitudes:', hbeta_amp)
+    #print('Hgamma amplitudes:', hgamma_amp)
+    #print('Hbeta amplitudes:', hbeta_amp)
 
     #calculate the hbeta/hgamma ratio
     hbeta_hgamma = hbeta_amp/hgamma_amp
