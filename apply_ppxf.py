@@ -46,8 +46,8 @@ from astropy.io import fits
 #from python_scripts import brons_ppxf_util as bpu
 import brons_ppxf_util as bpu
 
-#import importlib
-#importlib.reload(bpu)
+import importlib
+importlib.reload(bpu)
 
 
 
@@ -1530,7 +1530,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         pp.plot()
         #Hgamma has wavelength 4340.471A
         ax1.set_xlim(429*(1+z), 439*(1+z))
-        ax1.set_ylim(-1.0, 2.5)
+        ax1.set_ylim(0.0, 1.5)
         ax1.set_title(r'H$\gamma$')
         ax1.set_xlabel('')
         ax1.set_ylabel("Relative Flux")
@@ -1539,7 +1539,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         pp.plot()
         #Hbeta has wavelength 4861.333A
         ax2.set_xlim(481*(1+z), 491*(1+z))
-        ax2.set_ylim(-1.0, 2.5)
+        ax2.set_ylim(0.0, 1.5)
         ax2.set_title(r'H$\beta$')
         ax2.set_xlabel('')
         ax2.set_ylabel('')
@@ -1548,7 +1548,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         pp.plot()
         #HeI has wavelength 4471.479A
         ax3.set_xlim(442*(1+z), 452*(1+z))
-        ax3.set_ylim(-1.0, 3.5)
+        ax3.set_ylim(0.0, 1.5)
         ax3.set_title('He I')
         ax3.set_xlabel(r"Wavelength [$\AA$]")
         ax3.set_ylabel("Relative Flux")
@@ -1557,7 +1557,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         pp.plot()
         #[OIII] has wavelengths 4958.92A, 5006.84A
         ax4.set_xlim(493*(1+z), 503*(1+z))
-        ax4.set_ylim(-1.0, 3.5)
+        ax4.set_ylim(0.0, 1.5)
         ax4.set_title('[O III]')
         ax4.set_xlabel(r"Wavelength [$\AA$]")
         ax4.set_ylabel('')
@@ -1567,7 +1567,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         pp.plot()
         #the OII doublet has wavelengths 3726.032, 3728.815
         ax1.set_xlim(367*(1+z), 377*(1+z))
-        ax1.set_ylim(-1.0, 3.5)
+        ax1.set_ylim(0.0, 1.5)
         ax1.set_title('OII doublet')
         ax1.set_xlabel('')
         ax1.set_ylabel("Relative Flux")
@@ -1576,7 +1576,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         pp.plot()
         #[Ne III] has wavelength 3967.47
         ax2.set_xlim(391*(1+z), 401*(1+z))
-        ax2.set_ylim(-1.0, 3.5)
+        ax2.set_ylim(0.0, 1.5)
         ax2.set_title('[NeIII]')
         ax2.set_xlabel('')
         ax2.set_ylabel('')
@@ -1585,7 +1585,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         pp.plot()
         #Hgamma has wavelength 4340.471A
         ax3.set_xlim(429*(1+z), 439*(1+z))
-        ax3.set_ylim(-1.0, 2.0)
+        ax3.set_ylim(0.0, 1.5)
         ax3.set_title(r'H$\gamma$')
         ax3.set_xlabel(r"Wavelength [$\AA$]")
         ax3.set_ylabel("Relative Flux")
@@ -1594,7 +1594,7 @@ def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
         pp.plot()
         #Hdelta has wavelength 4101.76A
         ax4.set_xlim(405*(1+z), 415*(1+z))
-        ax4.set_ylim(-1.0, 2.0)
+        ax4.set_ylim(0.0, 1.5)
         ax4.set_title(r'H$\delta$')
         ax4.set_xlabel(r"Wavelength [$\AA$]")
         ax4.set_ylabel('')
@@ -1625,6 +1625,7 @@ def plot_continuum_subtracted(pp, galaxy_name, results_folder, i, xx, yy):
 	except:
 		plt.step(pp.lam, pp.galaxy-pp.bestfit, where='mid')
 
+	plt.ylim(-0.25, 1.0)
 	plt.xlabel(r"Wavelength [$\AA$]")
 	plt.ylabel("Relative Flux")
 
@@ -1658,7 +1659,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
             plt.step(pp.lam, pp.galaxy-pp.bestfit, where='mid')
         #Hgamma has wavlength 4340.471A
         ax1.set_xlim(4290*(1+z), 4390*(1+z))
-        ax1.set_ylim(-1.0, 2.5)
+        ax1.set_ylim(-0.5, 1.5)
         ax1.set_xlabel('')
         ax1.set_ylabel("Relative Flux")
         ax1.set_title(r'H$\gamma$')
@@ -1670,7 +1671,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
             plt.step(pp.lam, pp.galaxy-pp.bestfit, where='mid')
         #Hbeta has wavelength 4861.333A
         ax2.set_xlim(4811*(1+z), 4911*(1+z))
-        ax2.set_ylim(-1.0, 2.5)
+        ax2.set_ylim(-0.5, 1.5)
         ax2.set_xlabel('')
         ax2.set_ylabel('')
         ax2.set_title(r'H$\beta$')
@@ -1682,7 +1683,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
             plt.step(pp.lam, pp.galaxy-pp.bestfit, where='mid')
         #HeI has wavelength 4471.479A
         ax3.set_xlim(4421*(1+z), 4521*(1+z))
-        ax3.set_ylim(-1.0, 3.5)
+        ax3.set_ylim(-0.5, 1.5)
         ax3.set_xlabel(r"Wavelength [$\AA$]")
         ax3.set_ylabel("Relative Flux")
         ax3.set_title('He I')
@@ -1694,7 +1695,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
             plt.step(pp.lam, pp.galaxy-pp.bestfit, where='mid')
         #[OIII] has wavelengths 4958.92A, 5006.84A
         ax4.set_xlim(4933*(1+z), 5033*(1+z))
-        ax4.set_ylim(-1.0, 3.5)
+        ax4.set_ylim(-0.5, 1.5)
         ax4.set_title('[O III]')
         ax4.set_xlabel(r"Wavelength [$\AA$]")
         ax4.set_ylabel('')
@@ -1707,7 +1708,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
             plt.step(pp.lam, pp.galaxy-pp.bestfit, where='mid')
         #the OII doublet has wavelengths 3726.032, 3728.815
         ax1.set_xlim(3677*(1+z), 3777*(1+z))
-        ax1.set_ylim(-1.0, 2.5)
+        ax1.set_ylim(-0.5, 1.5)
         ax1.set_xlabel('')
         ax1.set_ylabel("Relative Flux")
         ax1.set_title('OII doublet')
@@ -1719,7 +1720,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
             plt.step(pp.lam, pp.galaxy-pp.bestfit, where='mid')
         #[Ne III] has wavelength 3967.47
         ax2.set_xlim(3917*(1+z), 4017*(1+z))
-        ax2.set_ylim(-1.0, 2.5)
+        ax2.set_ylim(-0.5, 1.5)
         ax2.set_xlabel('')
         ax2.set_ylabel('')
         ax2.set_title('[NeIII]')
@@ -1731,7 +1732,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
             plt.step(pp.lam, pp.galaxy-pp.bestfit, where='mid')
         #Hgamma has wavelength 4340.471A
         ax3.set_xlim(4290*(1+z), 4390*(1+z))
-        ax3.set_ylim(-1.0, 2.5)
+        ax3.set_ylim(-0.5, 1.5)
         ax3.set_xlabel(r"Wavelength [$\AA$]")
         ax3.set_ylabel("Relative Flux")
         ax3.set_title(r'H$\gamma$')
@@ -1743,7 +1744,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy)
             plt.step(pp.lam, pp.galaxy-pp.bestfit, where='mid')
         #Hdelta has wavelength 4101.76A
         ax4.set_xlim(4051*(1+z), 4151*(1+z))
-        ax4.set_ylim(-1.0, 2.5)
+        ax4.set_ylim(-0.5, 1.5)
         ax4.set_xlabel(r"Wavelength [$\AA$]")
         ax4.set_ylabel('')
         ax4.set_title(r'H$\delta$')
