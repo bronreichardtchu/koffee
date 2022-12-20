@@ -1230,7 +1230,8 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_la
 
     else:
         #mask for gas lines
-        goodpixels = util.determine_goodpixels(gal_logLam, ssp_lamrange, z)
+        #goodpixels = util.determine_goodpixels(gal_logLam, ssp_lamrange, z)
+        #goodpixels = bpu.determine_goodpixels(gal_logLam, ssp_lamrange, z, maskwidth=maskwidth)
         #Fit 4 moments for the stars (V, sig, h3, h4)
         moments = 4
 
@@ -1857,7 +1858,7 @@ def plot_compare_continuum_subtractions(lamdas, data_flat, xx_flat, yy_flat, res
 #MAIN FUNCTIONS
 #====================================================================================================
 
-def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, results_folder, galaxy_name, cube_colour, fwhm_gal=2.0, fwhm_temp=2.0, em_lines=True, fwhm_emlines=2.0, degree=4, mdegree=0, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=False):
+def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, results_folder, galaxy_name, cube_colour, fwhm_gal=2.0, fwhm_temp=2.0, em_lines=True, fwhm_emlines=2.0, degree=4, mdegree=0, vacuum=True, extra_em_lines=False, tie_balmer=True, maskwidth=800, plot=False, quiet=False):
     """
     Runs all of the preparatory steps and then inputs everything into pPXF.
 
@@ -1944,6 +1945,9 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
         else:
             templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
 
+        #set goodpixels as None
+        goodpixels = None
+
     else:
         if 'c3k' in ssp_filepath:
             templates, ssp_logLam = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=0.05, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
@@ -1958,7 +1962,8 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
             templates, ssp_logLam = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         #create goodpixels vector
-        goodpixels = util.determine_goodpixels(gal_logLam, ssp_lamrange, z)
+        #goodpixels = util.determine_goodpixels(gal_logLam, ssp_lamrange, z)
+        goodpixels = bpu.determine_goodpixels(gal_logLam, ssp_lamrange, z, maskwidth=maskwidth)
 
     #find the difference in starting values for the templates and spectra
     dv = velocity_shift(ssp_logLam, gal_logLam, velscale_ratio=1)
@@ -1992,7 +1997,7 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
         print('Fit '+str(i+1)+' of '+str(gal_velscale.shape[0]))
         if em_lines == True:
             #run the ppxf fit
-            pp = run_ppxf(gal_logLam, logspec, velscale, lognoise, templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=0.13, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+            pp = run_ppxf(gal_logLam, logspec, velscale, lognoise, templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=0.13, degree=degree, mdegree=mdegree, goodpixels=goodpixels, plot=plot, quiet=quiet)
 
             #get the flux ratio
             if cube_colour == 'red':
@@ -2115,7 +2120,7 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
 
 
 
-def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, results_folder, galaxy_name, cube_colour, sn_cut=3, fwhm_gal=2, fwhm_temp=2.0, cdelt_temp=1.0, em_lines=True, fwhm_emlines=2.0, gas_reddening=0.13, reddening=0.13, degree=4, mdegree=0, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True):
+def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, results_folder, galaxy_name, cube_colour, sn_cut=3, fwhm_gal=2, fwhm_temp=2.0, cdelt_temp=1.0, em_lines=True, fwhm_emlines=2.0, gas_reddening=0.13, reddening=0.13, degree=4, mdegree=0, vacuum=True, extra_em_lines=False, tie_balmer=True, maskwidth=800, plot=False, quiet=True):
     """
     Parallelising the main() function
 
@@ -2208,6 +2213,9 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
         else:
             templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
 
+        #set goodpixels as None
+        goodpixels = None
+
     else:
         if 'c3k' in ssp_filepath:
             templates, ssp_logLam = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
@@ -2222,7 +2230,8 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
             templates, ssp_logLam = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         #create goodpixels vector
-        goodpixels = util.determine_goodpixels(gal_logLam, ssp_lamrange, z)
+        #goodpixels = util.determine_goodpixels(gal_logLam, ssp_lamrange, z)
+        goodpixels = bpu.determine_goodpixels(gal_logLam, ssp_lamrange, z, maskwidth=maskwidth)
 
     #find the difference in starting values for the templates and spectra
     dv = velocity_shift(ssp_logLam, gal_logLam, velscale_ratio=1)
@@ -2239,7 +2248,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                 if cube_colour == 'blue':
                     #run normally if S/N of [OII] doublet is > 3
                     #if OII_sn_array[i] >= 3:
-                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, goodpixels=goodpixels, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
 
                     with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
                         pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-(pp.bestfit-pp.gas_bestfit))], f)
@@ -2267,7 +2276,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
 
                 elif cube_colour == 'red':
                     #fit the cube
-                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, goodpixels=goodpixels, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
 
                     #get the flux ratio if fitting the red cube
                     cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z)

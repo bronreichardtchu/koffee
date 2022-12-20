@@ -110,7 +110,7 @@ class Galaxy:
         self.mw_correction = False
 
     #ppxf variables
-    def set_ppxf_variables(self, fwhm_gal, fwhm_temp, cdelt_temp, em_lines, fwhm_emlines, gas_reddening, reddening, degree, mdegree, sn_cut=3, vacuum=True, extra_em_lines=False, tie_balmer=True, plot=False, quiet=True, unnormalised=True):
+    def set_ppxf_variables(self, fwhm_gal, fwhm_temp, cdelt_temp, em_lines, fwhm_emlines, gas_reddening, reddening, degree, mdegree, sn_cut=3, vacuum=True, extra_em_lines=False, tie_balmer=True, maskwidth=800, plot=False, quiet=True, unnormalised=True):
         """
         Sets the variables you need to run the ppxf continuum subtraction
 
@@ -181,6 +181,10 @@ class Galaxy:
             ties the Balmer lines according to a theoretical decrement
             (case B recombination T=1e4 K, n=100 cm^-3) (default=True)
 
+        maskwidth : int
+            defines the width of the mask in km/s used in goodpixels.  Only used
+            to create the goodpixels mask if em_lines=False. (default=800)
+
         plot : bool
             whether to show all the plots made (Default=False, only set to True
             if fitting only a few spectra)
@@ -206,6 +210,7 @@ class Galaxy:
         self.vacuum = vacuum
         self.extra_em_lines = extra_em_lines
         self.tie_balmer = tie_balmer
+        self.maskwidth = maskwidth
         self.plot = plot
         self.quiet = quiet
         self.unnormalised = unnormalised

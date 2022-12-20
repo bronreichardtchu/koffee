@@ -138,7 +138,7 @@ def log_rebin(lamRange, spec, oversample=1, velscale=None, flux=False):
 #   V2.0.2: Use redshift instead of velocity as input for higher accuracy at large z.
 #       MC, Lexington, 31 March 2015
 
-def determine_goodpixels(logLam, lamRangeTemp, z):
+def determine_goodpixels(logLam, lamRangeTemp, z, maskwidth=800):
     """
     Generates a list of goodpixels to mask a given set of gas emission
     lines. This is meant to be used as input for PPXF.
@@ -148,12 +148,13 @@ def determine_goodpixels(logLam, lamRangeTemp, z):
     :param lamRangeTemp: Two elements vectors [lamMin2, lamMax2] with the minimum
         and maximum wavelength in Angstrom in the stellar *template* used in PPXF.
     :param z: Estimate of the galaxy redshift.
+    :param width: width/2 of masked gas emission region in km/s. Default is 800.
     :return: vector of goodPixels to be used as input for pPXF
 
     """
 #                     -----[OII]-----    Hdelta   Hgamma   Hbeta   -----[OIII]-----   [OI]    -----[NII]-----   Halpha   -----[SII]-----
     lines = np.array([3726.03, 3728.82, 4101.76, 4340.47, 4861.33, 4958.92, 5006.84, 6300.30, 6548.03, 6583.41, 6562.80, 6716.47, 6730.85])
-    dv = np.full_like(lines, 800)  # width/2 of masked gas emission region in km/s
+    dv = np.full_like(lines, maskwidth)  # width/2 of masked gas emission region in km/s
     c = 299792.458 # speed of light in km/s
 
     flag = False
