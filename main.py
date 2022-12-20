@@ -25,7 +25,7 @@ import importlib
 importlib.reload(apply_ppxf)
 importlib.reload(galclass)
 
-def main(galaxy_dict, run_cont_subtraction=True):
+def main(galaxy_dict, run_cont_subtraction=True, run_ext_correction=True):
     """
     Runs through all of the things.
     """
@@ -50,8 +50,12 @@ def main(galaxy_dict, run_cont_subtraction=True):
         #combine the results and save
         apply_ppxf.combine_results(lamdas=gal.lamdas, data_flat=gal.data_flat, final_shape=[gal.lamdas.shape[0], gal.data.shape[1], gal.data.shape[2]], results_folder=gal.results_folder, galaxy_name=gal.galaxy_name, header_file=gal.data_filepath, unnormalised=gal.unnormalised, em_lines=gal.em_lines)
 
+    #run the extinction correction
+    if run_ext_correction == True:
+        if run_cont_subtraction == False:
+            gal.unnormalised = galaxy_dict['unnormalised']
 
-
+        gal.extinction_correction(filename=None, sn_cut=3)
 
 
     return gal
@@ -61,7 +65,9 @@ def main(galaxy_dict, run_cont_subtraction=True):
 
 if __name__ == '__main__':
     #get the galaxy info
-    from galaxy_info import NGC0695
+    #from galaxy_info import NGC0695
+    from galaxy_info import KISSR1084
 
     #run the continuum subtraction
-    ngc695_class = main(NGC0695.ngc0695_red)
+    #ngc695_class = main(NGC0695.ngc0695_red, run_cont_subtraction=True, run_ext_correction=True)
+    kissr1084_class = main(KISSR1084.KISSR1084_red, run_cont_subtraction=True, run_ext_correction=True)

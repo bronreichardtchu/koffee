@@ -217,7 +217,7 @@ class Galaxy:
 
 
     #read in the newly continuum subtracted cube and extinction correct it
-    def extinction_correction(filename=None, sn_cut=0):
+    def extinction_correction(self, filename=None, sn_cut=0):
         """
         Reads in the files created by the ppxf continuum subtraction and corrects
         for extinction.
@@ -229,7 +229,7 @@ class Galaxy:
             If this is None (default), then the fits file created by combine_results
             is used.
 
-        sn_cut : float 
+        sn_cut : float
             the signal-to-noise ratio of the Hgamma line above which the extinction
             correction is calculated.  E.g. if sn_cut=3, then the extinction
             is only calculated for spaxels with Hgamma emission with S/N>=3.  For
@@ -255,7 +255,7 @@ class Galaxy:
             lamdas, data, var, header = fits_stuff
         else:
             lamdas, data, header = fits_stuff
-            var = self.var
+            var = self.variance
 
         #apply an extinction correction to it
         Av, A_lam, data = pc.hbeta_extinction_correction(lamdas, data, var, self.redshift, sn_cut=sn_cut)
