@@ -535,7 +535,7 @@ def hbeta_extinction_correction(lamdas, data, var, z, sn_cut=0):
     #create the S/N array
     hgamma_mask = (lamdas>(4341.68*(1+z)-5)) & (lamdas<(4341.68*(1+z)+5))
 
-    hgamma_sn = np.trapz(data[hgamma_mask,:,:], dx=0.5, axis=0)/np.trapz(np.sqrt(abs(var)), dx=0.5, axis=0)
+    hgamma_sn = np.trapz(data[hgamma_mask,:,:], dx=0.5, axis=0)/np.trapz(np.sqrt(abs(var[hgamma_mask,:,:])), dx=0.5, axis=0)
 
     #use the hbeta/hgamma ratio to calculate EBV
     ebv = calculate_EBV_from_hbeta_hgamma_ratio(lamdas, data, z)
