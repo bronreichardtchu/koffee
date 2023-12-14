@@ -151,4 +151,3 @@ dependencies:
     - spectres==2.0.0
     - vorbin==3.1.3
 prefix: /Users/breichardtchu/anaconda3/envs/koffee_env
-
