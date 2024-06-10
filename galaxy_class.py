@@ -27,7 +27,7 @@ class Galaxy:
     """
     Contains all the attributes of the galaxy we need to run stuff on
     """
-    def __init__(self, data_filepath, var_filepath, gal_name, z, cube_colour, ssp_filepath, results_folder, data_crop=False, var_crop=False, lamda_crop=False, mw_correction=True):
+    def __init__(self, data_filepath, var_filepath, gal_name, z, cube_colour, ssp_filepath, results_folder, data_crop=False, var_crop=False, lamda_crop=False, mw_correction=True, Av_mw=0.2511):
         """
         Creates the basic galaxy class
 
@@ -68,6 +68,10 @@ class Galaxy:
 
         mw_correction : boolean
             whether to apply the milky way extinction correction. Default is True.
+
+        Av_mw : float
+            The extinction value from the Milky Way in the direction of the input 
+            galaxy.  The default value is 0.2511, which is for IRAS 08339+6517.
         """
         self.galaxy_name = gal_name
         self.redshift = z
@@ -82,13 +86,14 @@ class Galaxy:
         self.var_crop = var_crop
         self.lamda_crop = lamda_crop
         self.mw_correction = mw_correction
+        self.Av_mw = Av_mw
 
 
     def prepare_cube(self):
         """
         Runs the prepare_single_cube function for the galaxy
         """
-        lamdas, var_lamdas, xx, yy, rad, data, var, xx_flat, yy_flat, rad_flat, data_flat, var_flat, data_header = pc.prepare_single_cube(data_filepath=self.data_filepath, gal_name=self.galaxy_name, z=self.redshift, cube_colour=self.cube_colour, results_folder=self.results_folder, data_crop=self.data_crop, var_filepath=self.var_filepath, var_crop=self.var_crop, lamda_crop=self.lamda_crop, mw_correction=self.mw_correction)
+        lamdas, var_lamdas, xx, yy, rad, data, var, xx_flat, yy_flat, rad_flat, data_flat, var_flat, data_header = pc.prepare_single_cube(data_filepath=self.data_filepath, gal_name=self.galaxy_name, z=self.redshift, cube_colour=self.cube_colour, results_folder=self.results_folder, data_crop=self.data_crop, var_filepath=self.var_filepath, var_crop=self.var_crop, lamda_crop=self.lamda_crop, mw_correction=self.mw_correction, Av_mw=self.Av_mw)
 
         self.lamdas = lamdas
         self.var_lamdas = var_lamdas

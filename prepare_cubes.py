@@ -460,7 +460,7 @@ def barycentric_corrections(lamdas, header):
     return lamdas
 
 
-def milky_way_extinction_correction(lamdas, data):
+def milky_way_extinction_correction(lamdas, data, Av=0.2511):
     """
     Corrects for the extinction caused by light travelling through the dust and
     gas of the Milky Way, as described in Cardelli et al. 1989.
@@ -472,6 +472,12 @@ def milky_way_extinction_correction(lamdas, data):
 
     data : :obj:'~numpy.ndarray'
         3D cube of data
+
+    Av : float 
+        The extinction from the Milky Way, found using NED which uses the Schlafly
+        & Finkbeiner (2011) recalibration of the Schlegel, Finkbeiner & Davis (1998)
+        extinction map based on dust emission measured by COBE/DIRBE and IRAS/ISSA.
+        Default is 0.2511, which is the value for IRAS 08339+6517.
 
     Returns
     -------
@@ -488,8 +494,6 @@ def milky_way_extinction_correction(lamdas, data):
 
     #define the constants
     Rv = 3.1
-    #Finkel... et al.
-    Av = 0.2511
 
     #find A(lambda)
     A_lam = (a_x + b_x/Rv)*Av
@@ -625,7 +629,7 @@ def calculate_EBV_from_hbeta_hgamma_ratio(lamdas, data, z):
 #====================================================================================================
 #SIMPLE DATA READ IN
 #====================================================================================================
-def load_data(filename, mw_correction=True):
+def load_data(filename, mw_correction=True, Av_mw=0.2511):
     """
     Get the data from the fits file and correct to vacuum wavelengths and for
     the earth's rotation
@@ -637,6 +641,10 @@ def load_data(filename, mw_correction=True):
 
     mw_correction : boolean
         whether to apply the milky way extinction correction. Default is True.
+
+    Av_mw : float
+        The extinction value from the Milky Way in the direction of the input 
+        galaxy.  The default value is 0.2511, which is for IRAS 08339+6517.
 
     Returns
     -------
@@ -669,9 +677,9 @@ def load_data(filename, mw_correction=True):
 
     #apply Milky Way extinction correction
     if mw_correction == True:
-        data = milky_way_extinction_correction(lamdas, data)
+        data = milky_way_extinction_correction(lamdas, data, Av=Av_mw)
         if len(fits_stuff) > 3:
-            var = milky_way_extinction_correction(lamdas, var)
+            var = milky_way_extinction_correction(lamdas, var, Av=Av_mw)
 
     if len(fits_stuff) > 3:
         return lamdas, data, var, header
@@ -682,7 +690,7 @@ def load_data(filename, mw_correction=True):
 #COMBINE CUBES
 #====================================================================================================
 
-def data_cubes_combine_by_pixel(filepath, gal_name):
+def data_cubes_combine_by_pixel(filepath, gal_name, Av_mw=0.2511):
     """
     Grabs datacubes and combines them by pixel using addition, finding the mean
     and the median.
@@ -694,6 +702,10 @@ def data_cubes_combine_by_pixel(filepath, gal_name):
 
     gal_name : str
         galaxy name/descriptor
+
+    Av_mw : float
+        The extinction value from the Milky Way in the direction of the input 
+        galaxy.  The default value is 0.2511, which is for IRAS 08339+6517.
 
     Returns
     -------
@@ -731,7 +743,7 @@ def data_cubes_combine_by_pixel(filepath, gal_name):
         lamdas = barycentric_corrections(lamdas, header)
         all_lamdas.append(lamdas)
         #apply Milky Way extinction correction
-        data = milky_way_extinction_correction(lamdas, data)
+        data = milky_way_extinction_correction(lamdas, data, Av=Av_mw)
         #append the data
         all_data.append(data)
 
@@ -771,7 +783,7 @@ def data_cubes_combine_by_pixel(filepath, gal_name):
     return lamdas, cube_added, cube_mean, cube_median, header
 
 
-def data_cubes_combine_by_wavelength(filepath, gal_name):
+def data_cubes_combine_by_wavelength(filepath, gal_name, Av_mw=0.2511):
     """
     Grabs datacubes and combines them by interpolating each spectrum in wavelength
     space and making sure to start and end at exactly the same wavelength for
@@ -784,6 +796,10 @@ def data_cubes_combine_by_wavelength(filepath, gal_name):
 
     gal_name : str
         galaxy name/descriptor (string)
+
+    Av_mw : float
+        The extinction value from the Milky Way in the direction of the input 
+        galaxy.  The default value is 0.2511, which is for IRAS 08339+6517.
 
     Returns
     -------
@@ -823,7 +839,7 @@ def data_cubes_combine_by_wavelength(filepath, gal_name):
         #append the lambdas
         all_lamdas.append(lamdas)
         #apply Milky Way extinction correction
-        data = milky_way_extinction_correction(lamdas, data)
+        data = milky_way_extinction_correction(lamdas, data, Av=Av_mw)
         #and append the data
         all_data.append(data)
 
@@ -1245,7 +1261,7 @@ def combine_red_blue(lam_blue, lam_red, blue_cube, red_cube, blue_noise, red_noi
 #====================================================================================================
 #RUN CUBE PREPARATION
 #====================================================================================================
-def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour, spatial_crop=False):
+def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour, Av_mw=0.2511, spatial_crop=False):
     """
     Runs all the previously defined functions to prepare cubes for KOFFEE, ppxf,
     voronoi binning or whatever else needs to be done.
@@ -1266,6 +1282,10 @@ def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour,
 
     cube_colour : str
         'red' or 'blue' cube to use in creating the coordinate arrays
+
+    Av_mw : float
+        The extinction value from the Milky Way in the direction of the input 
+        galaxy.  The default value is 0.2511, which is for IRAS 08339+6517.
 
     spatial_crop : boolean
         whether to crop the spatial dimensions - this is needed to match to the
@@ -1293,13 +1313,13 @@ def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour,
         variance array (2D)
     """
     #combine all the cubes (includes reading them in from fits, air_to_vac and barycentric_corrections, and saves them)
-    lamdas_pix, cube_added_pix, cube_mean_pix, cube_median_pix, header_pix = data_cubes_combine_by_pixel(data_filepath, gal_name)
+    lamdas_pix, cube_added_pix, cube_mean_pix, cube_median_pix, header_pix = data_cubes_combine_by_pixel(data_filepath, gal_name, Av_mw=Av_mw)
 
-    _, var_added_pix, var_mean_pix, var_median_pix, _ = data_cubes_combine_by_pixel(var_filepath, gal_name+'_var')
+    _, var_added_pix, var_mean_pix, var_median_pix, _ = data_cubes_combine_by_pixel(var_filepath, gal_name+'_var', Av_mw=Av_mw)
 
-    lamdas_wav, cube_added_wav, cube_mean_wav, cube_median_wav, header_wav = data_cubes_combine_by_wavelength(data_filepath, gal_name)
+    lamdas_wav, cube_added_wav, cube_mean_wav, cube_median_wav, header_wav = data_cubes_combine_by_wavelength(data_filepath, gal_name, Av_mw=Av_mw)
 
-    _, var_added_wav, var_mean_wav, var_median_wav, _ = data_cubes_combine_by_wavelength(var_filepath, gal_name+'_var')
+    _, var_added_wav, var_mean_wav, var_median_wav, _ = data_cubes_combine_by_wavelength(var_filepath, gal_name+'_var', Av_mw=Av_mw)
 
     #create coordinate arrays
     xx_pix, yy_pix, rad_pix = data_coords(lamdas_pix, cube_median_pix, header_pix, z, cube_colour=cube_colour, shiftx=None, shifty=None)
@@ -1341,7 +1361,7 @@ def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour,
     f.close()
 
 
-def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder, data_crop=False, var_filepath=None, var_crop=False, lamda_crop=False, mw_correction=False):
+def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder, data_crop=False, var_filepath=None, var_crop=False, lamda_crop=False, mw_correction=False, Av_mw=0.2511):
     """
     Runs all the previously defined functions when there is only one cube to read
     in and nothing to combine.
@@ -1380,6 +1400,10 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
 
     mw_correction : boolean
         whether to apply the milky way extinction correction. Default is False.
+
+    Av_mw : float
+        The extinction value from the Milky Way in the direction of the input 
+        galaxy.  The default value is 0.2511, which is for IRAS 08339+6517.
 
     Returns
     -------
@@ -1423,7 +1447,7 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
         the header from the data fits file
     """
     #read in the data from the fits file, with all corrections
-    fits_stuff = load_data(data_filepath, mw_correction=mw_correction)
+    fits_stuff = load_data(data_filepath, mw_correction=mw_correction, Av_mw=Av_mw)
 
     if len(fits_stuff) > 3:
         lamdas, data, var, header = fits_stuff
@@ -1433,7 +1457,7 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
 
     #if there is a seperate variance cube, read in the data from the fits file
     if var_filepath:
-        var_lamdas, var, var_header = load_data(var_filepath, mw_correction=mw_correction)
+        var_lamdas, var, var_header = load_data(var_filepath, mw_correction=mw_correction, Av_mw=Av_mw)
 
         #need to make variance cube the same size as the metacube
         if var_crop == True:
