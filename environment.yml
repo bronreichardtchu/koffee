@@ -2,7 +2,6 @@ name: koffee_env
 channels:
   - astropy
   - conda-forge
-  - defaults
 dependencies:
   - appnope=0.1.0=py37_0
   - argon2-cffi=21.3.0=pyhd3eb1b0_0
