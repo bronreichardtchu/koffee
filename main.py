@@ -30,7 +30,7 @@ def main(galaxy_dict, run_cont_subtraction=True, run_ext_correction=True):
     Runs through all of the things.
     """
     #create the galaxy class
-    gal = galclass.Galaxy(galaxy_dict['data_filepath'], galaxy_dict['var_filepath'], galaxy_dict['gal_name'], galaxy_dict['z'], galaxy_dict['cube_colour'], galaxy_dict['ssp_filepath'], galaxy_dict['results_folder'], data_crop=galaxy_dict['data_crop'], var_crop=galaxy_dict['var_crop'], lamda_crop=galaxy_dict['lamda_crop'], mw_correction=galaxy_dict['mw_correction'])
+    gal = galclass.Galaxy(galaxy_dict['data_filepath'], galaxy_dict['var_filepath'], galaxy_dict['gal_name'], galaxy_dict['z'], galaxy_dict['cube_colour'], galaxy_dict['ssp_filepath'], galaxy_dict['results_folder'], data_crop=galaxy_dict['data_crop'], var_crop=galaxy_dict['var_crop'], lamda_crop=galaxy_dict['lamda_crop'], mw_correction=galaxy_dict['mw_correction'], Av_mw=galaxy_dict['Av_mw'])
 
     #check if the results folder exists, create it if it doesn't
     pathlib.Path(gal.results_folder).mkdir(exist_ok=True)
@@ -65,9 +65,9 @@ def main(galaxy_dict, run_cont_subtraction=True, run_ext_correction=True):
 
 if __name__ == '__main__':
     #get the galaxy info
-    from galaxy_info import NGC0695
+    from galaxy_info import KISSR1084
     #from galaxy_info import NGC7316
 
     #run the continuum subtraction
-    ngc695_class = main(NGC0695.ngc0695_red, run_cont_subtraction=True, run_ext_correction=True)
+    ngc695_class = main(KISSR1084.KISSR1084_red, run_cont_subtraction=True, run_ext_correction=True)
     #ngc7316_class = main(NGC7316.ngc7316_red, run_cont_subtraction=True, run_ext_correction=True)
