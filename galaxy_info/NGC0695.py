@@ -30,6 +30,7 @@ ngc0695_red = {
     'var_crop' : False,
     'lamda_crop' : False,
     'mw_correction' : True,
+    'Av_mw' : 0.292,
     'fwhm_gal' : 1.7,
     'fwhm_temp' : 1.0, # Walcher09
     'cdelt_temp' : 0.9, # Walcher09

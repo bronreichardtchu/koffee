@@ -47,6 +47,9 @@ gal_red = {
     #already done MW correction and continuum subtraction and are reading the saved
     #cube in for whatever reason, turn this to False.
     'mw_correction' : True,
+    # The extinction value from the Milky Way in the direction of the input galaxy.  
+    # The default value is 0.2511, which is for IRAS 08339+6517.
+    'Av_mw' : 0.2511,
     #the FWHM of the galaxy
     'fwhm_gal' : 1.7,
     #the FWHM of the tempate models MILES: 2.5A, Walcher09: 1.0A, BPASS: 1.0A,
@@ -125,6 +128,9 @@ gal_blue = {
     #already done MW correction and continuum subtraction and are reading the saved
     #cube in for whatever reason, turn this to False.
     'mw_correction' : True,
+    # The extinction value from the Milky Way in the direction of the input galaxy.  
+    # The default value is 0.2511, which is for IRAS 08339+6517.
+    'Av_mw' : 0.2511,
     #the FWHM of the galaxy
     'fwhm_gal' : 1.7,
     #the FWHM of the tempate models MILES: 2.5A, Walcher09: 1.0A, BPASS: 1.0A,
