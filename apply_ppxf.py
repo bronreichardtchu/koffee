@@ -431,7 +431,7 @@ def prep_spectra(gal_lamdas, gal_lin, gal_noise):
     #log_rebin the noise as well
     log_noise, noise_logLam, noise_velscale = util.log_rebin(lamrange_gal, gal_noise)
 
-    return lamrange_gal, gal_logspec, log_noise, gal_logLam, gal_velscale[0]
+    return lamrange_gal, gal_logspec, log_noise, gal_logLam, gal_velscale
 
 
 #====================================================================================================
