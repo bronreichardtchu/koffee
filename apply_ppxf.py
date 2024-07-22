@@ -2250,16 +2250,16 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
 
     else:
         if 'c3k' in ssp_filepath:
-            templates, ssp_logLam = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale, lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         elif 'BPASS' in ssp_filepath:
-            templates, ssp_logLam = prep_BPASS_models(ssp_data, ssp_lamrange, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_BPASS_models(ssp_data, ssp_lamrange, gal_velscale, lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         elif 'bc03' in ssp_filepath:
-            templates, ssp_logLam = prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale, lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         else:
-            templates, ssp_logLam = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale, lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         #create goodpixels vector
         #goodpixels = util.determine_goodpixels(gal_logLam, ssp_lamrange, z)
