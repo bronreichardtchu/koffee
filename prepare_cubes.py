@@ -629,15 +629,19 @@ def calculate_EBV_from_hbeta_hgamma_ratio(lamdas, data, z):
 #====================================================================================================
 #SIMPLE DATA READ IN
 #====================================================================================================
-def load_data(filename, mw_correction=True, Av_mw=0.2511):
+def load_data(filename, z=0.0, mw_correction=True, Av_mw=0.2511):
     """
-    Get the data from the fits file and correct to vacuum wavelengths and for
-    the earth's rotation
+    Get the data from the fits file, deredshift (if z is given) and correct to 
+    vacuum wavelengths and for the earth's rotation
 
     Parameters
     ----------
     filename : str
         points to the file
+
+    z : float 
+        the redshift of the galaxy, to de-redshift the wavelengths.  Default is 
+        0.0, which will not do anything.
 
     mw_correction : boolean
         whether to apply the milky way extinction correction. Default is True.
@@ -681,6 +685,9 @@ def load_data(filename, mw_correction=True, Av_mw=0.2511):
         if len(fits_stuff) > 3:
             var = milky_way_extinction_correction(lamdas, var, Av=Av_mw)
 
+    # de-redshift the data 
+    lamdas = lamdas/(1 + z)
+
     if len(fits_stuff) > 3:
         return lamdas, data, var, header
     else:
@@ -690,7 +697,7 @@ def load_data(filename, mw_correction=True, Av_mw=0.2511):
 #COMBINE CUBES
 #====================================================================================================
 
-def data_cubes_combine_by_pixel(filepath, gal_name, Av_mw=0.2511):
+def data_cubes_combine_by_pixel(filepath, gal_name, z=0.0, Av_mw=0.2511):
     """
     Grabs datacubes and combines them by pixel using addition, finding the mean
     and the median.
@@ -741,9 +748,11 @@ def data_cubes_combine_by_pixel(filepath, gal_name, Av_mw=0.2511):
         #apply corrections to lambdas
         lamdas = air_to_vac(lamdas)
         lamdas = barycentric_corrections(lamdas, header)
-        all_lamdas.append(lamdas)
         #apply Milky Way extinction correction
         data = milky_way_extinction_correction(lamdas, data, Av=Av_mw)
+        #de-redshift 
+        lamdas = lamdas/(1+z)
+        all_lamdas.append(lamdas)
         #append the data
         all_data.append(data)
 
@@ -783,7 +792,7 @@ def data_cubes_combine_by_pixel(filepath, gal_name, Av_mw=0.2511):
     return lamdas, cube_added, cube_mean, cube_median, header
 
 
-def data_cubes_combine_by_wavelength(filepath, gal_name, Av_mw=0.2511):
+def data_cubes_combine_by_wavelength(filepath, gal_name, z=0.0, Av_mw=0.2511):
     """
     Grabs datacubes and combines them by interpolating each spectrum in wavelength
     space and making sure to start and end at exactly the same wavelength for
@@ -796,6 +805,9 @@ def data_cubes_combine_by_wavelength(filepath, gal_name, Av_mw=0.2511):
 
     gal_name : str
         galaxy name/descriptor (string)
+    
+    z : float 
+        redshift (Default is 0.0)
 
     Av_mw : float
         The extinction value from the Milky Way in the direction of the input 
@@ -836,10 +848,12 @@ def data_cubes_combine_by_wavelength(filepath, gal_name, Av_mw=0.2511):
         #apply corrections to lambdas
         lamdas = air_to_vac(lamdas)
         lamdas = barycentric_corrections(lamdas, header)
-        #append the lambdas
-        all_lamdas.append(lamdas)
         #apply Milky Way extinction correction
         data = milky_way_extinction_correction(lamdas, data, Av=Av_mw)
+        #de-redshift 
+        lamdas = lamdas/(1+z)
+        #append the lambdas
+        all_lamdas.append(lamdas)
         #and append the data
         all_data.append(data)
 
@@ -900,7 +914,7 @@ def data_cubes_combine_by_wavelength(filepath, gal_name, Av_mw=0.2511):
 #====================================================================================================
 #COORDINATE ARRAYS
 #====================================================================================================
-def data_coords(lamdas, data, header, z, cube_colour, shiftx=None, shifty=None):
+def data_coords(lamdas, data, header, cube_colour, z=0.0, shiftx=None, shifty=None):
     """
     Takes the data cube and creates coordinate arrays that are centred on the
     galaxy.  The arrays can be shifted manually.  If this is not hardcoded in to
@@ -918,11 +932,11 @@ def data_coords(lamdas, data, header, z, cube_colour, shiftx=None, shifty=None):
     header : FITS header object
         the header from the fits file
 
-    z : float
-        redshift
-
     cube_colour : str
         whether it is the 'red' or 'blue' cube
+
+    z : float
+        redshift, default is 0.0 (since the cube is usually already de-redshifted)
 
     shiftx : float or None
         the hardcoded shift in the x direction for the coord arrays (in arcseconds).
@@ -1313,17 +1327,17 @@ def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour,
         variance array (2D)
     """
     #combine all the cubes (includes reading them in from fits, air_to_vac and barycentric_corrections, and saves them)
-    lamdas_pix, cube_added_pix, cube_mean_pix, cube_median_pix, header_pix = data_cubes_combine_by_pixel(data_filepath, gal_name, Av_mw=Av_mw)
+    lamdas_pix, cube_added_pix, cube_mean_pix, cube_median_pix, header_pix = data_cubes_combine_by_pixel(data_filepath, gal_name, z=z, Av_mw=Av_mw)
 
-    _, var_added_pix, var_mean_pix, var_median_pix, _ = data_cubes_combine_by_pixel(var_filepath, gal_name+'_var', Av_mw=Av_mw)
+    _, var_added_pix, var_mean_pix, var_median_pix, _ = data_cubes_combine_by_pixel(var_filepath, gal_name+'_var', z=z, Av_mw=Av_mw)
 
-    lamdas_wav, cube_added_wav, cube_mean_wav, cube_median_wav, header_wav = data_cubes_combine_by_wavelength(data_filepath, gal_name, Av_mw=Av_mw)
+    lamdas_wav, cube_added_wav, cube_mean_wav, cube_median_wav, header_wav = data_cubes_combine_by_wavelength(data_filepath, gal_name, z=z, Av_mw=Av_mw)
 
-    _, var_added_wav, var_mean_wav, var_median_wav, _ = data_cubes_combine_by_wavelength(var_filepath, gal_name+'_var', Av_mw=Av_mw)
+    _, var_added_wav, var_mean_wav, var_median_wav, _ = data_cubes_combine_by_wavelength(var_filepath, gal_name+'_var', z=z, Av_mw=Av_mw)
 
     #create coordinate arrays
-    xx_pix, yy_pix, rad_pix = data_coords(lamdas_pix, cube_median_pix, header_pix, z, cube_colour=cube_colour, shiftx=None, shifty=None)
-    xx_wav, yy_wav, rad_wav = data_coords(lamdas_wav, cube_median_wav, header_wav, z, cube_colour=cube_colour, shiftx=None, shifty=None)
+    xx_pix, yy_pix, rad_pix = data_coords(lamdas_pix, cube_median_pix, header_pix, cube_colour=cube_colour, shiftx=None, shifty=None)
+    xx_wav, yy_wav, rad_wav = data_coords(lamdas_wav, cube_median_wav, header_wav, cube_colour=cube_colour, shiftx=None, shifty=None)
 
     #if matching to the IRAS08 metacube, crop the spatial dimensions
     if spatial_crop == True:
@@ -1447,7 +1461,7 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
         the header from the data fits file
     """
     #read in the data from the fits file, with all corrections
-    fits_stuff = load_data(data_filepath, mw_correction=mw_correction, Av_mw=Av_mw)
+    fits_stuff = load_data(data_filepath, z=z, mw_correction=mw_correction, Av_mw=Av_mw)
 
     if len(fits_stuff) > 3:
         lamdas, data, var, header = fits_stuff
@@ -1457,7 +1471,7 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
 
     #if there is a seperate variance cube, read in the data from the fits file
     if var_filepath:
-        var_lamdas, var, var_header = load_data(var_filepath, mw_correction=mw_correction, Av_mw=Av_mw)
+        var_lamdas, var, var_header = load_data(var_filepath, z=z, mw_correction=mw_correction, Av_mw=Av_mw)
 
         #need to make variance cube the same size as the metacube
         if var_crop == True:
@@ -1480,7 +1494,7 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
         print('Checked var for negative values')
 
     #create data coordinates
-    xx, yy, rad = data_coords(lamdas, data, header, z, cube_colour=cube_colour, shiftx=None, shifty=None)
+    xx, yy, rad = data_coords(lamdas, data, header, cube_colour=cube_colour, shiftx=None, shifty=None)
 
     #used if the blue cube is not the same size as the red cube
     if data_crop == True:
