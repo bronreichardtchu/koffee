@@ -809,9 +809,9 @@ def prep_BPASS_models(ssp_templates, ssp_lamrange, gal_velscale, lamrange_gal, f
         for j in np.arange(templates.shape[2]):
             #smooth the template if the template fwhm is less than the galaxy fwhm
             if fwhm_gal > fwhm_temp:
-                ssp = smoothing(fwhm_gal, fwhm_temp, ssp_templates[:,j], cdelt_temp)
+                ssp = smoothing(fwhm_gal, fwhm_temp, ssp_templates[:,i,j], cdelt_temp)
             else:
-                ssp = ssp_templates[:,j]
+                ssp = ssp_templates[:,i,j]
             #log-rebin the template
             ssp = util.log_rebin(ssp_lamrange, ssp, velscale=gal_velscale/velscale_ratio)[0]
             #take the median and add to templates
