@@ -1153,7 +1153,7 @@ def subtract_median_continuum(lamdas, data, var, header, z, output_folder, gal_n
 #RUNNING THE FIT
 #====================================================================================================
 
-def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_lamrange, dv, z, em_lines=False, component=False, reddening=0.13, gas_component=False, gas_names=False, gas_reddening=0.13, goodpixels=None, degree=4, mdegree=0, plot=True, quiet=False):
+def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_logLam, z, em_lines=False, component=False, reddening=0.13, gas_component=False, gas_names=False, gas_reddening=0.13, goodpixels=None, degree=4, mdegree=0, plot=True, quiet=False):
     """
     And finally, put it all into ppxf and fit the spectrum.
 
