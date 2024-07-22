@@ -438,7 +438,7 @@ def prep_spectra(gal_lamdas, gal_lin, gal_noise):
 #PREP TEMPLATES
 #====================================================================================================
 
-def gauss_emission_line_templates(lamrange_gal, ssp_logLam, z, fwhm_emlines, tie_balmer=True, limit_doublets=True, vacuum=True, extra_em_lines=False):
+def gauss_emission_line_templates(lamrange_gal, ssp_logLam, fwhm_emlines, tie_balmer=True, limit_doublets=True, vacuum=True, extra_em_lines=False):
     """
     Constructs a set of Gaussian emission lines for the templates.
     See ppxf.ppxf_util.emission_lines for more info.
@@ -450,9 +450,6 @@ def gauss_emission_line_templates(lamrange_gal, ssp_logLam, z, fwhm_emlines, tie
 
     ssp_logLam : :obj:'~numpy.ndarray'
         the natural logarithm of the wavelength of the ssp templates
-
-    z : float
-        redshift of the galaxy
 
     fwhm_emlines : float
         the fwhm of the emission lines to be created
@@ -485,17 +482,13 @@ def gauss_emission_line_templates(lamrange_gal, ssp_logLam, z, fwhm_emlines, tie
     line_wave : list
         the wavelength of the lines included in vacuum wavelengths
     """
-    #estimate the wavelength fitted range in the rest frame
-    lamrange_gal_rest = lamrange_gal/(1.0+z)
 
-    print(lamrange_gal_rest)
-
-    gas_templates, gas_names, line_wave = bpu.emission_lines(ssp_logLam, lamrange_gal_rest, fwhm_emlines, tie_balmer=tie_balmer, limit_doublets=limit_doublets, vacuum=vacuum, extra_em_lines=extra_em_lines)
+    gas_templates, gas_names, line_wave = bpu.emission_lines(ssp_logLam, lamrange_gal, fwhm_emlines, tie_balmer=tie_balmer, limit_doublets=limit_doublets, vacuum=vacuum, extra_em_lines=extra_em_lines)
 
     return gas_templates, gas_names, line_wave
 
 
-def prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale, lamrange_gal, z, fwhm_gal=1.7, fwhm_temp=1.0, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=2.0, vacuum=True, extra_em_lines=False, tie_balmer=True):
+def prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale, lamrange_gal, fwhm_gal=1.7, fwhm_temp=1.0, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=2.0, vacuum=True, extra_em_lines=False, tie_balmer=True):
     """
     Prepare the templates by log rebinning and normalising them.
 
@@ -515,9 +508,6 @@ def prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale, lamrange_gal, 
 
     lamrange_gal : :obj:'~numpy.ndarray'
         the wavelength range of the data
-
-    z : float
-        the redshift of the galaxy
 
     fwhm_gal : float
         the fwhm of the data
@@ -597,7 +587,7 @@ def prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale, lamrange_gal, 
 
     if em_lines == True:
         #create the gaussian emission lines
-        gas_templates, gas_names, line_wave = gauss_emission_line_templates(lamrange_gal, ssp_logLam, z, fwhm_emlines, tie_balmer=tie_balmer, limit_doublets=True, vacuum=vacuum, extra_em_lines=extra_em_lines)
+        gas_templates, gas_names, line_wave = gauss_emission_line_templates(lamrange_gal, ssp_logLam, fwhm_emlines, tie_balmer=tie_balmer, limit_doublets=True, vacuum=vacuum, extra_em_lines=extra_em_lines)
         #add them to the templates array
         templates = np.column_stack([templates, gas_templates])
 
@@ -617,7 +607,7 @@ def prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale, lamrange_gal, 
         return templates, ssp_logLam
 
 
-def prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale, lamrange_gal, z, fwhm_gal=1.7, fwhm_temp=1.0, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=2.0, vacuum=True, extra_em_lines=False, tie_balmer=True):
+def prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale, lamrange_gal, fwhm_gal=1.7, fwhm_temp=1.0, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=2.0, vacuum=True, extra_em_lines=False, tie_balmer=True):
     """
     Prepare the templates by log rebinning and normalising them.
 
@@ -634,9 +624,6 @@ def prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale, lamra
 
     lamrange_gal : :obj:'~numpy.ndarray'
         the wavelength range of the data
-
-    z : float
-        the redshift of the galaxy
 
     fwhm_gal : float
         the fwhm of the data
@@ -717,7 +704,7 @@ def prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale, lamra
 
     if em_lines == True:
         #create the gaussian emission lines
-        gas_templates, gas_names, line_wave = gauss_emission_line_templates(lamrange_gal, ssp_logLam, z, fwhm_emlines, tie_balmer=tie_balmer, limit_doublets=True, vacuum=vacuum, extra_em_lines=extra_em_lines)
+        gas_templates, gas_names, line_wave = gauss_emission_line_templates(lamrange_gal, ssp_logLam, fwhm_emlines, tie_balmer=tie_balmer, limit_doublets=True, vacuum=vacuum, extra_em_lines=extra_em_lines)
         #add them to the templates array
         templates = np.column_stack([templates, gas_templates])
 
@@ -737,7 +724,7 @@ def prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale, lamra
         return templates, ssp_logLam
 
 
-def prep_BPASS_models(ssp_templates, ssp_lamrange, gal_velscale, lamrange_gal, z, fwhm_gal=1.7, fwhm_temp=2.0, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=2.0, vacuum=True, extra_em_lines=False, tie_balmer=True):
+def prep_BPASS_models(ssp_templates, ssp_lamrange, gal_velscale, lamrange_gal, fwhm_gal=1.7, fwhm_temp=2.0, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=2.0, vacuum=True, extra_em_lines=False, tie_balmer=True):
     """
     Smooths, Log rebins and normalises the templates
 
@@ -754,9 +741,6 @@ def prep_BPASS_models(ssp_templates, ssp_lamrange, gal_velscale, lamrange_gal, z
 
     lamrange_gal : :obj:'~numpy.ndarray'
         the wavelength range of the data
-
-    z : float
-        the redshift of the galaxy
 
     fwhm_gal : float
         the fwhm of the data
@@ -842,7 +826,7 @@ def prep_BPASS_models(ssp_templates, ssp_lamrange, gal_velscale, lamrange_gal, z
         n_temps = templates.shape[1]
 
         #create the gaussian emission lines
-        gas_templates, gas_names, line_wave = gauss_emission_line_templates(lamrange_gal, ssp_logLam, z, fwhm_emlines, tie_balmer=tie_balmer, limit_doublets=True, vacuum=vacuum, extra_em_lines=extra_em_lines)
+        gas_templates, gas_names, line_wave = gauss_emission_line_templates(lamrange_gal, ssp_logLam, fwhm_emlines, tie_balmer=tie_balmer, limit_doublets=True, vacuum=vacuum, extra_em_lines=extra_em_lines)
         #add the gas lines to the templates
         templates = np.column_stack([templates, gas_templates])
 
@@ -869,7 +853,7 @@ def prep_BPASS_models(ssp_templates, ssp_lamrange, gal_velscale, lamrange_gal, z
         return templates, ssp_logLam
 
 
-def prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale, lamrange_gal, z, fwhm_gal=1.7, fwhm_temp=3.0, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=2.0, vacuum=True, extra_em_lines=False, tie_balmer=True):
+def prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale, lamrange_gal, fwhm_gal=1.7, fwhm_temp=3.0, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=2.0, vacuum=True, extra_em_lines=False, tie_balmer=True):
     """
     Prepares the templates by log rebinning and normalising them
 
@@ -886,9 +870,6 @@ def prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale, lamrange_gal, z,
 
     lamrange_gal : :obj:'~numpy.ndarray'
         the wavelength range of the data
-
-    z : float
-        the redshift of the galaxy
 
     fwhm_gal : float
         the fwhm of the data
@@ -970,7 +951,7 @@ def prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale, lamrange_gal, z,
     #add the emission lines to the templates
     if em_lines == True:
         #create the gaussian emission lines
-        gas_templates, gas_names, line_wave = gauss_emission_line_templates(lamrange_gal, ssp_logLam, z, fwhm_emlines, tie_balmer=tie_balmer, limit_doublets=True, vacuum=vacuum, extra_em_lines=extra_em_lines)
+        gas_templates, gas_names, line_wave = gauss_emission_line_templates(lamrange_gal, ssp_logLam, fwhm_emlines, tie_balmer=tie_balmer, limit_doublets=True, vacuum=vacuum, extra_em_lines=extra_em_lines)
         #add the gas lines to the templates
         templates = np.column_stack([templates, gas_templates])
 
@@ -1214,7 +1195,10 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_la
     c = 299792.458
 
     #eq (8) of Cappellari (2017)
-    vel = c*np.log(1+z)
+    if z > 0.0:
+        vel = c*np.log(1+z)
+    else:
+        vel=0
 
     #starting guess for [Vel, sigma] in km/s
     #starting guess for sigma should be more than 3xvelscale [km/s]
@@ -1269,7 +1253,7 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_la
 #FIT CHECKS
 #====================================================================================================
 
-def hgamma_hbeta_ratio(lamdas, data, z):
+def hgamma_hbeta_ratio(lamdas, data, z=0.0):
     """
     Gets the approximate flux ratio between the H_beta and H_gamma emission lines
     """
@@ -1512,7 +1496,7 @@ def plot_fit(pp, galaxy_name, results_folder, i, xx, yy):
 	plt.close()
 
 
-def plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx, yy):
+def plot_em_lines_fit(pp, galaxy_name, results_folder, i, xx, yy, z=0.0):
     """
     Plots the fit zoomed in on the Hbeta and Hgamma lines
 
@@ -1637,7 +1621,7 @@ def plot_continuum_subtracted(pp, galaxy_name, results_folder, i, xx, yy):
 	plt.close()
 
 
-def plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx, yy):
+def plot_em_lines_cont_subtracted(pp, galaxy_name, results_folder, i, xx, yy, z=0.0):
     """
     Plots the spectrum after the continuum has been subtracted zoomed in on the Hbeta and Hgamma lines
 
@@ -1928,38 +1912,38 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
 
     #get the flux ratio for the spectra
     if cube_colour == 'red':
-        gal_flux_ratio = hgamma_hbeta_ratio(lamdas, data_flat, z)
+        gal_flux_ratio = hgamma_hbeta_ratio(lamdas, data_flat, z=0.0)
 
 
     #get all of the templates, logbin and normalise them
     if em_lines == True:
         if 'c3k' in ssp_filepath:
-            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=0.05, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
+            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale[0], lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=0.05, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
 
         elif 'BPASS' in ssp_filepath:
-            templates, ssp_logLam, gas_names, line_wave, component, gas_component, temp_dim = prep_BPASS_models(ssp_data, ssp_lamrange, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
+            templates, ssp_logLam, gas_names, line_wave, component, gas_component, temp_dim = prep_BPASS_models(ssp_data, ssp_lamrange, gal_velscale[0], lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
 
         elif 'bc03' in ssp_filepath:
-            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
+            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale[0], lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
 
         else:
-            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
+            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale[0], lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
 
         #set goodpixels as None
         goodpixels = None
 
     else:
         if 'c3k' in ssp_filepath:
-            templates, ssp_logLam = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=0.05, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale[0], lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=0.05, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         elif 'BPASS' in ssp_filepath:
-            templates, ssp_logLam = prep_BPASS_models(ssp_data, ssp_lamrange, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_BPASS_models(ssp_data, ssp_lamrange, gal_velscale[0], lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         elif 'bc03' in ssp_filepath:
-            templates, ssp_logLam = prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale[0], lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         else:
-            templates, ssp_logLam = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale[0], lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=1.0, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         #create goodpixels vector
         #goodpixels = util.determine_goodpixels(gal_logLam, ssp_lamrange, z)
@@ -2029,18 +2013,18 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
             #fig = plt.figure()
             plot_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
-            plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+            plot_em_lines_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
             plot_continuum_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
-            plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+            plot_em_lines_cont_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
         else:
             pp = run_ppxf(gal_logLam, logspec, velscale, lognoise, templates, ssp_lamrange, dv, z, em_lines=em_lines, component=False, gas_component=False, gas_names=False, gas_reddening=None, goodpixels=goodpixels, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
 
             #get the flux ratio
             if cube_colour == 'red':
-                cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z)
+                cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z=0.0)
                 print('original ratio: ', gal_flux_ratio[i], 'cont subtracted ratio: ', cont_subt_flux_ratio)
                 if abs(cont_subt_flux_ratio-gal_flux_ratio[i]) > 0.5:
                     print('Continuum subtraction overdoing it')
@@ -2062,11 +2046,11 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
             #fig = plt.figure()
             plot_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
-            plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+            plot_em_lines_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
             plot_continuum_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
-            plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+            plot_em_lines_cont_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
     #save the results
     with open(results_folder+galaxy_name+'_ppxf_solutions_errors', 'wb') as f:
@@ -2197,7 +2181,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
 
     #get the flux ratio for the spectra if fitting the red cube
     if cube_colour == 'red':
-        gal_flux_ratio = hgamma_hbeta_ratio(lamdas, data_flat, z)
+        gal_flux_ratio = hgamma_hbeta_ratio(lamdas, data_flat, z=0.0)
 
     #get all of the templates, logbin and normalise them
     if em_lines == True:
@@ -2279,7 +2263,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                     pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, goodpixels=goodpixels, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
 
                     #get the flux ratio if fitting the red cube
-                    cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z)
+                    cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z=0.0)
                     print('original ratio: ', gal_flux_ratio[i], 'cont subtracted ratio: ', cont_subt_flux_ratio)
                     if abs(cont_subt_flux_ratio-gal_flux_ratio[i]) > 0.5:
                         print('Continuum subtraction overdoing it')
@@ -2332,18 +2316,18 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                 #save the figures
                 plot_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
-                plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+                plot_em_lines_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
                 plot_continuum_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
-                plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+                plot_em_lines_cont_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
             else:
                 pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=False, gas_component=False, gas_names=False, gas_reddening=None, reddening=reddening, degree=degree, goodpixels=goodpixels, mdegree=mdegree, plot=plot, quiet=quiet)
 
                 #get the flux ratio if fitting the red cube
                 if cube_colour == 'red':
-                    cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit), z)
+                    cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit), z=0.0)
                     print('original ratio: ', gal_flux_ratio[i], 'cont subtracted ratio: ', cont_subt_flux_ratio)
                     if abs(cont_subt_flux_ratio-gal_flux_ratio[i]) > 0.5:
                         print('Continuum subtraction overdoing it')
@@ -2385,11 +2369,11 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                 #save the figures
                 plot_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
-                plot_em_lines_fit(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+                plot_em_lines_fit(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
                 plot_continuum_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
-                plot_em_lines_cont_subtracted(pp, galaxy_name, z, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
+                plot_em_lines_cont_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
         #if the spectrum has a low S/N, then fit the continuum with a straight line
         elif sn_array[i] < sn_cut:
