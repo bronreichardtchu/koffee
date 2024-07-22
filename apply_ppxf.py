@@ -1163,7 +1163,7 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_lo
         gal_velscale: the velocity scale of the data (km/s)
         log_noise: the logarithmically rebinned noise
         templates: the array of templates - stellar, emission lines, and whatever else
-        ssp_lamrange: the wavelength range of the SSPs
+        ssp_logLam: the logarithmic wavelength of the SSPs
         dv: Reference velocity in km/s (default 0). The input initial guess and the output velocities are
                 measured with respect to this velocity. This keyword is generally used to account for the
                 difference in the starting wavelength of the templates and the galaxy spectrum as follows
@@ -2179,13 +2179,13 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
     #use the filepath to figure out which functions to use
     #load the SSP library
     if 'c3k' in ssp_filepath:
-    	ssp_lib, ssp_data, ssp_ages, ssp_metals, ssp_lamrange = get_SSP_library_new_conroy_models(ssp_filepath)
+        ssp_lib, ssp_data, ssp_ages, ssp_metals, ssp_lamrange = get_SSP_library_new_conroy_models(ssp_filepath)
     elif 'BPASS' in ssp_filepath:
         ssp_lamrange, ssp_data, ssp_ages, ssp_metals = get_BPASS_library(ssp_filepath, [lamdas[0], lamdas[-1]])
     elif 'bc03' in ssp_filepath:
         ssp_templates, ssp_lamrange, ssp_ages, ssp_metals = get_bc03_library(ssp_filepath, [lamdas[0], lamdas[-1]])
     else:
-    	ssp_lib, ssp_data, ssp_lamrange = get_SSP_library(ssp_filepath)
+        ssp_lib, ssp_data, ssp_lamrange = get_SSP_library(ssp_filepath)
 
     #calculate the S/N array for the data
     if cube_colour == 'red':
@@ -2303,21 +2303,6 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                         pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-(pp.bestfit-pp.gas_bestfit))*gal_norm[i]], f)
                     f.close()
 
-                    #otherwise only run with the stellar templates, no gas templates
-                    #using gas_component as a mask, since it is True for all gas templates
-                    """
-                    elif OII_sn_array[i] < 3:
-                        pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates[:,~gas_component], ssp_lamrange, dv, z, em_lines=False, component=False, gas_component=False, gas_names=False, gas_reddening=None, reddening=reddening, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
-
-                        with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
-                            pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-pp.bestfit)], f)
-                        f.close()
-
-                        with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
-                            pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-pp.bestfit)*gal_norm[i]], f)
-                        f.close()
-                    """
-
 
                 elif cube_colour == 'red':
                     #fit the cube
@@ -2353,7 +2338,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                     f.close()
 
                     with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted_unnormalised'.format(i), 'wb') as f:
-                    	pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-(pp.bestfit-pp.gas_bestfit))*gal_norm[i]], f)
+                        pickle.dump([pp.lam, gal_norm[i], pp.galaxy*gal_norm[i], (pp.galaxy-(pp.bestfit-pp.gas_bestfit))*gal_norm[i]], f)
                     f.close()
 
                 #save the results
