@@ -425,11 +425,14 @@ def prep_spectra(gal_lamdas, gal_lin, gal_noise):
     #find the wavelength range of the new data
     lamrange_gal = np.array([np.min(gal_lamdas), np.max(gal_lamdas)])
 
+    #preserve the smallest velocity step
+    velscale = np.nanmin(299792.458 * np.diff(np.log(gal_lamdas)))
+
     #log_rebin to rebin the spectra to a logarithmic scale
-    gal_logspec, gal_logLam, gal_velscale = util.log_rebin(lamrange_gal, gal_lin)
+    gal_logspec, gal_logLam, gal_velscale = util.log_rebin(lamrange_gal, gal_lin, velscale=velscale)
 
     #log_rebin the noise as well
-    log_noise, noise_logLam, noise_velscale = util.log_rebin(lamrange_gal, gal_noise)
+    log_noise, noise_logLam, noise_velscale = util.log_rebin(lamrange_gal, gal_noise, velscale=velscale)
 
     return lamrange_gal, gal_logspec, log_noise, gal_logLam, gal_velscale
 
@@ -1224,7 +1227,17 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_la
 
     #do the fit
     if em_lines == True:
-        pp = ppxf(templates, gal_logspec, log_noise, gal_velscale, start, moments=moments, plot=plot, vsyst=dv, lam=np.exp(gal_logLam), component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, degree=degree, mdegree=mdegree, quiet=quiet, tied=tied)
+        pp = ppxf(templates, gal_logspec, log_noise, gal_velscale, start, 
+                  moments=moments, plot=plot, #vsyst=dv, 
+                  lam=np.exp(gal_logLam), 
+                  lam_temp=np.exp(ssp_logLam), 
+                  component=component, 
+                  gas_component=gas_component, 
+                  gas_names=gas_names, 
+                  gas_reddening=gas_reddening, 
+                  reddening=reddening, 
+                  degree=degree, mdegree=mdegree, 
+                  quiet=quiet, tied=tied)
 
         if quiet == False:
             print('Formal errors:')
@@ -1233,7 +1246,14 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_la
             print('balmer:  ', ''.join("%8.2g" % f for f in pp.error[1]*np.sqrt(pp.chi2)))
             print('forbidden', ''.join("%8.2g" % f for f in pp.error[2]*np.sqrt(pp.chi2)))
     else:
-        pp = ppxf(templates, gal_logspec, log_noise, gal_velscale, start, moments=moments, goodpixels=goodpixels, plot=plot, vsyst=dv, lam=np.exp(gal_logLam), reddening=reddening, degree=degree, mdegree=mdegree, quiet=quiet)
+        pp = ppxf(templates, gal_logspec, log_noise, gal_velscale, start, 
+                  moments=moments, goodpixels=goodpixels, 
+                  plot=plot, #vsyst=dv, 
+                  lam=np.exp(gal_logLam), 
+                  lam_temp=np.exp(ssp_logLam), 
+                  reddening=reddening, 
+                  degree=degree, mdegree=mdegree, 
+                  quiet=quiet)
 
         if quiet == False:
             print('Formal errors:')
@@ -1884,25 +1904,27 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
     #use the filepath to figure out which functions to use
     #load the SSP library
     if 'c3k' in ssp_filepath:
-    	ssp_lib, ssp_data, ssp_ages, ssp_metals, ssp_lamrange = get_SSP_library_new_conroy_models(ssp_filepath)
+        ssp_lib, ssp_data, ssp_ages, ssp_metals, ssp_lamrange = get_SSP_library_new_conroy_models(ssp_filepath)
     elif 'BPASS' in ssp_filepath:
         ssp_lamrange, ssp_data, ssp_ages, ssp_metals = get_BPASS_library(ssp_filepath, [lamdas[0], lamdas[-1]])
     elif 'bc03' in ssp_filepath:
         ssp_templates, ssp_lamrange, ssp_ages, ssp_metals = get_bc03_library(ssp_filepath, [lamdas[0], lamdas[-1]])
     else:
-    	ssp_lib, ssp_data, ssp_lamrange = get_SSP_library(ssp_filepath)
+        ssp_lib, ssp_data, ssp_lamrange = get_SSP_library(ssp_filepath)
 
     #mask wavelengths so galaxy doesn't cover wavelengths not in the SSPs (works on both single spectra and cubes)
     gal_lamdas, gal_lin, gal_noise = wavelength_masking(ssp_lamrange, lamdas, data_flat, noise_flat)
 
     #create the arrays to populate with logbinned and normalised spectra
-    gal_logspec = np.empty_like(gal_lin)
-    log_noise = np.empty_like(gal_noise)
-    gal_velscale = np.empty_like(gal_lin[0,:])
+    #gal_logspec = np.empty_like(gal_lin)
+    #log_noise = np.empty_like(gal_noise)
+    #gal_velscale = np.empty_like(gal_lin[0,:])
 
     #logbin and normalise the spectra
-    for i, (spec, noise) in enumerate(zip(gal_lin.T, gal_noise.T)):
-    	lamrange_gal, gal_logspec[:,i], log_noise[:,i], gal_logLam, gal_velscale[i] = prep_spectra(gal_lamdas, spec, noise)
+    #for i, (spec, noise) in enumerate(zip(gal_lin.T, gal_noise.T)):
+        #lamrange_gal, gal_logspec[:,i], log_noise[:,i], gal_logLam, gal_velscale[i] = prep_spectra(gal_lamdas, spec, noise)
+    
+    lamrange_gal, gal_logspec, log_noise, gal_logLam, gal_velscale = prep_spectra(gal_lamdas, gal_lin, gal_noise)
 
     #normalise the spectra and noise
     gal_norm = np.nanmedian(gal_logspec, axis=0)
@@ -1981,11 +2003,23 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
         print('Fit '+str(i+1)+' of '+str(gal_velscale.shape[0]))
         if em_lines == True:
             #run the ppxf fit
-            pp = run_ppxf(gal_logLam, logspec, velscale, lognoise, templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=0.13, degree=degree, mdegree=mdegree, goodpixels=goodpixels, plot=plot, quiet=quiet)
+            pp = run_ppxf(gal_logLam, logspec, velscale, lognoise, templates, 
+                          ssp_logLam, z, 
+                          em_lines=em_lines, 
+                          component=component, 
+                          gas_component=gas_component, 
+                          gas_names=gas_names, 
+                          gas_reddening=0.13, 
+                          degree=degree, 
+                          mdegree=mdegree, 
+                          goodpixels=goodpixels, 
+                          plot=plot, 
+                          quiet=quiet
+                          )
 
             #get the flux ratio
             if cube_colour == 'red':
-                cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z)
+                cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z=0.0)
                 print('original ratio: ', gal_flux_ratio[i], 'cont subtracted ratio: ', cont_subt_flux_ratio)
                 if abs(cont_subt_flux_ratio-gal_flux_ratio[i]) > 0.5:
                     print('Continuum subtraction overdoing it')
@@ -2020,7 +2054,19 @@ def main(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filepath, z, resul
             plot_em_lines_cont_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
         else:
-            pp = run_ppxf(gal_logLam, logspec, velscale, lognoise, templates, ssp_lamrange, dv, z, em_lines=em_lines, component=False, gas_component=False, gas_names=False, gas_reddening=None, goodpixels=goodpixels, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+            pp = run_ppxf(gal_logLam, logspec, velscale, lognoise, templates, 
+                          ssp_logLam, z, 
+                          em_lines=em_lines, 
+                          component=False, 
+                          gas_component=False, 
+                          gas_names=False, 
+                          gas_reddening=None, 
+                          goodpixels=goodpixels, 
+                          degree=degree, 
+                          mdegree=mdegree, 
+                          plot=plot, 
+                          quiet=quiet
+                          )
 
             #get the flux ratio
             if cube_colour == 'red':
@@ -2165,13 +2211,15 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
     gal_lamdas, gal_lin, gal_noise = wavelength_masking(ssp_lamrange, lamdas, data_flat, noise_flat)
 
     #create the arrays to populate with logbinned and normalised spectra
-    gal_logspec = np.empty_like(gal_lin)
-    log_noise = np.empty_like(gal_noise)
-    gal_velscale = np.empty_like(gal_lin[0,:])
+    #gal_logspec = np.empty_like(gal_lin)
+    #log_noise = np.empty_like(gal_noise)
+    #gal_velscale = np.empty_like(gal_lin[0,:])
 
     #logbin and normalise the spectra
-    for i, (spec, noise) in enumerate(zip(gal_lin.T, gal_noise.T)):
-        lamrange_gal, gal_logspec[:,i], log_noise[:,i], gal_logLam, gal_velscale[i] = prep_spectra(gal_lamdas, spec, noise)
+    #for i, (spec, noise) in enumerate(zip(gal_lin.T, gal_noise.T)):
+        #lamrange_gal, gal_logspec[:,i], log_noise[:,i], gal_logLam, gal_velscale[i] = prep_spectra(gal_lamdas, spec, noise)
+
+    lamrange_gal, gal_logspec, log_noise, gal_logLam, gal_velscale = prep_spectra(gal_lamdas, gal_lin, gal_noise)
 
     #normalise the spectra and noise
     gal_norm = np.nanmedian(gal_logspec, axis=0)
@@ -2224,7 +2272,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
 
     #run ppxf
     for i in np.arange(0+rank, num_spectra[0], size):
-        print('Fit '+str(i+1)+' of '+str(gal_velscale.shape[0]))
+        print('Fit '+str(i+1)+' of '+str(num_spectra))
 
         # if the spectrum has a high enough S/N, fit with ppxf
         if sn_array[i] >= sn_cut:
@@ -2232,7 +2280,20 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                 if cube_colour == 'blue':
                     #run normally if S/N of [OII] doublet is > 3
                     #if OII_sn_array[i] >= 3:
-                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, goodpixels=goodpixels, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale, 
+                                  log_noise[:,i], templates, ssp_logLam, z, 
+                                  em_lines=em_lines, 
+                                  component=component, 
+                                  gas_component=gas_component, 
+                                  gas_names=gas_names, 
+                                  gas_reddening=gas_reddening, 
+                                  reddening=reddening, 
+                                  goodpixels=goodpixels, 
+                                  degree=degree, 
+                                  mdegree=mdegree, 
+                                  plot=plot, 
+                                  quiet=quiet
+                                  )
 
                     with open(results_folder+galaxy_name+'_{:0>4d}_ppxf_continuum_subtracted'.format(i), 'wb') as f:
                         pickle.dump([pp.lam, pp.galaxy, (pp.galaxy-(pp.bestfit-pp.gas_bestfit))], f)
@@ -2260,7 +2321,20 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
 
                 elif cube_colour == 'red':
                     #fit the cube
-                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=component, gas_component=gas_component, gas_names=gas_names, gas_reddening=gas_reddening, reddening=reddening, goodpixels=goodpixels, degree=degree, mdegree=mdegree, plot=plot, quiet=quiet)
+                    pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale, 
+                                  log_noise[:,i], templates, ssp_logLam, z, 
+                                  em_lines=em_lines, 
+                                  component=component, 
+                                  gas_component=gas_component, 
+                                  gas_names=gas_names, 
+                                  gas_reddening=gas_reddening, 
+                                  reddening=reddening, 
+                                  goodpixels=goodpixels, 
+                                  degree=degree, 
+                                  mdegree=mdegree, 
+                                  plot=plot, 
+                                  quiet=quiet
+                                  )
 
                     #get the flux ratio if fitting the red cube
                     cont_subt_flux_ratio = hgamma_hbeta_ratio(pp.lam, pp.galaxy - (pp.bestfit-pp.gas_bestfit), z=0.0)
@@ -2323,7 +2397,20 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                 plot_em_lines_cont_subtracted(pp, galaxy_name, results_folder, i, xx=xx_flat[i], yy=yy_flat[i])
 
             else:
-                pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale[i], log_noise[:,i], templates, ssp_lamrange, dv, z, em_lines=em_lines, component=False, gas_component=False, gas_names=False, gas_reddening=None, reddening=reddening, degree=degree, goodpixels=goodpixels, mdegree=mdegree, plot=plot, quiet=quiet)
+                pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale, 
+                              log_noise[:,i], templates, ssp_logLam, z, 
+                              em_lines=em_lines, 
+                              component=False, 
+                              gas_component=False, 
+                              gas_names=False, 
+                              gas_reddening=None, 
+                              reddening=reddening, 
+                              degree=degree, 
+                              goodpixels=goodpixels, 
+                              mdegree=mdegree, 
+                              plot=plot, 
+                              quiet=quiet
+                              )
 
                 #get the flux ratio if fitting the red cube
                 if cube_colour == 'red':
