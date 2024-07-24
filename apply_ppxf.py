@@ -1593,7 +1593,7 @@ def plot_em_lines_fit(pp, galaxy_name, results_folder, i, xx, yy, z=0.0):
         yy: the y coordinate (usually found using yy_flat[i])
     """
     fig = plt.figure()
-    if pp.lam[0] > 4300:
+    if pp.lam[0] > 4200:
         ax1 = plt.subplot(221)
         pp.plot()
         #Hgamma has wavelength 4340.471A
@@ -1630,7 +1630,7 @@ def plot_em_lines_fit(pp, galaxy_name, results_folder, i, xx, yy, z=0.0):
         ax4.set_xlabel(r"Wavelength [$\mu$m]")
         ax4.set_ylabel('')
 
-    elif pp.lam[0] < 4300:
+    elif pp.lam[0] < 4200:
         ax1 = plt.subplot(221)
         pp.plot()
         #the OII doublet has wavelengths 3726.032, 3728.815
@@ -1719,7 +1719,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, results_folder, i, xx, yy, z=
     """
     fig = plt.figure()
 
-    if pp.lam[0] > 4300:
+    if pp.lam[0] > 4200:
         ax1 = plt.subplot(221)
         try:
             plt.step(pp.lam, pp.galaxy-(pp.bestfit-pp.gas_bestfit), where='mid')
@@ -1768,7 +1768,7 @@ def plot_em_lines_cont_subtracted(pp, galaxy_name, results_folder, i, xx, yy, z=
         ax4.set_xlabel(r"Wavelength [$\AA$]")
         ax4.set_ylabel('')
 
-    elif pp.lam[0] < 4300:
+    elif pp.lam[0] < 4200:
         ax1 = plt.subplot(221)
         try:
             plt.step(pp.lam, pp.galaxy-(pp.bestfit-pp.gas_bestfit), where='mid')
