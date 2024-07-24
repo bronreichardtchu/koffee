@@ -39,7 +39,7 @@ from time import perf_counter
 
 #from mpi4py import MPI
 
-from ppxf.ppxf import ppxf
+from ppxf.ppxf import ppxf, robust_sigma
 import ppxf.ppxf_util as util
 from astropy.io import fits
 
@@ -1068,6 +1068,25 @@ def smoothing(fwhm1, fwhm2, input_spectrum, cdelt):
     return input_spectrum
 
 
+def clip_outliers(galaxy, bestfit, mask):
+    """
+    Repeat the fit after clipping bins deviants more than 3*sigma in relative
+    error until the bad bins don't change any more. This function uses eq.(34)
+    of Cappellari (2023) https://ui.adsabs.harvard.edu/abs/2023MNRAS.526.3273C
+    """
+    while True:
+        scale = galaxy[mask] @ bestfit[mask]/np.sum(bestfit[mask]**2)
+        resid = scale*bestfit[mask] - galaxy[mask]
+        err = robust_sigma(resid, zero=1)
+        ok_old = mask
+        mask = np.abs(bestfit - galaxy) < 3*err
+        if np.array_equal(mask, ok_old):
+            break
+            
+    return mask
+
+
+
 def median_continuum_convolution(spectrum, window=30, smooth_sigma=10):
     """
     Calculates the median along the spectrum and then smooths it using a gaussian
@@ -1227,6 +1246,10 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_lo
 
     #do the fit
     if em_lines == True:
+        # create the mask where it doesn't mask anything
+        mask = np.ones_like(gal_logspec, dtype='bool')
+
+        # run once to estimate the scatter in the spectrum
         pp = ppxf(templates, gal_logspec, log_noise, gal_velscale, start, 
                   moments=moments, plot=plot, #vsyst=dv, 
                   lam=np.exp(gal_logLam), 
@@ -1238,6 +1261,27 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_lo
                   reddening=reddening, 
                   degree=degree, mdegree=mdegree, 
                   quiet=quiet, tied=tied)
+        
+        # clip the outliers
+        clipped_mask = clip_outliers(gal_logspec, pp.bestfit, mask)
+
+        # add clipped pixels to the original mask 
+        clipped_mask &= mask 
+
+        # re-run the fit 
+        # run once to estimate the scatter in the spectrum
+        pp = ppxf(templates, gal_logspec, log_noise, gal_velscale, start, 
+                  moments=moments, plot=plot, #vsyst=dv, 
+                  lam=np.exp(gal_logLam), 
+                  lam_temp=np.exp(ssp_logLam), 
+                  component=component, 
+                  gas_component=gas_component, 
+                  gas_names=gas_names, 
+                  gas_reddening=gas_reddening, 
+                  reddening=reddening, 
+                  degree=degree, mdegree=mdegree,
+                  mask=clipped_mask, 
+                  quiet=quiet, tied=tied)
 
         if quiet == False:
             print('Formal errors:')
@@ -1246,6 +1290,7 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_lo
             print('balmer:  ', ''.join("%8.2g" % f for f in pp.error[1]*np.sqrt(pp.chi2)))
             print('forbidden', ''.join("%8.2g" % f for f in pp.error[2]*np.sqrt(pp.chi2)))
     else:
+        # run once to estimate the scatter in the spectrum
         pp = ppxf(templates, gal_logspec, log_noise, gal_velscale, start, 
                   moments=moments, goodpixels=goodpixels, 
                   plot=plot, #vsyst=dv, 
@@ -1253,6 +1298,27 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_lo
                   lam_temp=np.exp(ssp_logLam), 
                   reddening=reddening, 
                   degree=degree, mdegree=mdegree, 
+                  quiet=quiet)
+        
+        # create a mask using goodpixels 
+        mask = np.zeros_like(gal_logspec, dtype='bool')
+        mask[goodpixels] = True 
+        
+        # clip the outliers
+        new_mask = clip_outliers(gal_logspec, pp.bestfit, mask)
+
+        # add clipped pixels to the original masked emission line regions 
+        new_mask &= mask
+
+        # re-run the fit 
+        pp = ppxf(templates, gal_logspec, log_noise, gal_velscale, start, 
+                  moments=moments, #goodpixels=this_goodpixels, 
+                  plot=plot, #vsyst=dv, 
+                  lam=np.exp(gal_logLam), 
+                  lam_temp=np.exp(ssp_logLam), 
+                  reddening=reddening, 
+                  degree=degree, mdegree=mdegree,
+                  mask=new_mask, 
                   quiet=quiet)
 
         if quiet == False:
