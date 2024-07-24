@@ -1964,11 +1964,11 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
 
     #calculate the S/N array for the data
     if cube_colour == 'red':
-        cont_mask = (lamdas>4600*(1+z))&(lamdas<4800*(1+z))
+        cont_mask = (lamdas>4600)&(lamdas<4800)
     elif cube_colour == 'blue':
-        cont_mask = (lamdas>3600*(1+z))&(lamdas<3700*(1+z))
+        cont_mask = (lamdas>3600)&(lamdas<3700)
         #get S/N array for [OII] doublet - 10A mask around 3727A
-        OII_mask = (lamdas>3722*(1+z))&(lamdas<3732*(1+z))
+        OII_mask = (lamdas>3722)&(lamdas<3732)
         OII_sn_array = abs(np.nanmedian(data_flat[OII_mask,:]/noise_flat[OII_mask,:], axis=0))
 
     sn_array = abs(np.nanmedian(data_flat[cont_mask,:]/noise_flat[cont_mask,:], axis=0))
@@ -2009,36 +2009,36 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
     #get all of the templates, logbin and normalise them
     if em_lines == True:
         if 'c3k' in ssp_filepath:
-            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
+            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale, lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
 
         elif 'BPASS' in ssp_filepath:
-            templates, ssp_logLam, gas_names, line_wave, component, gas_component, temp_dim = prep_BPASS_models(ssp_data, ssp_lamrange, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
+            templates, ssp_logLam, gas_names, line_wave, component, gas_component, temp_dim = prep_BPASS_models(ssp_data, ssp_lamrange, gal_velscale, lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
 
         elif 'bc03' in ssp_filepath:
-            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
+            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale, lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
 
         else:
-            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale[0], lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
+            templates, ssp_logLam, gas_names, line_wave, component, gas_component = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale, lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=True, fwhm_emlines=fwhm_emlines, vacuum=vacuum, extra_em_lines=extra_em_lines, tie_balmer=tie_balmer)
 
         #set goodpixels as None
         goodpixels = None
 
     else:
         if 'c3k' in ssp_filepath:
-            templates, ssp_logLam = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale, lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_templates_new_conroy_models(ssp_lamrange, ssp_data, gal_velscale, lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         elif 'BPASS' in ssp_filepath:
-            templates, ssp_logLam = prep_BPASS_models(ssp_data, ssp_lamrange, gal_velscale, lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_BPASS_models(ssp_data, ssp_lamrange, gal_velscale, lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         elif 'bc03' in ssp_filepath:
-            templates, ssp_logLam = prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale, lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_BC03_models(ssp_lamrange, ssp_templates, gal_velscale, lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         else:
-            templates, ssp_logLam = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale, lamrange_gal, z, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
+            templates, ssp_logLam = prep_templates(ssp_lamrange, ssp_lib, ssp_data, gal_velscale, lamrange_gal, fwhm_gal=fwhm_gal, fwhm_temp=fwhm_temp, cdelt_temp=cdelt_temp, velscale_ratio=1, em_lines=False, fwhm_emlines=fwhm_emlines, vacuum=vacuum)
 
         #create goodpixels vector
         #goodpixels = util.determine_goodpixels(gal_logLam, ssp_lamrange, z)
-        goodpixels = bpu.determine_goodpixels(gal_logLam, ssp_lamrange, z, maskwidth=maskwidth)
+        goodpixels = bpu.determine_goodpixels(gal_logLam, ssp_lamrange, z=0.0, maskwidth=maskwidth)
 
     #find the difference in starting values for the templates and spectra
     #dv = velocity_shift(ssp_logLam, gal_logLam, velscale_ratio=1)
@@ -2056,7 +2056,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                     #run normally if S/N of [OII] doublet is > 3
                     #if OII_sn_array[i] >= 3:
                     pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale, 
-                                  log_noise[:,i], templates, ssp_logLam, z, 
+                                  log_noise[:,i], templates, ssp_logLam, z=0.0, 
                                   em_lines=em_lines, 
                                   component=component, 
                                   gas_component=gas_component, 
@@ -2082,7 +2082,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
                 elif cube_colour == 'red':
                     #fit the cube
                     pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale, 
-                                  log_noise[:,i], templates, ssp_logLam, z, 
+                                  log_noise[:,i], templates, ssp_logLam, z=0.0, 
                                   em_lines=em_lines, 
                                   component=component, 
                                   gas_component=gas_component, 
@@ -2158,7 +2158,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
 
             else:
                 pp = run_ppxf(gal_logLam, gal_logspec[:,i], gal_velscale, 
-                              log_noise[:,i], templates, ssp_logLam, z, 
+                              log_noise[:,i], templates, ssp_logLam, z=0.0, 
                               em_lines=em_lines, 
                               component=False, 
                               gas_component=False, 
