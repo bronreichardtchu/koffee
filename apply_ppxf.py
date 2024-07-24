@@ -1235,9 +1235,6 @@ def run_ppxf(gal_logLam, gal_logspec, gal_velscale, log_noise, templates, ssp_lo
         tied = [['',''], ['p[0]', 'p[1]'], ['p[0]', 'p[1]']]
 
     else:
-        #mask for gas lines
-        #goodpixels = util.determine_goodpixels(gal_logLam, ssp_lamrange, z)
-        #goodpixels = bpu.determine_goodpixels(gal_logLam, ssp_lamrange, z, maskwidth=maskwidth)
         #Fit 4 moments for the stars (V, sig, h3, h4)
         moments = 4
 
@@ -2044,7 +2041,7 @@ def main_parallelised(lamdas, data_flat, noise_flat, xx_flat, yy_flat, ssp_filep
         goodpixels = bpu.determine_goodpixels(gal_logLam, ssp_lamrange, z, maskwidth=maskwidth)
 
     #find the difference in starting values for the templates and spectra
-    dv = velocity_shift(ssp_logLam, gal_logLam, velscale_ratio=1)
+    #dv = velocity_shift(ssp_logLam, gal_logLam, velscale_ratio=1)
 
     num_spectra = gal_logspec[0,:].shape
 
