@@ -246,14 +246,14 @@ class Galaxy:
         """
         #see if the user has input a particular filename to use
         if filename is not None:
-            fits_stuff = pc.load_data(filename, mw_correction=self.mw_correction)
+            fits_stuff = pc.load_data(filename, mw_correction=self.mw_correction, Av_mw=self.Av_mw)
 
         elif filename is None:
             #read in the file saved by combine_results
             if self.unnormalised == True:
-                fits_stuff = pc.load_data(self.results_folder+self.galaxy_name+'_cont_subtracted_unnormalised_cube.fits', mw_correction=self.mw_correction)
+                fits_stuff = pc.load_data(self.results_folder+self.galaxy_name+'_cont_subtracted_unnormalised_cube.fits', mw_correction=self.mw_correction, Av_mw=self.Av_mw)
             elif self.unnormalised == False:
-                fits_stuff = pc.load_data(self.results_folder+self.galaxy_name+'_cont_subtracted_cube.fits', mw_correction=self.mw_correction)
+                fits_stuff = pc.load_data(self.results_folder+self.galaxy_name+'_cont_subtracted_cube.fits', mw_correction=self.mw_correction, Av_mw=self.Av_mw)
 
         #get the different components out of fits_stuff
         if len(fits_stuff) > 3:
