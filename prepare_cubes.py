@@ -194,7 +194,7 @@ def bin_data(lamdas, data, z, bin_size=[3,3], var=None):
         binned_var = np.empty_like(binned_data)
 
     #create lamda mask for hbeta
-    hbeta_mask = (lamdas>4862.68*(1+z)-2.0) & (lamdas<4862.68*(1+z)+2.0)
+    hbeta_mask = (lamdas>4862.68*(1+z)-5.0) & (lamdas<4862.68*(1+z)+5.0)
 
     #calculate the signal-to-noise ratio of hbeta
     if var is not None:
