@@ -204,14 +204,15 @@ def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=F
     Parameters
     ----------
     lamdas : :obj:'~numpy.ndarray'
-        the wavelength vector
+        the wavelength vector (must be in rest wavelengths, not observed)
 
     spectrum : :obj:'~numpy.ndarray'
         the spectrum or array of spectra.  If in array, needs to be in shape
         [npix, nspec]
 
     z : float
-        redshift of the galaxy
+        redshift of the galaxy - used to calculate the flux, not applied to the 
+        wavelengths.
 
     cont_subtract : boolean
         if True, assumes continuum has not already been subtracted.
@@ -231,18 +232,18 @@ def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=F
         line for each spectrum
     """
     #create bounds to integrate over
-    hgamma_left_limit = emission_line_limits["Hgamma_left"]*(1+z)
-    hgamma_right_limit = emission_line_limits["Hgamma_right"]*(1+z)
+    hgamma_left_limit = emission_line_limits["Hgamma_left"]
+    hgamma_right_limit = emission_line_limits["Hgamma_right"]
 
-    hbeta_left_limit = emission_line_limits["Hbeta_left"]*(1+z)
-    hbeta_right_limit = emission_line_limits["Hbeta_right"]*(1+z)
+    hbeta_left_limit = emission_line_limits["Hbeta_left"]
+    hbeta_right_limit = emission_line_limits["Hbeta_right"]
 
     #create bounds for the continuum
-    hgamma_cont_left_limit = continuum_band_limits["Hgamma_left"]*(1+z)
-    hgamma_cont_right_limit = continuum_band_limits["Hgamma_right"]*(1+z)
+    hgamma_cont_left_limit = continuum_band_limits["Hgamma_left"]
+    hgamma_cont_right_limit = continuum_band_limits["Hgamma_right"]
 
-    hbeta_cont_left_limit = continuum_band_limits["Hbeta_left"]*(1+z)
-    hbeta_cont_right_limit = continuum_band_limits["Hbeta_right"]*(1+z)
+    hbeta_cont_left_limit = continuum_band_limits["Hbeta_left"]
+    hbeta_cont_right_limit = continuum_band_limits["Hbeta_right"]
 
     #if the continuum has not already been fit and subtracted, use an approximation
     #to subtract it off
@@ -290,7 +291,7 @@ def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=F
 
 
 
-def calc_hbeta_hgamma_amps(lamdas, spectrum, z, cont_subtract=False):
+def calc_hbeta_hgamma_amps(lamdas, spectrum, z=0.0, cont_subtract=False):
     """
     Calculate the Hbeta/hgamma ratio, which should be 2.13, by using the amplitudes
     of the emission lines
@@ -305,7 +306,8 @@ def calc_hbeta_hgamma_amps(lamdas, spectrum, z, cont_subtract=False):
         [npix, nspec]
 
     z : float
-        redshift of the galaxy
+        redshift of the galaxy, applied to the wavelengths.  Default is zero, 
+        which assumes that the lamdas are in rest wavelength.
 
     cont_subtract : boolean
         if True, assumes continuum has not already been subtracted.
@@ -375,14 +377,15 @@ def calc_OIII_doublet_ratio(lamdas, spectrum, z, cont_subtract=False, plot=False
     Parameters
     ----------
     lamdas : :obj:'~numpy.ndarray'
-        the wavelength vector
+        the wavelength vector (must be in rest wavelengths, not observed)
 
     spectrum : :obj:'~numpy.ndarray'
         the spectrum or array of spectra.  If in array, needs to be in shape
         [npix, nspec]
 
     z : float
-        redshift of the galaxy
+        redshift of the galaxy - used to calculate the flux, not applied to the 
+        wavelengths.
 
     cont_subtract : boolean
         if True, assumes continuum has not already been subtracted.
@@ -402,18 +405,18 @@ def calc_OIII_doublet_ratio(lamdas, spectrum, z, cont_subtract=False, plot=False
         line for each spectrum
     """
     #create bounds to integrate over
-    OIII_4959_left_limit = emission_line_limits["OIII_3_left"]*(1+z)
-    OIII_4959_right_limit = emission_line_limits["OIII_3_right"]*(1+z)
+    OIII_4959_left_limit = emission_line_limits["OIII_3_left"]
+    OIII_4959_right_limit = emission_line_limits["OIII_3_right"]
 
-    OIII_5007_left_limit = emission_line_limits["OIII_4_left"]*(1+z)
-    OIII_5007_right_limit = emission_line_limits["OIII_4_right"]*(1+z)
+    OIII_5007_left_limit = emission_line_limits["OIII_4_left"]
+    OIII_5007_right_limit = emission_line_limits["OIII_4_right"]
 
     #create bounds for the continuum
-    OIII_4959_cont_left_limit = continuum_band_limits["OIII_3_left"]*(1+z)
-    OIII_4959_cont_right_limit = continuum_band_limits["OIII_3_right"]*(1+z)
+    OIII_4959_cont_left_limit = continuum_band_limits["OIII_3_left"]
+    OIII_4959_cont_right_limit = continuum_band_limits["OIII_3_right"]
 
-    OIII_5007_cont_left_limit = continuum_band_limits["OIII_4_left"]*(1+z)
-    OIII_5007_cont_right_limit = continuum_band_limits["OIII_4_right"]*(1+z)
+    OIII_5007_cont_left_limit = continuum_band_limits["OIII_4_left"]
+    OIII_5007_cont_right_limit = continuum_band_limits["OIII_4_right"]
 
     #if the continuum has not already been fit and subtracted, use an approximation
     #to subtract it off
