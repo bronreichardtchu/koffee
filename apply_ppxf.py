@@ -1532,14 +1532,14 @@ def combine_results(lamdas, data_flat, final_shape, results_folder, galaxy_name,
     #then use the actual lam vector to set the new header.  This is necessary
     #because if we just use the lam vector, it already has wavelength corrections
     #applied to it.
-    if lam.shape[0] != fits_header['NAXIS3']:
-        if (fits_header['NAXIS3']-600) == lam.shape[0]:
-            fits_header['NAXIS3'] = lam.shape[0]
+    if lamdas.shape[0] != fits_header['NAXIS3']:
+        if (fits_header['NAXIS3']-600) == lamdas.shape[0]:
+            fits_header['NAXIS3'] = lamdas.shape[0]
             fits_header['CRVAL3'] = fits_header['CRVAL3']+150
         else:
             print("Using wavelength corrected lamda vector to set CRVAL3")
-            fits_header['NAXIS3'] = lam.shape[0]
-            fits_header['CRVAL3'] = lam[0]
+            fits_header['NAXIS3'] = lamdas.shape[0]
+            fits_header['CRVAL3'] = lamdas[0]
 
     #create the hdu
     hdu = fits.PrimaryHDU(cont_subtracted, header=fits_header)
