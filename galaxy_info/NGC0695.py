@@ -17,15 +17,19 @@ PURPOSE:
 """
 
 ngc0695_red = {
-    'data_filepath' : '/Users/breichardtchu/Documents/data/ngc0695/NGC0695_red_binned_3_by_3_cropped.fits',
+    #'data_filepath' : '/Users/breichardtchu/Documents/data/ngc0695/NGC0695_red_binned_3_by_3_cropped.fits',
     #'data_filepath' : '/Users/breichardtchu/Documents/data/ngc0695/NGC0695_red_test_data.fits',
+    'data_filepath' : '/Volumes/BronsData/ngc0695/NGC0695_red_binned_3_by_3_cropped.fits',
+    #'data_filepath' : '/Volumes/BronsData/ngc0695/NGC0695_red_test_data.fits',
     'var_filepath' : None,
     'gal_name' : 'ngc0695_red',
     'z' : 0.03247,
     'cube_colour' : 'red',
-    'ssp_filepath' : '/Users/breichardtchu/Documents/models/p_walcher09/*',
+    #'ssp_filepath' : '/Users/breichardtchu/Documents/models/p_walcher09/*',
     #'ssp_filepath' : '/Users/breichardtchu/Documents/OneDrive - Swinburne University/python_scripts/ppxf/miles_models/Mun1.3*.fits',
-    'results_folder' : '/Users/breichardtchu/Documents/code_outputs/ppxf_ngc0695/ngc0695_red_ppxf_24Jan2023_Walcher09_deg26_mdeg8_emlines_masked350_final/',
+    'ssp_filepath' : '/Volumes/BronsData/models/p_walcher09/*',
+    #'results_folder' : '/Users/breichardtchu/Documents/code_outputs/ppxf_ngc0695/ngc0695_red_ppxf_24Jan2023_Walcher09_deg26_mdeg8_emlines_masked350_final/',
+    'results_folder' : '/Volumes/BronsData/code_outputs/ppxf_results/NGC0695_red_ppxf_26July2024_walcher09_deg-1_mdeg25_emlines_masked350/',
     'data_crop' : False,
     'var_crop' : False,
     'lamda_crop' : False,
@@ -40,8 +44,8 @@ ngc0695_red = {
     'fwhm_emlines' : 3.0,
     'gas_reddening' : None,
     'reddening' : None, # usually 0.13, must be None when mdegree > 0
-    'degree' : 26,
-    'mdegree' : 8,
+    'degree' : -1,
+    'mdegree' : 25,
     'sn_cut' : 3,
     'vacuum' : True,
     'extra_em_lines' : False,
