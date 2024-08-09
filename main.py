@@ -65,9 +65,9 @@ def main(galaxy_dict, run_cont_subtraction=True, run_ext_correction=True):
 
 if __name__ == '__main__':
     #get the galaxy info
-    from galaxy_info import KISSR1084
+    from galaxy_info import IRAS08
     #from galaxy_info import NGC7316
 
     #run the continuum subtraction
-    ngc695_class = main(KISSR1084.KISSR1084_red, run_cont_subtraction=True, run_ext_correction=True)
+    gal_class = main(IRAS08.IRAS08_red, run_cont_subtraction=True, run_ext_correction=True)
     #ngc7316_class = main(NGC7316.ngc7316_red, run_cont_subtraction=True, run_ext_correction=True)
