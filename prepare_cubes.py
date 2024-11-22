@@ -538,8 +538,10 @@ def hbeta_extinction_correction(lamdas, data, var, z, sn_cut=0):
     """
     #create the S/N array
     hgamma_mask = (lamdas>(4341.68*(1+z)-5)) & (lamdas<(4341.68*(1+z)+5))
+    hgamma_cont_mask = (lamdas>(4600*(1+z))) & (lamdas<(4800*(1+z)))
 
-    hgamma_sn = np.trapz(data[hgamma_mask,:,:], dx=0.5, axis=0)/np.trapz(np.sqrt(abs(var[hgamma_mask,:,:])), dx=0.5, axis=0)
+    #hgamma_sn = np.trapz(data[hgamma_mask,:,:], lamdas[hgamma_mask], axis=0)/np.sqrt(np.sum(var[hgamma_mask,:,:]**2, axis=0))
+    hgamma_sn = np.trapz(data[hgamma_mask,:,:], lamdas[hgamma_mask], axis=0)/np.nanstd(data[hgamma_cont_mask,:,:], axis=0)
 
     #use the hbeta/hgamma ratio to calculate EBV
     ebv = calculate_EBV_from_hbeta_hgamma_ratio(lamdas, data, z)
@@ -603,6 +605,7 @@ def calculate_EBV_from_hbeta_hgamma_ratio(lamdas, data, z):
     """
     #calculate the hbeta/hgamma ratio
     hbeta_flux, hgamma_flux, hbeta_hgamma_obs = calc_ext.calc_hbeta_hgamma_amps(lamdas, data, z, cont_subtract=False)
+    #hbeta_flux, hgamma_flux, hbeta_hgamma_obs = calc_ext.calc_hbeta_hgamma_integrals(lamdas, data, z, cont_subtract=False, plot=False)
 
     #set the expected hbeta/hgamma ratio
     hbeta_hgamma_actual = 2.15
