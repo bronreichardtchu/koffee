@@ -66,14 +66,14 @@ all_the_lines = {
     "OIII_4" : 5008.240
 }
 
-#giving left and right limits of what to integrate over for emission lines
+#giving left and right limits of where to look for emission lines
 emission_line_limits = {
-    "Hgamma_left" : 4338.18,
-    "Hgamma_right" : 4345.18,
-    "Hbeta_left" : 4857.18,
-    "Hbeta_right" : 4868.18,
-    "OIII_3_left" : 4955.0,
-    "OIII_3_right" : 4965.0,
+    "Hgamma_left" : 4335.68,
+    "Hgamma_right" : 4347.68,
+    "Hbeta_left" : 4855.68,
+    "Hbeta_right" : 4869.68,
+    "OIII_3_left" : 4953.0,
+    "OIII_3_right" : 4967.0,
     "OIII_4_left" : 5003.0,
     "OIII_4_right" : 5013.0
 }
