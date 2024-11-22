@@ -278,16 +278,19 @@ def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=F
         continuum subtracted to find the signal-to-noise value near the Hbeta
         line for each spectrum
     """
-    #create bounds to integrate over
-    hgamma_left_limit = emission_line_limits["Hgamma_left"]
-    hgamma_right_limit = emission_line_limits["Hgamma_right"]
+    #create bounds to look for the peak value within
+    hgamma_left_limit = emission_line_limits["Hgamma_left"]*(1+z)
+    hgamma_right_limit = emission_line_limits["Hgamma_right"]*(1+z)
 
-    hbeta_left_limit = emission_line_limits["Hbeta_left"]
-    hbeta_right_limit = emission_line_limits["Hbeta_right"]
+    hbeta_left_limit = emission_line_limits["Hbeta_left"]*(1+z)
+    hbeta_right_limit = emission_line_limits["Hbeta_right"]*(1+z)
 
     #create bounds for the continuum
-    hgamma_cont_left_limit = continuum_band_limits["Hgamma_left"]
-    hgamma_cont_right_limit = continuum_band_limits["Hgamma_right"]
+    hgamma_cont_left_limit = continuum_band_limits["Hgamma_left"]*(1+z)
+    hgamma_cont_right_limit = continuum_band_limits["Hgamma_right"]*(1+z)
+
+    hbeta_cont_left_limit = continuum_band_limits["Hbeta_left"]*(1+z)
+    hbeta_cont_right_limit = continuum_band_limits["Hbeta_right"]*(1+z)
 
     hbeta_cont_left_limit = continuum_band_limits["Hbeta_left"]
     hbeta_cont_right_limit = continuum_band_limits["Hbeta_right"]
@@ -452,18 +455,21 @@ def calc_OIII_doublet_ratio(lamdas, spectrum, z, cont_subtract=False, plot=False
         line for each spectrum
     """
     #create bounds to integrate over
-    OIII_4959_left_limit = emission_line_limits["OIII_3_left"]
-    OIII_4959_right_limit = emission_line_limits["OIII_3_right"]
+    OIII_4959_left_limit = emission_line_limits["OIII_3_left"]*(1+z)
+    OIII_4959_right_limit = emission_line_limits["OIII_3_right"]*(1+z)
 
-    OIII_5007_left_limit = emission_line_limits["OIII_4_left"]
-    OIII_5007_right_limit = emission_line_limits["OIII_4_right"]
+    OIII_5007_left_limit = emission_line_limits["OIII_4_left"]*(1+z)
+    OIII_5007_right_limit = emission_line_limits["OIII_4_right"]*(1+z)
 
     #create bounds for the continuum
-    OIII_4959_cont_left_limit = continuum_band_limits["OIII_3_left"]
-    OIII_4959_cont_right_limit = continuum_band_limits["OIII_3_right"]
+    OIII_4959_cont_left_limit = continuum_band_limits["OIII_3_left"]*(1+z)
+    OIII_4959_cont_right_limit = continuum_band_limits["OIII_3_right"]*(1+z)
 
-    OIII_5007_cont_left_limit = continuum_band_limits["OIII_4_left"]
-    OIII_5007_cont_right_limit = continuum_band_limits["OIII_4_right"]
+    OIII_5007_cont_left_limit = continuum_band_limits["OIII_4_left"]*(1+z)
+    OIII_5007_cont_right_limit = continuum_band_limits["OIII_4_right"]*(1+z)
+
+    # flatten data 
+    flat_data = spectrum.reshape((lamdas.shape[0],-1))
 
     #if the continuum has not already been fit and subtracted, use an approximation
     #to subtract it off
