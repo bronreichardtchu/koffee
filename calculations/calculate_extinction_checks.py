@@ -196,6 +196,43 @@ def subtract_continuum(lamdas, spectrum, left_limit, right_limit):
     return spectrum, s_n
 
 
+def create_new_bandwidth(lamdas, spectrum, left_limit, right_limit):
+    """Finds the wavelength of the peak within the given limits, and then creates
+    a band +/- 5A around that wavelength.
+
+    Parameters
+    ----------
+    lamdas : :obj:'~numpy.ndarray'
+        the wavelength vector, same length as the given spectrum
+    spectrum : :obj:'~numpy.ndarray'
+        spectrum or array of spectra. If in array, needs to be in shape
+        [npix, nspec]
+    left_limit : float
+        the left (blue) wavelength limit of the range to search for the max in 
+    right_limit : float
+        the right (red) wavelength limit of the range to search for the max in
+
+    Returns
+    -------
+    float
+        the new wavelength boundaries
+    """
+    # create the range 
+    lam_mask = (lamdas>=left_limit) & (lamdas<=right_limit)
+
+    # find the peak value within the range
+    peak_idx = np.nanargmax(spectrum[lam_mask], axis=0)
+
+    # find the wavelength value 
+    peak_lam = lamdas[lam_mask][peak_idx]
+
+    # create new limits
+    new_left_limit = peak_lam - 6.0
+    new_right_limit = peak_lam + 6.0
+
+    return new_left_limit, new_right_limit
+
+
 def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=False):
     """
     Calculate the Hbeta/hgamma ratio, which should be 2.13, by integrating over the
