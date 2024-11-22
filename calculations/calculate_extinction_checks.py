@@ -112,10 +112,10 @@ def integrate_spectrum(lamdas, spectrum, left_limit, right_limit, plot=False):
         the spectrum or array of spectra.  If in array, needs to be in shape
         [npix, nspec]
 
-    left_limit : float
+    left_limit : :obj:'~numpy.ndarray'
         The left-hand wavelength limit of the region to integrate over
 
-    right_limit : float
+    right_limit : :obj:'~numpy.ndarray'
         The right-hand wavelength limit of the region to integrate over
 
     plot : boolean
@@ -127,19 +127,29 @@ def integrate_spectrum(lamdas, spectrum, left_limit, right_limit, plot=False):
     integral : float or :obj:'~numpy.ndarray'
         the flux of the line
     """
-    #use the wavelengths to find the values in the spectrum to integrate over
-    spec = spectrum[(lamdas>=left_limit)&(lamdas<=right_limit),]
-    lam = lamdas[(lamdas>=left_limit) & (lamdas<=right_limit)]
+    # create a new array to keep the integrals in 
+    integral = np.zeros((spectrum.shape[1]))
 
-    #plot the area used
     if plot == True:
-        plt.figure()
-        plt.step(lam, spec.reshape([lam.shape[0],-1]), where='mid')
-        plt.show()
+        fig, ax = plt.subplots(ncols=2, nrows=1)
 
-    #integrate along the spectrum
-    #by integrating, the units are now 10^-16 erg/s/cm^2
-    integral = np.trapz(spec, lam, axis=0)
+    # iterate over each spectrum
+    for i in np.arange(spectrum.shape[1]):
+        # use the wavelengths to find the values in the spectrum to integrate over
+        spec = spectrum[(lamdas>=left_limit[i])&(lamdas<=right_limit[i]),i]
+        lam = lamdas[(lamdas>=left_limit[i]) & (lamdas<=right_limit[i])]
+
+        #plot the area used
+        if plot == True:
+            #ax.step(lam, spec.reshape([lam.shape[0],-1]), where='mid')
+            ax[0].step(lam, spec, where='mid')
+            ax[1].step(np.arange(lam.shape[0])-lam.shape[0]/2, spec, where='mid')
+            plt.show()
+
+        #integrate along the spectrum
+        #by integrating, the units are now 10^-16 erg/s/cm^2
+        integral[i] = np.trapz(spec, lam, axis=0)
+        
     integral = integral*10**(-16)*u.erg/(u.s*(u.cm*u.cm))
 
     return integral
