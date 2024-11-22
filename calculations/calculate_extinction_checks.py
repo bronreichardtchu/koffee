@@ -305,11 +305,19 @@ def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=F
         #create the S/N mask
         s_n_mask = s_n_hbeta > 20
 
+        # create the new limits from the peak wavelength
+        hgamma_left_limit, hgamma_right_limit = create_new_bandwidth(lamdas, hgamma_spec, hgamma_left_limit, hgamma_right_limit)
+        hbeta_left_limit, hbeta_right_limit = create_new_bandwidth(lamdas, hbeta_spec, hbeta_left_limit, hbeta_right_limit)
+
         #integrate over the emission lines
         hgamma_integral = integrate_spectrum(lamdas, hgamma_spec, hgamma_left_limit, hgamma_right_limit, plot=plot)
         hbeta_integral = integrate_spectrum(lamdas, hbeta_spec, hbeta_left_limit, hbeta_right_limit, plot=plot)
 
     elif cont_subtract == False:
+        # create the new limits from the peak wavelength
+        hgamma_left_limit, hgamma_right_limit = create_new_bandwidth(lamdas, flat_data, hgamma_left_limit, hgamma_right_limit)
+        hbeta_left_limit, hbeta_right_limit = create_new_bandwidth(lamdas, flat_data, hbeta_left_limit, hbeta_right_limit)
+
         #integrate over the emission lines
         hgamma_integral = integrate_spectrum(lamdas, flat_data, hgamma_left_limit, hgamma_right_limit, plot=plot)
         hbeta_integral = integrate_spectrum(lamdas, flat_data, hbeta_left_limit, hbeta_right_limit, plot=plot)
@@ -483,23 +491,18 @@ def calc_OIII_doublet_ratio(lamdas, spectrum, z, cont_subtract=False, plot=False
         OIII_4959_spec, s_n_OIII_4959 = subtract_continuum(lamdas, flat_data, OIII_4959_cont_left_limit, OIII_4959_cont_right_limit)
         OIII_5007_spec, s_n_OIII_5007 = subtract_continuum(lamdas, flat_data, OIII_5007_cont_left_limit, OIII_5007_cont_right_limit)
 
-        OIII_5007_spec, s_n_OIII_5007 = subtract_continuum(lamdas, spectrum, OIII_5007_cont_left_limit, OIII_5007_cont_right_limit)
+        # create the new limits from the peak wavelength
+        OIII_4959_left_limit, OIII_4959_right_limit = create_new_bandwidth(lamdas, OIII_4959_spec, OIII_4959_left_limit, OIII_4959_right_limit)
+        OIII_5007_left_limit, OIII_5007_right_limit = create_new_bandwidth(lamdas, OIII_5007_spec, OIII_5007_left_limit, OIII_5007_right_limit)
 
         #integrate over the emission lines
-        if plot == True:
-            OIII_4959_integral = integrate_spectrum(lamdas, OIII_4959_spec, OIII_4959_left_limit, OIII_4959_right_limit, plot=True)
-
-            OIII_5007_integral = integrate_spectrum(lamdas, OIII_5007_spec, OIII_5007_left_limit, OIII_5007_right_limit, plot=True)
-
-        elif plot == False:
-            OIII_4959_integral = integrate_spectrum(lamdas, OIII_4959_spec, OIII_4959_left_limit, OIII_4959_right_limit, plot=False)
-
-            OIII_5007_integral = integrate_spectrum(lamdas, OIII_5007_spec, OIII_5007_left_limit, OIII_5007_right_limit, plot=False)
+        OIII_4959_integral = integrate_spectrum(lamdas, OIII_4959_spec, OIII_4959_left_limit, OIII_4959_right_limit, plot=plot)
+        OIII_5007_integral = integrate_spectrum(lamdas, OIII_5007_spec, OIII_5007_left_limit, OIII_5007_right_limit, plot=plot)
 
     elif cont_subtract == False:
-        #integrate over the emission lines
-        if plot == True:
-            OIII_4959_integral = integrate_spectrum(lamdas, spectrum, OIII_4959_left_limit, OIII_4959_right_limit, plot=True)
+        # create the new limits from the peak wavelength
+        OIII_4959_left_limit, OIII_4959_right_limit = create_new_bandwidth(lamdas, flat_data, OIII_4959_left_limit, OIII_4959_right_limit)
+        OIII_5007_left_limit, OIII_5007_right_limit = create_new_bandwidth(lamdas, flat_data, OIII_5007_left_limit, OIII_5007_right_limit)
 
         #integrate over the emission lines
         OIII_4959_integral = integrate_spectrum(lamdas, flat_data, OIII_4959_left_limit, OIII_4959_right_limit, plot=plot)
