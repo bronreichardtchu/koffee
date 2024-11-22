@@ -57,11 +57,11 @@ from matplotlib import gridspec
 # and their uncertainties while preserving the integrated flux more information at
 # https://spectres.readthedocs.io/en/latest/ or from the paper at
 # https://arxiv.org/pdf/1705.05165.pdf
-from spectres import spectres
+#from spectres import spectres
 
 #from .display_pixels import cap_display_pixels as cdp
-import brons_display_pixels_kcwi as bdpk
-from calculations import calculate_extinction_checks as calc_ext
+from koffee import brons_display_pixels_kcwi as bdpk
+from koffee.calculations import calculate_extinction_checks as calc_ext
 
 import importlib
 importlib.reload(calc_ext)
