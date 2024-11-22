@@ -254,8 +254,7 @@ def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=F
         the wavelength vector (must be in rest wavelengths, not observed)
 
     spectrum : :obj:'~numpy.ndarray'
-        the spectrum or array of spectra.  If in array, needs to be in shape
-        [npix, nspec]
+        the spectrum or array of spectra.
 
     z : float
         redshift of the galaxy - used to calculate the flux, not applied to the 
@@ -292,16 +291,16 @@ def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=F
     hbeta_cont_left_limit = continuum_band_limits["Hbeta_left"]*(1+z)
     hbeta_cont_right_limit = continuum_band_limits["Hbeta_right"]*(1+z)
 
-    hbeta_cont_left_limit = continuum_band_limits["Hbeta_left"]
-    hbeta_cont_right_limit = continuum_band_limits["Hbeta_right"]
+    # flatten data 
+    flat_data = spectrum.reshape((lamdas.shape[0],-1))
 
     #if the continuum has not already been fit and subtracted, use an approximation
     #to subtract it off
     #also use the continuum to find the S/N and mask things
     if cont_subtract == True:
-        hgamma_spec, s_n_hgamma = subtract_continuum(lamdas, spectrum, hgamma_cont_left_limit, hgamma_cont_right_limit)
+        hgamma_spec, s_n_hgamma = subtract_continuum(lamdas, flat_data, hgamma_cont_left_limit, hgamma_cont_right_limit)
 
-        hbeta_spec, s_n_hbeta = subtract_continuum(lamdas, spectrum, hbeta_cont_left_limit, hbeta_cont_right_limit)
+        hbeta_spec, s_n_hbeta = subtract_continuum(lamdas, flat_data, hbeta_cont_left_limit, hbeta_cont_right_limit)
 
         #create the S/N mask
         s_n_mask = s_n_hbeta > 20
@@ -312,8 +311,8 @@ def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=F
 
     elif cont_subtract == False:
         #integrate over the emission lines
-        hgamma_integral = integrate_spectrum(lamdas, spectrum, hgamma_left_limit, hgamma_right_limit, plot=plot)
-        hbeta_integral = integrate_spectrum(lamdas, spectrum, hbeta_left_limit, hbeta_right_limit, plot=plot)
+        hgamma_integral = integrate_spectrum(lamdas, flat_data, hgamma_left_limit, hgamma_right_limit, plot=plot)
+        hbeta_integral = integrate_spectrum(lamdas, flat_data, hbeta_left_limit, hbeta_right_limit, plot=plot)
 
     #now get rid of the cm^2
     #get the Hubble constant at z=0; this is in km/Mpc/s
@@ -326,13 +325,19 @@ def calc_hbeta_hgamma_integrals(lamdas, spectrum, z, cont_subtract=False, plot=F
     hgamma_flux = (hgamma_integral*(4*np.pi*(dist**2))).to('erg/s')
     hbeta_flux = (hbeta_integral*(4*np.pi*(dist**2))).to('erg/s')
 
-    print('Hgamma flux:', hgamma_flux)
-    print('Hbeta flux:', hbeta_flux)
+    #print('Hgamma flux:', hgamma_flux)
+    #print('Hbeta flux:', hbeta_flux)
 
     #calculate the hbeta/hgamma ratio
     hbeta_hgamma = hbeta_flux/hgamma_flux
 
     print('Median Hbeta/Hgamma:', np.nanmedian(hbeta_hgamma))
+
+    # reshape everything to the data shape 
+    if len(spectrum.shape)>2:
+        hbeta_flux = hbeta_flux.reshape((spectrum.shape[1], spectrum.shape[2]))
+        hgamma_flux = hgamma_flux.reshape((spectrum.shape[1], spectrum.shape[2]))
+        hbeta_hgamma = hbeta_hgamma.reshape((spectrum.shape[1], spectrum.shape[2]))
 
     if cont_subtract == True:
         return hbeta_flux, hgamma_flux, hbeta_hgamma, s_n_mask
@@ -475,7 +480,8 @@ def calc_OIII_doublet_ratio(lamdas, spectrum, z, cont_subtract=False, plot=False
     #to subtract it off
     #also use the continuum to find the S/N and mask things
     if cont_subtract == True:
-        OIII_4959_spec, s_n_OIII_4959 = subtract_continuum(lamdas, spectrum, OIII_4959_cont_left_limit, OIII_4959_cont_right_limit)
+        OIII_4959_spec, s_n_OIII_4959 = subtract_continuum(lamdas, flat_data, OIII_4959_cont_left_limit, OIII_4959_cont_right_limit)
+        OIII_5007_spec, s_n_OIII_5007 = subtract_continuum(lamdas, flat_data, OIII_5007_cont_left_limit, OIII_5007_cont_right_limit)
 
         OIII_5007_spec, s_n_OIII_5007 = subtract_continuum(lamdas, spectrum, OIII_5007_cont_left_limit, OIII_5007_cont_right_limit)
 
@@ -495,12 +501,9 @@ def calc_OIII_doublet_ratio(lamdas, spectrum, z, cont_subtract=False, plot=False
         if plot == True:
             OIII_4959_integral = integrate_spectrum(lamdas, spectrum, OIII_4959_left_limit, OIII_4959_right_limit, plot=True)
 
-            OIII_5007_integral = integrate_spectrum(lamdas, spectrum, OIII_5007_left_limit, OIII_5007_right_limit, plot=True)
-
-        elif plot == False:
-            OIII_4959_integral = integrate_spectrum(lamdas, spectrum, OIII_4959_left_limit, OIII_4959_right_limit, plot=False)
-
-            OIII_5007_integral = integrate_spectrum(lamdas, spectrum, OIII_5007_left_limit, OIII_5007_right_limit, plot=False)
+        #integrate over the emission lines
+        OIII_4959_integral = integrate_spectrum(lamdas, flat_data, OIII_4959_left_limit, OIII_4959_right_limit, plot=plot)
+        OIII_5007_integral = integrate_spectrum(lamdas, flat_data, OIII_5007_left_limit, OIII_5007_right_limit, plot=plot)
 
     #now get rid of the cm^2
     #get the Hubble constant at z=0; this is in km/Mpc/s
@@ -513,11 +516,19 @@ def calc_OIII_doublet_ratio(lamdas, spectrum, z, cont_subtract=False, plot=False
     OIII_4959_flux = (OIII_4959_integral*(4*np.pi*(dist**2))).to('erg/s')
     OIII_5007_flux = (OIII_5007_integral*(4*np.pi*(dist**2))).to('erg/s')
 
-    print(OIII_4959_flux)
-    print(OIII_5007_flux)
+    #print(OIII_4959_flux)
+    #print(OIII_5007_flux)
 
     #calculate the hbeta/hgamma ratio
     OIII_4959_OIII_5007 = OIII_4959_flux/OIII_5007_flux
+
+    print('Median [OIII]4959/[OIII]5007:', np.nanmedian(OIII_4959_OIII_5007))
+
+    # reshape everything to the data shape 
+    if len(spectrum.shape)>2:
+        OIII_4959_flux = OIII_4959_flux.reshape((spectrum.shape[1], spectrum.shape[2]))
+        OIII_5007_flux = OIII_5007_flux.reshape((spectrum.shape[1], spectrum.shape[2]))
+        OIII_4959_OIII_5007 = OIII_4959_OIII_5007.reshape((spectrum.shape[1], spectrum.shape[2]))
 
     return OIII_4959_OIII_5007
 
