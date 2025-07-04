@@ -1003,6 +1003,8 @@ def data_coords(lamdas, data, header, cube_colour, z=0.0, shiftx=None, shifty=No
             cont_mask = (lamdas>4600*(1+z))&(lamdas<4800*(1+z))
         elif cube_colour == 'blue':
             cont_mask = (lamdas>3600*(1+z))&(lamdas<3700*(1+z))
+        elif cube_colour == 'muse':
+            cont_mask = (lamdas>5100*(1+z))&(lamdas<5200*(1+z))
         cont_median = np.median(data[cont_mask,:,:], axis=0)
         i, j = np.unravel_index(cont_median.argmax(), cont_median.shape)
         try:
@@ -1395,7 +1397,8 @@ def prepare_single_cube(data_filepath, gal_name, z, cube_colour, results_folder,
         redshift
 
     cube_colour : str
-        'red' or 'blue' cube to use in creating the coordinate arrays
+        'red' or 'blue' cube for kcwi data, 'muse' for muse data. Used in 
+        creating the coordinate arrays
 
     results_folder : str
         where to save the results
