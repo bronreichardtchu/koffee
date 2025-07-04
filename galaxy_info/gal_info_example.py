@@ -27,7 +27,7 @@ gal_red = {
     #galaxy redshift
     'z' : 0.02,
     #whether the cube is the red or blue arrangement from KCWI - this changes
-    #where the continuum band is calculated
+    #where the continuum band is calculated. Can also be 'muse' for MUSE cubes
     'cube_colour' : 'red',
     #filepath to the ssp models.
     #Options are MILES (comes with ppxf), Walcher09, BPASS and BC03 models

@@ -936,7 +936,8 @@ def data_coords(lamdas, data, header, cube_colour, z=0.0, shiftx=None, shifty=No
         the header from the fits file
 
     cube_colour : str
-        whether it is the 'red' or 'blue' cube
+        'red' or 'blue' cube for kcwi data, 'muse' for muse data. Used in 
+        creating the coordinate arrays
 
     z : float
         redshift, default is 0.0 (since the cube is usually already de-redshifted)
@@ -1300,7 +1301,8 @@ def prepare_combine_cubes(data_filepath, var_filepath, gal_name, z, cube_colour,
         redshift
 
     cube_colour : str
-        'red' or 'blue' cube to use in creating the coordinate arrays
+        'red' or 'blue' cube for kcwi data, 'muse' for muse data. Used in 
+        creating the coordinate arrays
 
     Av_mw : float
         The extinction value from the Milky Way in the direction of the input 
